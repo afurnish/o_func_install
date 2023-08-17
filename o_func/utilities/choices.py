@@ -277,8 +277,10 @@ class DataChoice:
         self.start_path=start_path
         self.location_of_choices=location_of_choices
         
+    def multi_select(self):
+        a = 1
         
-    def select(self, path, selection, input_message): 
+    def select(self, path, selection, input_message = ''): 
         #generic_path_to_file = path + selection
         
         file_length = [str(i) for i in (list(range(1, len(selection) + 1)))]
@@ -288,10 +290,7 @@ class DataChoice:
             input_message += f'{index+1}) {item}\n'
         
         input_message += '\nYour choice: '
-        
         while user_input.lower() not in file_length:
-            print('usr inp', user_input.lower())
-            print('filelength', file_length)
             user_input = input(input_message)
         
         output = selection[int(user_input)-1]
@@ -337,7 +336,12 @@ class DataChoice:
         input_message = "Select a file by number:\n"
         full_path = self.select(path, options, input_message)
         return full_path
+    
+    def var_select(self, start_path, location_of_choices, variables):
+        path = start_path + location_of_choices
         
+        full_path = self.select(path, variables)
+        return full_path
 #%%      
 if __name__ == '__main__':
     
@@ -351,5 +355,13 @@ if __name__ == '__main__':
     
     choice = DataChoice(start_path, directory_path)
     
-    shelftmb_path = choice.file_select(start_path, directory_path, data_type = 'csv')
-    scw_nc_path = choice.dir_select(start_path, directory_path2)
+    file_path = choice.file_select(start_path, directory_path, data_type = 'csv')
+    folder_path = choice.dir_select(start_path, directory_path2)
+    
+    
+#%%
+    variables = ['owa/shelftmb', 'oa/shelftmb', 'ow/shelftmb', 'og/shelftmb']
+    directory_path3 = r'Original Data/UKC3'
+    var_path = choice.var_select(start_path, directory_path3, variables)
+
+#%% Multichoice
