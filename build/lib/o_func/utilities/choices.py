@@ -267,8 +267,111 @@ def sw_vid_data_variable_choice(start_path):
 
     return final # return index of bounds
 
+import os
+
 from o_func.utilities import winc # winc used in Choices
 
-class Choices:
-    def __init__(self, start_path):
+#%%
+class DataChoice:
+    def __init__(self, start_path, location_of_choices):
         self.start_path=start_path
+        self.location_of_choices=location_of_choices
+        
+        
+    # def select(self, path, selection): 
+    #     generic_path_to_file = path + selection
+        
+        
+    #     options = file_split
+     
+    #     user_input = ''
+        
+    #     input_message = "Select a directory by number:\n"
+        
+    #     for index, item in enumerate(options):
+    #         input_message += f'{index+1}) {item}\n'
+        
+    #     input_message += 'Your choice: '
+        
+    #     while user_input.lower() not in file_length:
+    #         user_input = input(input_message)
+        
+    #     output = file_split[int(user_input)-1]
+
+    #     print('You picked: ' + output + '\n')
+        
+    #     full_path = path + r'/' + output
+    #     return full_path
+        
+    # def dir_select(self, start_path, location_of_choices):
+    #     path = start_path + location_of_choices
+    #     def list_directories(directory_path):
+    #         directories = [item for item in os.listdir(directory_path) if os.path.isdir(os.path.join(directory_path, item))]
+    #         return directories
+        
+        
+            
+    #     self.select(path,list_directories(path))
+        
+        
+    def file_select(self, start_path, location_of_choices,  data_type = 'default'):
+        self.data_type = {
+            'default': '',
+            'csv': r'/*.csv',
+            'pli' : r'/*.pli'
+            # Add more named presets as needed...
+        }
+        
+        path = start_path + location_of_choices
+        generic_path_to_file = path + self.data_type[data_type] # formally csv etc
+        
+        files = []
+        file_split = []
+        file_length = []
+        # print(generic_path_to_file)
+        for j, filename in enumerate(glob.glob(generic_path_to_file)):
+            f = winc(filename)
+
+            files.append(f)
+            file_split.append(f.split('/')[-1])
+            file_length+=str(j+1)
+        
+        options = file_split
+        user_input = ''
+        
+        input_message = "Select a file by number:\n"
+        
+        for index, item in enumerate(options):
+            input_message += f'{index+1}) {item}\n'
+        
+        input_message += 'Your choice: '
+        
+        while user_input.lower() not in file_length:
+            user_input = input(input_message)
+        
+        output = file_split[int(user_input)-1]
+
+        print('You picked: ' + output + '\n')
+        
+        full_path = path + r'/' + output
+        return full_path
+        
+        
+    #def var_select(self):
+        
+    #def number_of_choice(self):
+#%%      
+if __name__ == '__main__':
+    
+    from o_func import opsys3; start_path = opsys3()
+    
+#%%
+    directory_path = r'modelling_DATA/kent_estuary_project/' + \
+                        r'land_boundary/analysis/QGIS_shapefiles'
+                        
+    directory_path2 = 'modelling_DATA/kent_estuary_project/tidal_boundary/delft_3dfm_inputs/pli_files'
+    
+    choice = DataChoice(start_path, directory_path)
+    
+    shelftmb_path = choice.file_select(start_path, directory_path, data_type = 'csv')
+    scw_nc_path = choice.dir_select(start_path, directory_path2)

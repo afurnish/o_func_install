@@ -84,4 +84,37 @@ def opsys2():
         start_path = drive[0] + r'/'
     return start_path
 
+def find_drive_label(drive_label):
+    if os.name == "nt":  # Windows
+        drives = [d for d in "ABCDEFGHIJKLMNOPQRSTUVWXYZ" if os.path.exists(f"{d}:")]
+        
+        drives_to_clear = []
+        for d in drives:
+            drive_info = os.popen(f"vol {d}:").read().strip()
+            if 'PD' not in drive_info:
+                drives_to_clear.append(d)
+                
+        result = [item for item in drives if item not in drives_to_clear]
+        if not result:
+            raise Exception(f"Volume {drive_label} not found")
+        
+        return result[0] + r':/'
+        
+    else:  # Linux or Mac
+        mount_points = [line.split()[2] for line in os.popen("mount").read().splitlines() if line.startswith("/dev/") and f"/{drive_label}" in line]
+        
+        if not mount_points:
+            raise Exception(f"Drive {drive_label} not found")
+            
+        return mount_points[0] + r'/'
+
+def opsys3(drive_label="PD"):
+    start_path = find_drive_label(drive_label)
+    print(f'\nDrive {drive_label} has been detected\n')
+    return start_path
+
+# # Example usage
+# start_path = opsys2()
+# print("Start path:", start_path)
+
 
