@@ -1,0 +1,7 @@
+logs
+output
+doc
+*.txt
+*.sh
+*.bat
+*.q

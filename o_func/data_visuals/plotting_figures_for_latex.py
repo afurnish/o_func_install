@@ -5,6 +5,8 @@ Created on Wed Aug 16 18:17:52 2023
 @author: aafur
 """
 import matplotlib.pyplot as plt
+# plt.rcParams["figure.autolayout"] = True
+
 class Plot:
     def __init__(self, figsize_preset = 'default', dpi=300):
        self.dpi = dpi

@@ -10,6 +10,7 @@ from setuptools import find_packages, setup
 setup(
     name='o_func',
     packages=find_packages(include=['o_func', 'o_func.*']),
+    package_data={'o_func': ['data/SCW_files/*'],},
     version='0.1.0',
     description='Ocean Processing for completion of PhD in Ocean Sciences at Bangor University',
     author='Aaron Andrew Furnish',

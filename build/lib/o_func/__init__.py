@@ -14,6 +14,8 @@ from .utilities.finder import finder
 from .utilities.start import opsys3
 from .utilities.choices import DataChoice
 
+from .data_prepkit.gen_directory import write_directories
+
 # This is now you import the classes and functions in the main 
 #from .near_neigh import *  ## This will import all functions from near neigh into func_o
 
