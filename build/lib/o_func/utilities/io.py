@@ -2,6 +2,9 @@
 # -*- coding: utf-8 -*-
 import platform
 import os
+import datetime as dt  
+
+
 def winc(i):
         if platform == "win32" or "Windows":
             b = i.replace('\\','/')
@@ -37,3 +40,28 @@ if __name__ == '__main__':
     
     i = start_path, 'hello'
     md(i)
+    
+class Shutdown:
+    def __init__(self):
+        self.shutdown = 'n'
+        
+    @staticmethod
+    def isNowInTimePeriod(startTime, endTime, nowTime): 
+        if startTime < endTime: 
+            return nowTime >= startTime and nowTime <= endTime 
+        else: 
+            #Over midnight: 
+            return nowTime >= startTime or nowTime <= endTime 
+ 
+    def start_shutdown(self):
+        timey_wimey = self.isNowInTimePeriod(dt.time(20,30), dt.time(1,30), dt.datetime.now().time())
+        
+        if timey_wimey == True:
+           self.shutdown = input("Do you wish to shutdown your computer afterwards? (y/n): ")
+        else:
+           self.shutdown = 'n'
+       
+           
+    def kill(self):
+        if self.shutdown == 'y':
+            os.system("shutdown /s /t 1")

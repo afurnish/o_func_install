@@ -42,26 +42,26 @@ if __name__ == '__main__':
     md(i)
     
 class Shutdown:
-    def __init__(self, shutdown = 'n'):
-        self.shutdown = shutdown
-    
+    def __init__(self):
+        self.shutdown = 'n'
+        
+    @staticmethod
+    def isNowInTimePeriod(startTime, endTime, nowTime): 
+        if startTime < endTime: 
+            return nowTime >= startTime and nowTime <= endTime 
+        else: 
+            #Over midnight: 
+            return nowTime >= startTime or nowTime <= endTime 
+ 
     def start_shutdown(self):
-        def isNowInTimePeriod(startTime, endTime, nowTime): 
-            if startTime < endTime: 
-                return nowTime >= startTime and nowTime <= endTime 
-            else: 
-                #Over midnight: 
-                return nowTime >= startTime or nowTime <= endTime 
-    
-        timey_wimey = isNowInTimePeriod(dt.time(20,30), dt.time(1,30), dt.datetime.now().time())
-    
+        timey_wimey = self.isNowInTimePeriod(dt.time(20,30), dt.time(1,30), dt.datetime.now().time())
+        
         if timey_wimey == True:
-           shutdown = input("Do you wish to shutdown your computer afterwards? (y/n): ")
+           self.shutdown = input("Do you wish to shutdown your computer afterwards? (y/n): ")
         else:
-           shutdown = 'n'
+           self.shutdown = 'n'
+       
            
-        self.shutdown = shutdown
-           
-    def shutdown(self):
+    def kill(self):
         if self.shutdown == 'y':
             os.system("shutdown /s /t 1")
