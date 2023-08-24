@@ -16,7 +16,7 @@ class Plot:
             'default': (21.7, 14),
             'whole_page': (10, 7),
             'a4_landscape' : (7.5, 11),
-            'third_ofpage' : (7.5, gr(7.5)),
+            'a4_portrait' :(7,gr(7)),
             'long_third' : (4, 7.5)
 
             # Add more named presets as needed...

@@ -7,3 +7,4 @@ Created on Thu Aug 17 10:41:37 2023
 """
  
 #### Not sure if this __init__ file is needed
+from .open_nc import OpenNc

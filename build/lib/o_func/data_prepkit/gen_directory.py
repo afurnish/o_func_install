@@ -59,6 +59,13 @@ class DirGen:
         self.data_proc = util.md([self.outputs, 'data_proc'])
         self.data_stats = util.md([self.outputs, 'data_stats'])
         
+        
+        #Make video and images paths
+        self.png_sh = util.md([self.figures, 'png_sh'])
+        self.png_wd = util.md([self.figures, 'png_wd'])
+        self.png_sal = util.md([self.figures, 'png_sal'])
+        
+        
         # Making SCW run folder
         self.SCWrun = util.md([self.model_path, 'runSCW_' + model_name])
         self.logs = util.md([self.SCWrun, 'logs'])
@@ -92,6 +99,23 @@ class DirGen:
         # print(self.model_path)
         
         return self.model_path 
+    
+    def vid_var_path(self, var_choice = 'Surface_Height'):
+        ''' Surface Height is the default. 
+        '''
+        var_mapping = {
+            "Surface_Height" : self.png_sh,
+            "Water_Depth" : self.png_wd,
+            "Salinity" : self.png_sal
+            }
+        
+        if var_choice in var_mapping:
+            return var_mapping[var_choice]
+        else:
+            raise ValueError(f"Variable choice '{var_choice}' not found in the mapping.")
+
+        
+        
     
 # This function can be called directly from o_func
 def write_directories(directory, model_name):

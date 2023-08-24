@@ -30,6 +30,7 @@ o_func/data_prepkit/__init__.py
 o_func/data_prepkit/gen_directory.py
 o_func/data_prepkit/gen_input.py
 o_func/data_prepkit/gen_video.py
+o_func/data_prepkit/open_nc.py
 o_func/data_visuals/__init__.py
 o_func/data_visuals/plotting_figures_for_latex.py
 o_func/data_visuals/video_plots.py
