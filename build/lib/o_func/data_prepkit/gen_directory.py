@@ -6,7 +6,7 @@ Created on Tue Aug 22 10:53:58 2023
 """
 import os
 import glob
-from o_func import opsys3; start_path = opsys3()
+from o_func import opsys; start_path = opsys()
 import pkg_resources
 import shutil
 import o_func.utilities as util
@@ -17,28 +17,25 @@ class DirGen:
             "path_to_rgfgrid_files" : "files_rgfgrid",
             "path_to_qgis_files" : "files_qgis"
             }
-        #print('len_path_dict', len(path_dict))
-        
-        if os.path.isdir(main_dir) == False:
-            os.mkdir(main_dir)
-        
-        for key,value in path_dict.items(): 
-            mp = os.path.join(main_dir,value)
-            if os.path.isdir(mp) == False:
-                os.mkdir(mp)
-            
-            
-        self.main_dir = main_dir
         self.path_dict = path_dict
         
-        
+        #Makes main folder
+        self.main_dir = util.md([main_dir])
+            
+        for key,value in path_dict.items(): 
+            null = util.md([self.main_dir, value])
+            del null
+            
+        self.main_models_path = util.md([self.main_dir, 'models'])
+            
+
     def dir_outputs(self, model_name):
         # Identify if other models share the same name, then create their processing folder
         files = []
-        for i, file in enumerate(glob.glob(os.path.join(self.main_dir, "*"))):
+        for i, file in enumerate(glob.glob(os.path.join(self.main_models_path, "*"))):
             files.append(file)
         # Checking if file already exits
-        same_file = glob.glob(os.path.join(self.main_dir, "*"+model_name+"*"))
+        same_file = glob.glob(os.path.join(self.main_models_path, "*"+model_name+"*"))
         # Sorting out numbering
         num_files = [
         folder for folder in os.listdir(self.main_dir)
@@ -52,9 +49,9 @@ class DirGen:
                 
             else:
                 new_num = os.path.split(same_file[0])[-1][0:2]
-            
-        self.model_path = util.md([self.main_dir, new_num + '_' + model_name])
-        
+
+        #self.model_path = util.md([self.main_dir, new_num + '_' + model_name])
+        self.model_path = util.md([self.main_models_path, new_num + '_' + model_name])
         # Making outputs folder for results and data 
         self.outputs = util.md([self.model_path, 'outputs'])
         self.giffs = util.md([self.outputs, 'giffs'])
@@ -92,20 +89,28 @@ class DirGen:
                 
                 file.write('\n############################ NOTES ############################\n\n')
                 file.write('###############################################################')
-            
+        # print(self.model_path)
         
+        return self.model_path 
+    
 # This function can be called directly from o_func
 def write_directories(directory, model_name):
     main_path = os.path.join(start_path, directory)
     print(main_path)
     make_paths = DirGen(main_path)
     sub_path = make_paths.dir_outputs(model_name)
+    print(sub_path)
     
     
 if __name__ == '__main__':
         
-    main_path = os.path.join(start_path, 'testing_directory')
+    # main_path = os.path.join(start_path, 'testing_directory')
+    # make_paths = DirGen(main_path)
+    # sub_path = make_paths.dir_outputs('testing_folder')
+    
+    #from o_func.data_prepkit import DirGen
+    main_path = os.path.join(start_path, r'modelling_DATA','kent_estuary_project',r'6.Final2')
     make_paths = DirGen(main_path)
-    sub_path = make_paths.dir_outputs('testing_folder')
+    sub_path = make_paths.dir_outputs('kent_2.0.0_no_wind')
     
     

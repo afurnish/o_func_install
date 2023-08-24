@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "o_func"
+version = "0.1.0"
+authors = [
+  { name="Aaron Furnish", email="a.furnish@bangor.ac.uk" },
+]
+description = "Ocean Processing for completion of PhD in Ocean Sciences at Bangor University"
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/afurnish/o_func_install"

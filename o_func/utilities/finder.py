@@ -49,7 +49,7 @@ def finder(line_to_search, starting_dir):
         print("No Python files were found that contain the line of code.")
 
 if __name__ == '__main__':
-    from o_functions.start import opsys2; start_path = opsys2() # Aaron Code
+    from o_func import opsys; start_path = opsys() # Aaron Code
     # Define the line of code to search for
     line_to_search = "sossheig"
     # Define the starting directory to search in

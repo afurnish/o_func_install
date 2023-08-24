@@ -5,16 +5,19 @@ Created on Wed Aug 16 18:17:52 2023
 @author: aafur
 """
 import matplotlib.pyplot as plt
-# plt.rcParams["figure.autolayout"] = True
+from o_func.utilities import gr
 
 class Plot:
+    
     def __init__(self, figsize_preset = 'default', dpi=300):
+       
        self.dpi = dpi
        self.figsize_preset = {
             'default': (21.7, 14),
             'whole_page': (10, 7),
             'a4_landscape' : (7.5, 11),
-            'third_ofpage' : (7.5, 7.5*((5**.5 + 1) / 2))
+            'a4_portrait' :(7,gr(7)),
+            'long_third' : (4, 7.5)
 
             # Add more named presets as needed...
         }
@@ -26,12 +29,14 @@ class Plot:
     def set_subplot_layout(self, ax_list, hspace=0.5):
         plt.subplots_adjust(hspace=hspace)
 
+
+    
        
        
 if __name__ == '__main__':
-    plot_manager = Plot(figsize_preset = 'third_ofpage')
+    plot_manager = Plot(figsize_preset = 'long_third')
     fig = plot_manager.create_figure()
-    ax1 = fig.add_subplot(3, 1, 1)
+    ax1 = fig.add_subplot(1, 1, 1)
     # ax2 = fig.add_subplot(3, 1, 2)
     # ax3 = fig.add_subplot(3, 1, 3)
     plot_manager.set_subplot_layout(ax_list=[ax1], hspace=0.3)

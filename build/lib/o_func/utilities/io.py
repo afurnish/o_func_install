@@ -36,7 +36,7 @@ def md(i):
     return new_path
         
 if __name__ == '__main__':
-    from o_func import opsys3; start_path = opsys3()
+    from o_func import opsys; start_path = opsys()
     
     i = start_path, 'hello'
     md(i)

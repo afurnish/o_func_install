@@ -6,3 +6,8 @@ Created on Tue Aug 22 10:46:17 2023
 """
 
 class VideoPlots:
+    def __init__(self):
+        self.yesno_video = 'n'
+        
+    def prep_video(self):
+        

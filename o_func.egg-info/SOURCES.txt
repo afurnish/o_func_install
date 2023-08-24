@@ -1,4 +1,6 @@
+LICENSE
 README.md
+pyproject.toml
 setup.py
 o_func/NRL_bc.py
 o_func/__init__.py
@@ -27,6 +29,7 @@ o_func/data_metrics/__init__.py
 o_func/data_prepkit/__init__.py
 o_func/data_prepkit/gen_directory.py
 o_func/data_prepkit/gen_input.py
+o_func/data_prepkit/gen_video.py
 o_func/data_visuals/__init__.py
 o_func/data_visuals/plotting_figures_for_latex.py
 o_func/data_visuals/video_plots.py
@@ -39,5 +42,6 @@ o_func/utilities/__init__.py
 o_func/utilities/choices.py
 o_func/utilities/distance.py
 o_func/utilities/finder.py
+o_func/utilities/general.py
 o_func/utilities/io.py
 o_func/utilities/start.py
