@@ -16,4 +16,5 @@ from .utilities.choices import DataChoice
 from .data_prepkit.gen_directory import write_directories
 from .data_prepkit.gen_directory import DirGen
 
+from .data_visuals.video_plots import VideoPlots
 

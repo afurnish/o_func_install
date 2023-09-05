@@ -4,13 +4,15 @@
 ''' Running script to prep data. 
 '''
 #%% Importing Dependecies
+
+
 import os
 import xarray as xr
 import glob
 import time
-import pandas as pd
 
-from o_func import DataChoice, DirGen, opsys; start_path = opsys()
+from o_func import DataChoice, DirGen ,VideoPlots, opsys; start_path = opsys()
+from o_func.data_prepkit import OpenNc
 
 #%% Making Directory paths
 main_path = os.path.join(start_path, r'modelling_DATA','kent_estuary_project',r'6.Final2')
@@ -34,7 +36,7 @@ main_dataset = xr.open_dataset(lp,
                    }, 
                    engine = 'scipy'
                    )
-
+print('Data Loaded in :', time.time() - sp ,'seconds')
 
 yyy = main_dataset.mesh2d_face_x_bnd.mesh2d_face_y
 xxx = main_dataset.mesh2d_face_x_bnd.mesh2d_face_x
@@ -45,3 +47,24 @@ fs = 20
 wd  = main_dataset.mesh2d_waterdepth    #waterdepth              (m)
 sh  = main_dataset.mesh2d_s1            #water surface height    (m)
 sal = main_dataset.mesh2d_sa1           #salinity               (psu)
+
+
+wd_bounds = [(-4,5,70),(-4,5,16),(-3.65,-2.75),(53.20,54.52)]
+
+# Class to split the dataset into a managable chunk. 
+start_slice = OpenNc()
+new_data = start_slice.slice_nc(main_dataset)
+
+#%% Vid prep
+png_sh_path = make_paths.vid_var_path(var_choice='Surface_Height')
+pv = VideoPlots(dataset = new_data.surface_height,
+                xxx     = new_data.mesh2d_face_x,
+                yyy     = new_data.mesh2d_face_y,
+                bounds  = wd_bounds,
+                path    = png_sh_path
+                )
+
+starrrr = time.time()
+make_videos2 = pv.joblib_para(num_of_figs=1, land = 'n') # colour plots
+print('Time between: ', time.time() - starrrr)
+
