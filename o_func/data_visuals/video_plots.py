@@ -11,6 +11,8 @@ import geopandas as gpd
 import multiprocessing as mp
 import os
 import xarray as xr
+from matplotlib.colors import ListedColormap
+
 #from concurrent.futures import ThreadPoolExecutor
 
 
@@ -60,6 +62,27 @@ class VideoPlots:
         self.cbar = None  # Initialize the colorbar
         self.labels_set = False
         
+        
+        #testing dry land 
+        bd = xr.open_dataset(bathy_path[0], engine='scipy')
+        from scipy.interpolate import griddata
+
+        # Bathymetry data at node coordinates
+        node_x = bd.mesh2d_node_z.mesh2d_node_x.values
+        node_y = bd.mesh2d_node_z.mesh2d_node_y.values
+        bathymetry_node = bd.mesh2d_node_z.values
+        
+        # Face coordinates
+        face_x = bd.mesh2d_face_x.values
+        face_y = bd.mesh2d_face_y.values
+        
+        # Reshape face coordinates for griddata input
+        face_coords = np.column_stack((face_x, face_y))
+        
+        # Interpolate bathymetry data to face coordinates
+        self.bathymetry_face = griddata((node_x, node_y), bathymetry_node, face_coords, method='linear')
+        
+        
     def video_speed(self):
         ''' Time should be a list of two numbers, t = 0, t = 1
          
@@ -100,11 +123,18 @@ class VideoPlots:
         UKWEST = gpd.read_file(UKWEST_loc)
         
         #trying dry land introduction
-        #cmap = ListedColormap(['blue', 'cyan', 'lightblue', 'white', 'grey'])
-        #contour_levels = [dry_value - 0.1, dry_value, dry_value + 0.1, np.max(z)]
-
+        colors = ['grey', 'blue', 'pink']
+        cmap = ListedColormap(colors)
         
         
+        # im = self.ax.tricontourf(
+        # self.xxx,
+        # self.yyy,
+        # self.wd[i,:],
+        # levels= np.linspace( self.bounds[0][0],self.bounds[0][1],self.bounds[0][2]),
+        # cmap=cm.cool,
+        # extend='both'
+        # )
         
         im = self.ax.tricontourf(
         self.xxx,
@@ -114,15 +144,23 @@ class VideoPlots:
         cmap=cm.cool,
         extend='both'
         )
-        UKWEST.plot(ax = plt.gca(), color="white")
+        # Set the colors for dry land (where z matches bathymetry)
+        tolerance=0.001
+        #dry_land_indices = np.where(self.wd[i,:] == self.bathymetry_face)
+        #dry_land_indices = np.where(np.abs(self.wd[i,:] == self.bathymetry_face)
+        dry_land_indices = []
+        for j in range(len(self.xxx)):
+            if abs(self.wd[i,j] - self.bathymetry_face[j]) <= tolerance:
+                dry_land_indices.append(j)
         
-        # cbar= self.fig.colorbar(im, ax = self.ax)
-        # cbar.set_ticks( np.linspace(self.bounds[1][0],
-        #                             self.bounds[1][1],
-        #                             self.bounds[1][2]
-        #                             ))
-        # cbar.ax.tick_params(labelsize=1.25*self.s)
-        # cbar.set_label("water depth (m)", labelpad=+1, fontsize=1.3*self.s)
+        dry_land_indices = np.array(dry_land_indices)
+
+
+        self.ax.scatter(self.xxx[dry_land_indices], self.yyy[dry_land_indices], color='grey', s=10, alpha=1)
+
+        
+        
+        UKWEST.plot(ax = plt.gca(), color="white")
         
         if self.cbar is None:
             self.cbar= self.fig.colorbar(im, ax = self.ax)
@@ -156,7 +194,7 @@ class VideoPlots:
         start = time.time()
         pool = mp.Pool(12)
         jobs = []
-        for item in range(100):
+        for item in range(200):
             # Use the `map` function to apply the `square` function to each number
           job = pool.apply_async(self.vid_plotter, (item, ))
           jobs.append(job)
@@ -245,21 +283,3 @@ if __name__ == '__main__':
     #make_videos = pv.vid_norm_plot()
     make_videos2 = pv.vid_para_plot()
 
-    bd = xr.open_dataset(bathy_path[0], engine='scipy')
-    from scipy.interpolate import griddata
-
-    # Bathymetry data at node coordinates
-    node_x = bd.mesh2d_node_z.mesh2d_node_x.values
-    node_y = bd.mesh2d_node_z.mesh2d_node_y.values
-    bathymetry_node = bd.mesh2d_node_z.values
-    
-    # Face coordinates
-    face_x = bd.mesh2d_face_x.values
-    face_y = bd.mesh2d_face_y.values
-    
-    # Reshape face coordinates for griddata input
-    face_coords = np.column_stack((face_x, face_y))
-    
-    # Interpolate bathymetry data to face coordinates
-    bathymetry_face = griddata((node_x, node_y), bathymetry_node, face_coords, method='linear')
-    
