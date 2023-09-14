@@ -51,8 +51,8 @@ def finder(line_to_search, starting_dir):
 if __name__ == '__main__':
     from o_func import opsys; start_path = opsys() # Aaron Code
     # Define the line of code to search for
-    line_to_search = "sossheig"
+    line_to_search = 'ERA_5_pressure.amp'#"sossheig"
     # Define the starting directory to search in
-    starting_dir = start_path + r"GitHub/python-oceanography/Delft 3D FM Suite 2019"
-    
+    #starting_dir = start_path + r"GitHub/python-oceanography/Delft 3D FM Suite 2019"
+    starting_dir = start_path + r"GitHub"
     finder(line_to_search,starting_dir)

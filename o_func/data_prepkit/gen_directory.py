@@ -54,6 +54,7 @@ class DirGen:
         self.model_path = util.md([self.main_models_path, new_num + '_' + model_name])
         # Making outputs folder for results and data 
         self.outputs = util.md([self.model_path, 'outputs'])
+        self.inputs = util.md([self.model_path, 'inputs'])
         self.giffs = util.md([self.outputs, 'giffs'])
         self.figures = util.md([self.outputs, 'figures'])
         self.data_proc = util.md([self.outputs, 'data_proc'])
@@ -135,6 +136,6 @@ if __name__ == '__main__':
     #from o_func.data_prepkit import DirGen
     main_path = os.path.join(start_path, r'modelling_DATA','kent_estuary_project',r'6.Final2')
     make_paths = DirGen(main_path)
-    sub_path = make_paths.dir_outputs('kent_2.0.0_no_wind')
+    sub_path = make_paths.dir_outputs('kent_1.0.0_UM_wind')
     
     

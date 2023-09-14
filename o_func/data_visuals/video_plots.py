@@ -85,11 +85,15 @@ class VideoPlots:
         bathymetry_node = bd.mesh2d_node_z.values
         
         # Face coordinates
-        face_x = bd.mesh2d_face_x.values
-        face_y = bd.mesh2d_face_y.values
+        '''
+        NOTE TO SELF, these coords are not the same as the nodes coords. 
+        '''
+        self.face_x = bd.mesh2d_face_x.values
+        self.face_y = bd.mesh2d_face_y.values
         
         # Reshape face coordinates for griddata input
-        face_coords = np.column_stack((face_x, face_y))
+        ##face_coords = np.column_stack((self.face_x, self.face_y))
+        face_coords = np.column_stack((self.xxx, self.yyy))
         
         # Interpolate bathymetry data to face coordinates
         self.bathymetry_face = griddata((node_x, node_y), bathymetry_node, face_coords, method='linear')
@@ -156,29 +160,20 @@ class VideoPlots:
         extend='both'
         )
         
+        
+        #if self.vel != 'n':
+           
+        
         if self.land != 'n':
             
             # # Set the colors for dry land (where z matches bathymetry)
             tolerance=self.land
-            # #dry_land_indices = np.where(self.wd[i,:] == self.bathymetry_face)
-            # #dry_land_indices = np.where(np.abs(self.wd[i,:] == self.bathymetry_face)
-            # dry_land_indices = []
-            # for j in range(len(self.xxx)):
-            #     if abs(self.wd[i,j] - self.bathymetry_face[j]) <= tolerance:
-            #         dry_land_indices.append(j)
-            
-            # dry_land_indices = np.array(dry_land_indices)
-    
-    
-            # self.ax.scatter(self.xxx[dry_land_indices], self.yyy[dry_land_indices], color='grey', s=10, alpha=1)
             abs_differences = np.abs(self.wd[i, :] - self.bathymetry_face)
             within_tolerance = abs_differences <= tolerance
             dry_land_indices = np.where(within_tolerance)
-            self.ax.scatter(self.xxx[dry_land_indices], self.yyy[dry_land_indices], color='grey', s=5, alpha=1)
+            self.ax.scatter(self.xxx[dry_land_indices], self.yyy[dry_land_indices], color='grey', s=1, alpha=1)
 
 
-        
-        
         self.UKWEST.plot(ax = plt.gca(), color="white")
         
         if self.cbar is None:
@@ -231,11 +226,13 @@ class VideoPlots:
         print("multiprocessing Plotting took {:.4f} seconds".format(time.time() - start))
 
 
-    def joblib_para(self, num_of_figs = 10, land = 'n'):
+    def joblib_para(self, num_of_figs = 10, land = 'n', vel = 'n'):
         self.land = land
+        self.vel = vel
         results = Parallel(n_jobs=-1)(delayed(self.vid_plotter)(num_iters) for num_iters in range(num_of_figs))
 
-        
+        #self.vel_u = self.vel.
+        #self.vel_v = self.vel 
         
         
           #print(results)
@@ -253,33 +250,40 @@ class VideoPlots:
     def bathy_plot(self):
         spacing = (-40,20,200)
         
-        im = self.ax.tricontourf(
-        self.xxx,
-        self.yyy,
-        self.bathymetry_face,
-        levels= np.linspace(spacing[0], spacing[1], spacing[2]),
-        cmap=cm.cool,
-        extend='both'
-        )
+        # im = self.ax.tricontourf(
+        # self.xxx,
+        # self.yyy,
+        # self.bathymetry_face,
+        # levels= np.linspace(spacing[0], spacing[1], spacing[2]),
+        # cmap=cm.cool,
+        # extend='both'
+        # )
+        # Set the desired color range limits
+        color_min = -40
+        color_max = 20
+
+        cmap = plt.cm.get_cmap('viridis')
+        norm = plt.Normalize(vmin=color_min, vmax=color_max)
+
+        im = self.ax.scatter(self.xxx,self.yyy, c = self.bathymetry_face, s = 0.1, cmap = cmap, norm = norm)
         
+        # self.UKWEST.plot(ax = plt.gca(), color="white")
         
-        self.UKWEST.plot(ax = plt.gca(), color="white")
-        
-        if self.cbar is None:
-            self.cbar= self.fig.colorbar(im, ax = self.ax)
-            self.cbar.set_ticks( np.linspace(spacing[0],
-                                        spacing[1],
-                                        spacing[2]
-                                        ))
-            self.cbar.ax.tick_params(labelsize=1.25*self.s)
-            name = ' '.join([i.capitalize() for i in self.name_of_run.split('_')])
+        # if self.cbar is None:
+        #     self.cbar= self.fig.colorbar(im, ax = self.ax)
+        #     self.cbar.set_ticks( np.linspace(spacing[0],
+        #                                 spacing[1],
+        #                                 spacing[2]
+        #                                 ))
+        #     self.cbar.ax.tick_params(labelsize=1.25*self.s)
+        #     name = ' '.join([i.capitalize() for i in self.name_of_run.split('_')])
             
-            self.cbar.set_label(name + f'({self.units})', labelpad=+1, fontsize=1.3*self.s)
+        #     self.cbar.set_label(name + f'({self.units})', labelpad=+1, fontsize=1.3*self.s)
         
-        self.ax.set_xlim(self.bounds[2][0],
-                    self.bounds[2][1])
-        self.ax.set_ylim(self.bounds[3][0],
-                    self.bounds[3][1])
+        # self.ax.set_xlim(self.bounds[2][0],
+        #             self.bounds[2][1])
+        # self.ax.set_ylim(self.bounds[3][0],
+        #             self.bounds[3][1])
         
         self.fig.savefig(os.path.join(self.path, '00_kent_bathy.png'))
         print(os.path.join(self.path, '00_kent_bathy.png'))
@@ -343,10 +347,10 @@ if __name__ == '__main__':
     # print("Normal Plotting took {:.4f} seconds".format(time.time() - start))
 
     
-    # starrrr = time.time()
-    # #make_videos = pv.vid_norm_plot(num_of_figs=4, land = 'n')
-    # make_videos2 = pv.joblib_para(num_of_figs=200, land = 0.08)
-    # print('Time between: ', time.time() - starrrr)
+    starrrr = time.time()
+    #make_videos = pv.vid_norm_plot(num_of_figs=4, land = 'n')
+    make_videos2 = pv.joblib_para(num_of_figs=200, land = 0.08)
+    print('Time between: ', time.time() - starrrr)
 
     # pv = VideoPlots(dataset = new_data.surface_height,
     #                 xxx     = new_data.mesh2d_face_x,

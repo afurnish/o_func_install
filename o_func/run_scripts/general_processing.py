@@ -48,8 +48,11 @@ wd  = main_dataset.mesh2d_waterdepth    #waterdepth              (m)
 sh  = main_dataset.mesh2d_s1            #water surface height    (m)
 sal = main_dataset.mesh2d_sa1           #salinity               (psu)
 
-
+# Limits for colourbar, colourbar labels, longitude and latitude. 
 wd_bounds = [(-4,5,70),(-4,5,16),(-3.65,-2.75),(53.20,54.52)]
+sal_bounds = [(0,40,80),(0,35,8),(-3.65,-2.75),(53.20,54.52)]
+
+
 
 # Class to split the dataset into a managable chunk. 
 start_slice = OpenNc()
@@ -57,14 +60,31 @@ new_data = start_slice.slice_nc(main_dataset)
 
 #%% Vid prep
 png_sh_path = make_paths.vid_var_path(var_choice='Surface_Height')
+png_sal_path = make_paths.vid_var_path(var_choice='Salinity')
+
+
 pv = VideoPlots(dataset = new_data.surface_height,
                 xxx     = new_data.mesh2d_face_x,
                 yyy     = new_data.mesh2d_face_y,
                 bounds  = wd_bounds,
                 path    = png_sh_path
                 )
-
 starrrr = t.time()
-make_videos2 = pv.joblib_para(num_of_figs=200, land = 'n') # colour plots
-print('Time between: ', t.time() - starrrr)
+make_videos2 = pv.joblib_para(num_of_figs=400, land = 0.07, vel = main_dataset.mesh2d_ucmag) # colour plots
+print('Time between sh: ', t.time() - starrrr)
+pv.bathy_plot()
+
+pvs = VideoPlots(dataset = new_data.salinity,
+                xxx     = new_data.mesh2d_face_x,
+                yyy     = new_data.mesh2d_face_y,
+                bounds  = sal_bounds,
+                path    = png_sal_path
+                )
+starrrr = t.time()
+make_videos2 = pvs.joblib_para(num_of_figs=400) # colour plots
+print('Time between sal: ', t.time() - starrrr)
+
+
+
+
 
