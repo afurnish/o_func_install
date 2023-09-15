@@ -15,7 +15,8 @@ class DirGen:
     def __init__(self, main_dir):
         path_dict = {
             "path_to_rgfgrid_files" : "files_rgfgrid",
-            "path_to_qgis_files" : "files_qgis"
+            "path_to_qgis_files" : "files_qgis",
+            "path_to_boundary_conditions": "files_bc"
             }
         self.path_dict = path_dict
         
@@ -37,23 +38,25 @@ class DirGen:
         # Checking if file already exits
         same_file = glob.glob(os.path.join(self.main_models_path, "*"+model_name+"*"))
         # Sorting out numbering
-        num_files = [
-        folder for folder in os.listdir(self.main_dir)
-            if os.path.isdir(os.path.join(self.main_dir, folder)) and "testing" not in folder
-            ] # number of files but always ignore testing
-        if model_name == 'testing_folder':
-            new_num = '00'
-        else:
-            if len(same_file) == 0:
-                new_num = str(len(num_files)-1).zfill(2)
+        # num_files = [
+        # folder for folder in os.listdir(self.main_dir)
+        #     if os.path.isdir(os.path.join(self.main_dir, folder)) and "testing" not in folder
+        #     ] # number of files but always ignore testing
+        # if model_name == 'testing_folder':
+        #     new_num = '00'
+        # else:
+        #     if len(same_file) == 0:
+        #         new_num = str(len(num_files)-1).zfill(2)
                 
-            else:
-                new_num = os.path.split(same_file[0])[-1][0:2]
+        #     else:
+        #         new_num = os.path.split(same_file[0])[-1][0:2]
 
         #self.model_path = util.md([self.main_dir, new_num + '_' + model_name])
-        self.model_path = util.md([self.main_models_path, new_num + '_' + model_name])
+        #self.model_path = util.md([self.main_models_path, new_num + '_' + model_name])
+        self.model_path = util.md([self.main_models_path, model_name])
         # Making outputs folder for results and data 
         self.outputs = util.md([self.model_path, 'outputs'])
+        self.inputs = util.md([self.model_path, 'inputs'])
         self.giffs = util.md([self.outputs, 'giffs'])
         self.figures = util.md([self.outputs, 'figures'])
         self.data_proc = util.md([self.outputs, 'data_proc'])
@@ -135,6 +138,6 @@ if __name__ == '__main__':
     #from o_func.data_prepkit import DirGen
     main_path = os.path.join(start_path, r'modelling_DATA','kent_estuary_project',r'6.Final2')
     make_paths = DirGen(main_path)
-    sub_path = make_paths.dir_outputs('kent_2.0.0_no_wind')
+    sub_path = make_paths.dir_outputs('kent_1.0.0_UM_wind')
     
     

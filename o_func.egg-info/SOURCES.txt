@@ -28,16 +28,17 @@ o_func/data/SCW_files/unstruc.dia
 o_func/data_metrics/__init__.py
 o_func/data_prepkit/__init__.py
 o_func/data_prepkit/gen_directory.py
-o_func/data_prepkit/gen_input.py
 o_func/data_prepkit/gen_video.py
 o_func/data_prepkit/open_nc.py
 o_func/data_prepkit/wind_prep.py
+o_func/data_prepkit/write_input.py
 o_func/data_visuals/__init__.py
 o_func/data_visuals/plotting_figures_for_latex.py
 o_func/data_visuals/test.py
 o_func/data_visuals/video_plots.py
 o_func/run_scripts/__init__.py
-o_func/run_scripts/general.py
+o_func/run_scripts/general_inputs.py
+o_func/run_scripts/general_processing.py
 o_func/tests/__init__.py
 o_func/tests/bathy_viewing.py
 o_func/tests/test_utilities/__init__.py
@@ -49,3 +50,4 @@ o_func/utilities/finder.py
 o_func/utilities/general.py
 o_func/utilities/io.py
 o_func/utilities/start.py
+o_func/utilities/transforms.py

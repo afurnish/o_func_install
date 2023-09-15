@@ -349,8 +349,12 @@ class DataChoice:
         full_path = self.select(path, options, input_message)
         return full_path
     
-    def var_select(self, variables):
+    def var_select(self):
+        variables = [os.path.join('owa','shelftmb'), os.path.join('oa','shelftmb'), os.path.join('ow','shelftmb'), os.path.join('og','shelftmb')]
         path = self.location_of_choices
+        
+        full_path = self.select(path, variables)
+        return full_path
         
     def var_name_select(self, variables):
         path = self.location_of_choices
