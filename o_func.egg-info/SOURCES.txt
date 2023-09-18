@@ -25,6 +25,7 @@ o_func/data/SCW_files/dimr_config.xml
 o_func/data/SCW_files/exclude-list.txt
 o_func/data/SCW_files/submit.q
 o_func/data/SCW_files/unstruc.dia
+o_func/data/bash/merge_csv.sh
 o_func/data_metrics/__init__.py
 o_func/data_prepkit/__init__.py
 o_func/data_prepkit/gen_directory.py

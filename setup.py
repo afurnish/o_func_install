@@ -10,7 +10,7 @@ from setuptools import setup, find_namespace_packages
 setup(
     name='o_func',
     packages=find_namespace_packages(include=['o_func','o_func.*']),
-    package_data={'o_func': ['data/SCW_files/*'],},
+    package_data={'o_func': ['data/SCW_files/*','data/bash/*'],},
     version='0.1.0',
     description='Ocean Processing for completion of PhD in Ocean Sciences at Bangor University',
     author='Aaron Andrew Furnish'

@@ -62,6 +62,16 @@ class DirGen:
         self.data_proc = util.md([self.outputs, 'data_proc'])
         self.data_stats = util.md([self.outputs, 'data_stats'])
         
+        self.Og = util.md([os.path.join(self.main_dir, 'files_bc'), 'UKO4g'])
+        self.Coa = util.md([os.path.join(self.main_dir, 'files_bc'), 'UKC4oa'])
+        self.Coaw = util.md([os.path.join(self.main_dir, 'files_bc'), 'UKC4oaw'])
+        self.Cow = util.md([os.path.join(self.main_dir, 'files_bc'), 'UKC4ow'])
+        
+        self.csv_dump1 = util.md([self.Og, 'dump_csv'])
+        self.csv_dump2 = util.md([self.Coa, 'dump_csv'])
+        self.csv_dump3 = util.md([self.Coaw, 'dump_csv'])
+        self.csv_dump4 = util.md([self.Cow, 'dump_csv'])
+        
         
         #Make video and images paths
         self.png_sh = util.md([self.figures, 'png_sh'])
@@ -117,7 +127,20 @@ class DirGen:
         else:
             raise ValueError(f"Variable choice '{var_choice}' not found in the mapping.")
 
-        
+    def bc_outputs(self):
+        '''
+        Determines path directory for different condtion outputs from diff coupled
+        states in UKC4 model runs. 
+
+        Returns
+        -------
+        list
+            DESCRIPTION.
+
+        '''
+        return [['UKC4g', 'UKC4oa','UKC4oaw','UKC4ow'],[self.Og, self.Coa, self.Coaw, self.Cow]]
+         
+         
         
     
 # This function can be called directly from o_func

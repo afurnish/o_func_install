@@ -33,6 +33,14 @@ import numpy as np
 import os
 from datetime import datetime
 from unittest.mock import patch
+import pandas as pd
+from sklearn.neighbors import BallTree
+import time
+import csv
+import re
+import subprocess
+import pkg_resources
+
 
 
 #homemade packages. 
@@ -93,30 +101,18 @@ class InMake:
         Convert a timeseries of points to seconds since a specific date.
 
         Args:
-            timeseries (list): The timeseries of points.
+            timeseries (list): The timeseries of points.np.array
             date_str (str): The date to use as the reference, in the format "YYYY-MM-DD HH:MM:SS".
 
         Returns:
             list: The timeseries of points converted to seconds since the reference date.
         """
         # Convert the date_str to a datetime object
-        reference_date = datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
         
-        # Initialize an empty list to store the converted timeseries
-        converted_timeseries = []
-
-        # Loop through each point in the timeseries
-        for point in timeseries:
-            # Convert the point to a datetime object
-            point_date = datetime.strptime(point, "%Y-%m-%d %H:%M")
-            
-            # Calculate the time difference in seconds between the point and the reference date
-            time_difference = (point_date - reference_date).total_seconds()
-            
-            # Append the converted time difference to the converted timeseries
-            converted_timeseries.append(time_difference)
         
-        return converted_timeseries
+        converted_dates = (np.array(timeseries) - np.datetime64(date_str)).astype('timedelta64[s]')
+        
+        return converted_dates
     
     def view_options(self):
         # Access and print the options dictionary
@@ -255,10 +251,12 @@ class InMake:
     #def write_bc(self):
         #writes direct boundary files that can be rea in by delft. 
         
-    def write_header_bc(self,file_path, component):
-        
+    def write_header_bc(self,file_path, component, name, layer = 'n', spacing = 'even'):
+        self.layer = layer
+        self.spacing = spacing
         
         """
+        
         Write a text block to a file with the given file path,
         and a customizable 'Name' value.
 
@@ -280,13 +278,13 @@ class InMake:
     
     
         ### MAY need to seperate this out depending on how the files are written, will mostly be editing water level and velocity. 
-        name = self.dirname    
-        with open(file_path, "a") as f:
+            
+        with open(file_path, "w") as f:
             f.write("[forcing]\n")
             f.write(f"Name                            = {name}\n")
             f.write("Function                        = timeseries\n")
             f.write("Time-interpolation              = linear\n")
-            if self.layer != 'n':
+            if self.layer != 1:
                 f.write("Vertical position type          = percentage from bed\n")
                 f.write("Vertical position specification = ") 
                 if self.spacing != 'even':
@@ -309,21 +307,23 @@ class InMake:
                 if num_range > 1:
                     num = str(i+1)
                     f.write(f"Vertical position               = {num}\n")
-
+            f.close()
             
 
         print(f"Text block with Name = '{name}' written to {file_path} successfully!")
         
-    def write_bc(self, layer = 'n', spacing = 'even'):
-        self.layer = layer
-        self.spacing = spacing
-        with open(os.path.join(self.input_path, 'test_bc.txt'), 'w') as f:
-            f.write('')
-            f.close()
-        print(os.path.join(self.input_path, 'test_bc.txt'))
-        self.write_header_bc(os.path.join(self.input_path, 'test_bc.txt'), 'velocity_normal')
+    # def write_bc(self, layer = 'n', spacing = 'even'):
+    #     #self.layer = layer
+    #     #self.spacing = spacing
+    #     with open(os.path.join(self.input_path, 'test_bc.txt'), 'w') as f:
+    #         f.write('')
+    #         f.close()
+    #     print(os.path.join(self.input_path, 'test_bc.txt'))
+    #     self.write_header_bc(os.path.join(self.input_path, 'test_bc.txt'), 'velocity_normal')
 
-    def ocean_timeseries(self):
+    def ocean_timeseries(self, bc_paths):
+        
+        ### FUNCTION here to check if files already exist if so will do nothing. 
         
         T_path = os.path.join(self.var_path[0],'*T.nc')
         U_path = os.path.join(self.var_path[0],'*U.nc')
@@ -337,7 +337,106 @@ class InMake:
                 files.append(file)
             all_files.append(files)
             
-        return all_files
+        df = pd.DataFrame()
+        dataset = xr.open_dataset(start_path + r'Original_Data/UKC3/NEMO_shelftmb/UKC4aow_1h_20131130_20131130_shelftmb_grid_T.nc')
+        lon = dataset.sossheig.nav_lon.values
+        lat = dataset.sossheig.nav_lat.values
+        combined_x_y_arrays = np.dstack([lon.ravel(),lat.ravel()])[0]
+        df["Lon"], df["Lat"] = combined_x_y_arrays.T
+        
+        
+        df_locs = pd.DataFrame()
+        df_locs['x'] = self.long; df_locs['y'] = self.lati
+        df_points = pd.DataFrame()
+        points = np.array(df_locs[['x','y']].copy()).astype('float32')
+        df_points["Lon"], df_points["Lat"] = points.T
+        
+        for column in df[["Lon", "Lat"]]:
+            rad = np.deg2rad(df[column].values)
+            df[f'{column}_rad'] = rad
+        for column in df_points[["Lon", "Lat"]]:
+            rad = np.deg2rad(df_points[column].values)
+            df_points[f'{column}_rad'] = rad
+        
+        ball = BallTree(df[["Lon_rad", "Lat_rad"]].values, metric='haversine')
+        distances, indices = ball.query(df_points[["Lon_rad", "Lat_rad"]].values, k = 2)
+        
+        nn = [] #locations of points
+        for i in range(len(indices)):
+            nearest_neigh = list(divmod(indices[i,0],1458)) #1458 is length of row, unravel ravel
+            nn.append(nearest_neigh)
+        
+        ls = [item[0] for item in nn]
+        rs = [item[1] for item in nn]
+        new_rs = int(np.mean(rs))
+        start_time = time.time()
+        print(len(nn))
+           
+        component = 'velocity_normal'
+        def file_ripper(component):
+            self.vel_write = os.path.join(bc_paths[1][0], 'NormalVelocity.bc' )
+            self.csv_path = os.path.join(bc_paths[1][0],'dump_CSV')
+            
+            for i,file in enumerate(all_files[0]):
+                
+                data = xr.open_dataset(file)
+                daat_points = data.sossheig[:,ls,new_rs]
+                df = pd.DataFrame()
+                time = self.convert_to_seconds_since_date(data.time_counter,r'2013-10-31 00:00:00')
+                df['time'] = [re.sub(r'[^0-9-]', '', str(i)) for i in time]
+                #print(self.name)
+                
+                data_array = np.array(daat_points)
+                for j, n in enumerate(self.name):
+                    filename = os.path.join(self.csv_path, n + f'_{component}_' +'.csv')
+                    if i == 0:
+                        with open(filename, 'w') as f:
+                            f.write('') # reset files for fresh data when you rerun
+                        self.write_header_bc(filename, 'velocity_normal', n, layer =1)
+                    df['data'] = data_array[:,j]
+                    df.to_csv(filename, header = False, index = False, sep = ' ', mode = 'a')
+                        
+
+        def file_stitcher(component):
+            new_paths = sorted(glob.glob(os.path.join(self.csv_path,f'*_{component}_*.csv')))
+            
+            script_path = pkg_resources.resource_filename('o_func', 'data/bash/merge_csv.sh')
+            subprocess.call(["bash", script_path, self.vel_write] + new_paths)
+                
+                
+                
+                
+                
+                
+                # for j, n in enumerate(self.name):
+                #     #self.write_header_bc(vel_write, 'velocity_normal', n, layer =3)
+                #     indi_point = np.array(daat_points[:,j,j])
+                #     #np.savetxt(indi_point)
+                #     np.append(d, indi_point)
+                    
+                    # print('opened file ', file)
+                    # #make the time
+                    # ts = np.array(data.time_counter)
+                    # # dap is data at points 
+                    # dap = np.array(data.sossheig[:,,])
+                    
+                    
+                    
+                    # with open(vel_write, 'a') as f:
+                    #     f.write(str(ts))
+                    #     t = self.convert_to_seconds_since_date(ts,r'2013-10-31 00:00:00')
+                    #     df = pd.DataFrame({'Time': t, 'Data': np.array(data.sossheig[:,,])})
+                    #     print(df)
+
+                
+
+        data = file_ripper(component)
+        file_stitcher(component)    
+            
+        return data  
+            
+        
+        
         
         
         
@@ -495,17 +594,19 @@ if __name__ == '__main__':
     main_path = os.path.join(start_path, r'modelling_DATA','kent_estuary_project',r'7.met_office')
     make_paths = DirGen(main_path)
     sub_path = make_paths.dir_outputs('PRIMEA2D_ogUMk') # Dealing with this model run. 
+    bc_paths = make_paths.bc_outputs()
     ### Finishing directory paths
 
     dc = DataChoice(os.path.join(main_path,'models'))
     fn = dc.dir_select()
     
+    
     make_files = InMake(fn) #  Pass model path folder into make file folder. 
     
     make_files.write_pli()
     
-    make_files.write_bc(layer = 3)
-    all_files = make_files.ocean_timeseries()
+    #make_files.write_bc(layer = 3)
+    make_files.ocean_timeseries(bc_paths)
     
     #First step is to make the .pli files to which the boundary conditions are made. 
     
