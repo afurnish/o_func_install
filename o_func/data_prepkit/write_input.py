@@ -31,12 +31,9 @@ import xarray as xr
 import matplotlib.pyplot as plt
 import numpy as np
 import os
-from datetime import datetime
 from unittest.mock import patch
 import pandas as pd
 from sklearn.neighbors import BallTree
-import time
-import csv
 import re
 import subprocess
 import pkg_resources
@@ -46,9 +43,11 @@ import pkg_resources
 #homemade packages. 
 from o_func import opsys; start_path = opsys()
 from o_func.utilities.choices import DataChoice
+import o_func.utilities as util
+
 
 class InMake:
-    def __init__(self, model_dir_to_put_files):
+    def __init__(self, model_dir_to_put_files, bc_paths):
         '''
         model_dir_to_put_files: Should be a function of the dir_gen part of package. 
         '''
@@ -64,6 +63,9 @@ class InMake:
         self.upper = 688 #690 fits within the new delft grid with a square edge
         self.lower = 601 #600
         
+        
+        #bc_PATHS 
+        self.bc_paths = bc_paths
         #original_data_paths
         '''
         KEY TO NOTE
@@ -251,8 +253,7 @@ class InMake:
     #def write_bc(self):
         #writes direct boundary files that can be rea in by delft. 
         
-    def write_header_bc(self,file_path, component, name, layer = 'n', spacing = 'even'):
-        self.layer = layer
+    def write_header_bc(self,file_path, component, name, layer = 1, spacing = 'even'):
         self.spacing = spacing
         
         """
@@ -321,7 +322,7 @@ class InMake:
     #     print(os.path.join(self.input_path, 'test_bc.txt'))
     #     self.write_header_bc(os.path.join(self.input_path, 'test_bc.txt'), 'velocity_normal')
 
-    def ocean_timeseries(self, bc_paths):
+    def ocean_timeseries(self):
         
         ### FUNCTION here to check if files already exist if so will do nothing. 
         
@@ -369,13 +370,12 @@ class InMake:
         ls = [item[0] for item in nn]
         rs = [item[1] for item in nn]
         new_rs = int(np.mean(rs))
-        start_time = time.time()
-        print(len(nn))
            
         component = 'velocity_normal'
         def file_ripper(component):
-            self.vel_write = os.path.join(bc_paths[1][0], 'NormalVelocity.bc' )
-            self.csv_path = os.path.join(bc_paths[1][0],'dump_CSV')
+            
+            self.vel_write = os.path.join(self.layer_path, 'NormalVelocity.bc' )
+            
             
             for i,file in enumerate(all_files[0]):
                 
@@ -401,192 +401,30 @@ class InMake:
             new_paths = sorted(glob.glob(os.path.join(self.csv_path,f'*_{component}_*.csv')))
             
             script_path = pkg_resources.resource_filename('o_func', 'data/bash/merge_csv.sh')
+            with open(self.vel_write, 'w') as f:
+                f.write('')
+        
             subprocess.call(["bash", script_path, self.vel_write] + new_paths)
                 
-                
-                
-                
-                
-                
-                # for j, n in enumerate(self.name):
-                #     #self.write_header_bc(vel_write, 'velocity_normal', n, layer =3)
-                #     indi_point = np.array(daat_points[:,j,j])
-                #     #np.savetxt(indi_point)
-                #     np.append(d, indi_point)
-                    
-                    # print('opened file ', file)
-                    # #make the time
-                    # ts = np.array(data.time_counter)
-                    # # dap is data at points 
-                    # dap = np.array(data.sossheig[:,,])
-                    
-                    
-                    
-                    # with open(vel_write, 'a') as f:
-                    #     f.write(str(ts))
-                    #     t = self.convert_to_seconds_since_date(ts,r'2013-10-31 00:00:00')
-                    #     df = pd.DataFrame({'Time': t, 'Data': np.array(data.sossheig[:,,])})
-                    #     print(df)
-
-                
+     
 
         data = file_ripper(component)
         file_stitcher(component)    
             
         return data  
             
+    def write_boundary_file(self, layer):
+        self.layer = layer
+        if isinstance(self.layer, int):
+            self.layer_path = util.md([self.bc_paths, str(self.layer)])
+            print(self.layer_path)
+        self.csv_path = util.md([self.layer_path,'dump_CSV'])
+        make_files.ocean_timeseries()
         
-        
-        
-        
-        
-        #%% Choice function
-        #path choice lets you pick which model output to run
-        # def path_choice(start_path, choices):
-        #     j = 0
-        #     print('\nSelecting nc data folder and file')
-            
-        #     input_message = "\nPick an option:\n"
-        #     input_message += 'Your choice: '
-        #     path = start_path + 'modelling_DATA/kent_estuary_project'+ choices
-        #     files = []
-        #     user_input = ''
-        #     j_list = []
-        #     for file in glob.glob(path + '/*.dsproj_data'):
-        #         #print(file)
-        #         file = winc(file)
-
-        #         files.append(file)
-        #         j+=1
-        #         print(str(j) + '.)' + file.split('/')[-1])
-        #         j_list.append(str(j))
-
-        #     while user_input.lower() not in j_list:
-        #         user_input = input(input_message)
-            
-        #     new_path = files[int(user_input)-1] 
-            
-            
-            
-    #     #     name = (files[int(user_input)-1]).split('/')[-1]           
-    #     #     print('You picked: ' + name + '\n')
-    #     #     return new_path, name # return the path to nc file rather than the folder
-
-    #     data_ch = r'4.og_ocean_only'
-        
-        
-    #     def data_choice(start_path, choices):
-    #         j = 0
-    #         print('\nSelecting nc data folder and file')
-            
-    #         input_message = "\nPick an option:\n"
-    #         input_message += 'Your choice: '
-    #         path = start_path + 'modelling_DATA/kent_estuary_project/tidal_boundary/delft_3dfm_inputs/' + data_ch
-    #         files = []
-    #         user_input = ''
-    #         j_list = []
-    #         for file in glob.glob(path + '/*'):
-    #             #print(file)
-    #             file = winc(file)
-
-    #             files.append(file)
-    #             j+=1
-    #             print(str(j) + '.)' + file.split('/')[-1])
-    #             j_list.append(str(j))
-
-    #         while user_input.lower() not in j_list:
-    #             user_input = input(input_message)
-            
-    #         new_path = files[int(user_input)-1] 
-            
-            
-            
-            
-    #         name = (files[int(user_input)-1]).split('/')[-1]           
-    #         print('You picked: ' + name + '\n')
-    #         return new_path, name # return the path to nc file rather than the folder
-
-    #     
-
-    #     def write_text_block_to_file_V(file_path, name):
-    #         """
-    #         Write a text block to a file with the given file path,
-    #         and a customizable 'Name' value.
-
-    #         Args:
-    #             file_path (str): The file path to write the text block to.
-    #             name (str): The value for the 'Name' line in the text block.
-    #         """
-    #         with open(file_path, "a") as f:
-    #             f.write("[forcing]\n")
-    #             f.write(f"Name                            = {name}\n")
-    #             f.write("Function                        = timeseries\n")
-    #             f.write("Time-interpolation              = linear\n")
-    #             f.write("Quantity                        = time\n")
-    #             f.write("Unit                            = seconds since 2013-10-31 00:00:00\n")
-    #             f.write("Quantity                        = tangentialvelocitybnd\n")
-    #             f.write("Unit                            = m/s\n")
-
-    #         print(f"Text block with Name = '{name}' written to {file_path} successfully!")
-            
-            
-    #     from datetime import datetime
-
-    #     def convert_to_seconds_since_date(timeseries, date_str):
-    #         """
-    #         Convert a timeseries of points to seconds since a specific date.
-
-    #         Args:
-    #             timeseries (list): The timeseries of points.
-    #             date_str (str): The date to use as the reference, in the format "YYYY-MM-DD HH:MM:SS".
-
-    #         Returns:
-    #             list: The timeseries of points converted to seconds since the reference date.
-    #         """
-    #         # Convert the date_str to a datetime object
-    #         reference_date = datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
-            
-    #         # Initialize an empty list to store the converted timeseries
-    #         converted_timeseries = []
-
-    #         # Loop through each point in the timeseries
-    #         for point in timeseries:
-    #             # Convert the point to a datetime object
-    #             point_date = datetime.strptime(point, "%Y-%m-%d %H:%M")
-                
-    #             # Calculate the time difference in seconds between the point and the reference date
-    #             time_difference = (point_date - reference_date).total_seconds()
-                
-    #             # Append the converted time difference to the converted timeseries
-    #             converted_timeseries.append(time_difference)
-            
-    #         return converted_timeseries
-
-        
-            
-
-
-
-    #     #%% Other stuff 
-
-
-    #     ###
-    #     # text to write to file. 
-    #     '''
-    #     [forcing]
-    #     Name                            = 001_delft_ocean_boundary_UKC3_b601t688_length-87_points_0001
-    #     Function                        = timeseries
-    #     Time-interpolation              = linear
-    #     Quantity                        = time
-    #     Unit                            = seconds since 2013-10-31 00:00:00
-    #     Quantity                        = normalvelocitybnd
-    #     Unit                            = m/s
-
-    #     '''
 
 if __name__ == '__main__':
     
-    from o_func import DataChoice, DirGen , opsys; start_path = opsys()
+    from o_func import DirGen , opsys; start_path = opsys()
 
     # Set example of directory to run the file. 
 
@@ -601,12 +439,13 @@ if __name__ == '__main__':
     fn = dc.dir_select()
     
     
-    make_files = InMake(fn) #  Pass model path folder into make file folder. 
+    make_files = InMake(fn, bc_paths[1][0]) #  Pass model path folder into make file folder. 
     
     make_files.write_pli()
     
     #make_files.write_bc(layer = 3)
-    make_files.ocean_timeseries(bc_paths)
+    make_files.write_boundary_file(layer = 1)
+    
     
     #First step is to make the .pli files to which the boundary conditions are made. 
     
