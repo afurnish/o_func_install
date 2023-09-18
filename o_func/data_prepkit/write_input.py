@@ -79,21 +79,36 @@ class InMake:
         
         #dictionary of boundary file types. 
         self.options = {
-            'velocity_normal': {
+            'NormalVelocity.bc': {
                 'script_name': 'normalvelocitybnd',
-                'units': 'm/s'
+                'units': 'm/s',
+                'filetype': 'U'
             },
-            'velocity_tangent': {
+            'TangentVelocity.bc': {
                 'script_name': 'tangentialvelocitybnd',
-                'units': 'm/s'
+                'units': 'm/s',
+                'filetype': 'V'
             },
-            'water_level': {
+            'WaterLevel.bc': {
                 'script_name': 'waterlevelbnd',
-                'units': 'm'
+                'units': 'm',
+                'filetype': 'T'
             },
-            'discharge': {
+            'Discharge.bc': {
                 'script_name': 'dischargebnd',
-                'units': 'm³/s'
+                'units': 'm³/s',
+                'filetype': 'R'
+            },
+            'Salinity.bc': {
+                'script_name': 'salinitybnd',
+                'units': 'ppt',
+                'filetype': 'T'
+            }
+            ,
+            'Temperature.bc': {                     #guess as to what temperature filetypes would be. 
+                'script_name': 'temperaturebnd',
+                'units': 'degrees',
+                'filetype': 'T'
             }
         }
         
@@ -371,34 +386,98 @@ class InMake:
         rs = [item[1] for item in nn]
         new_rs = int(np.mean(rs))
            
-        component = 'velocity_normal'
-        def file_ripper(component):
+        
+        ### This function does work but is a little long, try paralleism. 
+        def file_ripper(dataset, store):
+            choose = store[0]
+            print('Choose', choose)
+            if choose == 'T':
+                datas = store[1:]
+                print(datas)
+                self.var_list = []
+                for i in datas:
+                    self.var_list.append(os.path.join(self.layer_path, i))
+            elif choose == 'U':
+                datas = store[1:]
+                self.var_list = []
+                for i in datas:
+                    self.var_list.append(os.path.join(self.layer_path, i))
+            elif choose == 'V':
+                datas = store[1:]
+                self.var_list = []
+                for i in datas:
+                    self.var_list.append(os.path.join(self.layer_path, i))
+            #self.vel_write = os.path.join(self.layer_path, 'NormalVelocity.bc' )
             
-            self.vel_write = os.path.join(self.layer_path, 'NormalVelocity.bc' )
+            print('Paths to send to file cruncher', self.var_list)
             
-            
-            for i,file in enumerate(all_files[0]):
+            for i,file in enumerate(dataset):
                 
                 data = xr.open_dataset(file)
-                daat_points = data.sossheig[:,ls,new_rs]
-                df = pd.DataFrame()
                 time = self.convert_to_seconds_since_date(data.time_counter,r'2013-10-31 00:00:00')
+                df = pd.DataFrame()
                 df['time'] = [re.sub(r'[^0-9-]', '', str(i)) for i in time]
-                #print(self.name)
                 
-                data_array = np.array(daat_points)
-                for j, n in enumerate(self.name):
-                    filename = os.path.join(self.csv_path, n + f'_{component}_' +'.csv')
-                    if i == 0:
-                        with open(filename, 'w') as f:
-                            f.write('') # reset files for fresh data when you rerun
-                        self.write_header_bc(filename, 'velocity_normal', n, layer =1)
-                    df['data'] = data_array[:,j]
-                    df.to_csv(filename, header = False, index = False, sep = ' ', mode = 'a')
+                
+                ### here you need to use the names of variables to deploy which ones get written to. 
+                raw_data = []
+                for names in self.var_list:
+                    # try to do in pairs of 3.
+                    print('Names  ', os.path.split(names)[-1])
+                    if os.path.split(names)[-1] == 'WaterLevel.bc':
+                        dataset2 = []
+                        dataset2.append(np.array(data.sossheig[:,ls,new_rs]))
+                        dataset2.append('')
+                        dataset2.append('')
+                        raw_data.append(dataset2)
+                    if os.path.split(names)[-1] == 'Salinity.bc':
+                        dataset2 = []
+                        dataset2.append(np.array(data.vosaline_top[:,ls,new_rs]))
+                        if self.layer > 1:
+                            dataset2.append(np.array(data.vosaline_mid[:,ls,new_rs]))
+                            dataset2.append(np.array(data.vosaline_bot[:,ls,new_rs]))
+                        else:
+                            dataset2.append('')
+                            dataset2.append('')
+                        raw_data.append(dataset2)
+                    if os.path.split(names)[-1] == 'Temperature.bc':
+                        dataset2 = []
+                        dataset2.append(np.array(data.votemper_top[:,ls,new_rs]))
+                        if self.layer > 1:
+                            dataset2.append(np.array(data.votemper_mid[:,ls,new_rs]))
+                            dataset2.append(np.array(data.votemper_bot[:,ls,new_rs]))
+                        else:
+                            dataset2.append('')
+                            dataset2.append('')
+                        raw_data.append(dataset2)
                         
+                    
+                #daat_points = data.sossheig[:,ls,new_rs]
+                #data_array = np.array(daat_points)
+                for boundary_data in range(len(raw_data)):
+                    
+                    comp_name = self.var_list[boundary_data]
+                    #print('comp_name')
+                    for j, n in enumerate(self.name):
+                        #print('csv ', self.csv_path)
+                        filename = os.path.join(self.csv_path, n + f'_{os.path.split(comp_name[:-3])[-1]}_' +'.csv')
+                        #print('filename', filename)
+                        if i == 0:
+                            with open(filename, 'w') as f:
+                                f.write('') # reset files for fresh data when you rerun
+                            layer = 1
+                            self.write_header_bc(filename, os.path.split(comp_name)[-1], n, layer = layer)
+                        if layer == 1:
+                            #print('raw_data',raw_data)
+                            df['data'] = raw_data[boundary_data][0][:,j]
+                        elif layer == 3: 
+                            df['data'] = raw_data
+                        #print('dataframe',df)
+                        df.to_csv(filename, header = False, index = False, sep = ' ', mode = 'a')
+                            
 
-        def file_stitcher(component):
-            new_paths = sorted(glob.glob(os.path.join(self.csv_path,f'*_{component}_*.csv')))
+        def file_stitcher(comps):
+            new_paths = sorted(glob.glob(os.path.join(self.csv_path,f'*_{comps}_*.csv')))
             
             script_path = pkg_resources.resource_filename('o_func', 'data/bash/merge_csv.sh')
             with open(self.vel_write, 'w') as f:
@@ -406,21 +485,66 @@ class InMake:
         
             subprocess.call(["bash", script_path, self.vel_write] + new_paths)
                 
-     
-
-        data = file_ripper(component)
-        file_stitcher(component)    
+        T_store = ['T']
+        U_store = ['U']
+        V_store = ['V']
+        R_store = ['R']
+        
+        for item in self.component:
+            if item in self.options:
+                filetype = self.options[item]['filetype']
+                if filetype == 'T':
+                    T_store.append(item)
+                elif filetype == 'U':
+                    U_store.append(item)
+                elif filetype == 'V':
+                    V_store.append(item)
+                elif filetype == 'R':
+                    R_store.append(item)
+                else:
+                    pass
+        print('T_store', len(T_store))
+        print('U_store', len(U_store))
+        print('V_store', V_store)
+        print('R_store', R_store)
+        
+        ## new loop to run task
+        if len(T_store) > 1:
+            dataset = all_files[0]
+            data = file_ripper(dataset, T_store)
+            
+        if len(U_store) > 1:
+            dataset = all_files[1]
+            data = file_ripper(dataset, U_store)
+            
+        if len(V_store) > 1:
+            dataset = all_files[2]
+            data = file_ripper(dataset, V_store)
+            
+        if len(R_store) > 1:
+            data = file_ripper()
+            
+        print ('Finished')
+        
+        
+        
+        #data = file_ripper()
+        
+        # for i in self.component:
+        #     file_stitcher(i)    
             
         return data  
             
-    def write_boundary_file(self, layer):
+    def write_boundary_file(self, layer, component):
         self.layer = layer
+        self.component = component
+    
         if isinstance(self.layer, int):
             self.layer_path = util.md([self.bc_paths, str(self.layer)])
             print(self.layer_path)
         self.csv_path = util.md([self.layer_path,'dump_CSV'])
         make_files.ocean_timeseries()
-        
+        #component = 'velocity_normal'
 
 if __name__ == '__main__':
     
@@ -444,7 +568,14 @@ if __name__ == '__main__':
     make_files.write_pli()
     
     #make_files.write_bc(layer = 3)
-    make_files.write_boundary_file(layer = 1)
+    ### ALL POSSIBLE OPTIONS
+    
+    '''
+    boundary_files_to_write = ['velocity_normal', 'velocity_tangent', 'water_level', 'discharge', 'salinity']
+    
+    ,NormalVelocity 'TangentVelocity', 'WaterLevel', 'Salinity']
+    '''
+    make_files.write_boundary_file(layer = 1, component = ['WaterLevel.bc', 'Salinity.bc'])
     
     
     #First step is to make the .pli files to which the boundary conditions are made. 
