@@ -37,6 +37,7 @@ from sklearn.neighbors import BallTree
 import re
 import subprocess
 import pkg_resources
+from joblib import Parallel, delayed
 
 
 
@@ -336,7 +337,139 @@ class InMake:
     #         f.close()
     #     print(os.path.join(self.input_path, 'test_bc.txt'))
     #     self.write_header_bc(os.path.join(self.input_path, 'test_bc.txt'), 'velocity_normal')
+    def file_ripper(self, store):
+        choose = store[0]
+        print('Choose', choose)
+        if choose == 'T':
+            datas = store[1:]
+            print(datas)
+            self.var_list = []
+            for i in datas:
+                self.var_list.append(os.path.join(self.layer_path, i))
+        elif choose == 'U':
+            datas = store[1:]
+            self.var_list = []
+            for i in datas:
+                self.var_list.append(os.path.join(self.layer_path, i))
+        elif choose == 'V':
+            datas = store[1:]
+            self.var_list = []
+            for i in datas:
+                self.var_list.append(os.path.join(self.layer_path, i))
+        #self.vel_write = os.path.join(self.layer_path, 'NormalVelocity.bc' )
+        
+        print('Paths to send to file cruncher', self.var_list)
+        
+    #def para_file_rip(self,file, i):
+    def non_para_file_rip(self,dataset):
+        for i,file in enumerate(dataset):
+            print('ripin ', i)
+            #for i,file in enumerate(dataset):
+                
+            data = xr.open_dataset(file, engine ='netcdf4')
+            time = self.convert_to_seconds_since_date(data.time_counter,r'2013-10-31 00:00:00')
+            df = pd.DataFrame()
+            df['time'] = [re.sub(r'[^0-9-]', '', str(i)) for i in time]
+            
+            
+            ### here you need to use the names of variables to deploy which ones get written to. 
+            ###
+            ### Sets data in groups of 3 corresponding to top, middle, bottom. Need to keep running for diff layers. 
+            raw_data = []
+            for names in self.var_list:
+                # try to do in pairs of 3.
+                print('Names  ', os.path.split(names)[-1])
+                if os.path.split(names)[-1] == 'WaterLevel.bc':
+                    dataset2 = []
+                    dataset2.append(np.array(data.sossheig[:,self.ls,self.new_rs]))
+                    dataset2.append('')
+                    dataset2.append('')
+                    raw_data.append(dataset2)
+                if os.path.split(names)[-1] == 'Salinity.bc':
+                    dataset2 = []
+                    dataset2.append(np.array(data.vosaline_top[:,self.ls,self.new_rs]))
+                    if self.layer > 1:
+                        dataset2.append(np.array(data.vosaline_mid[:,self.ls,self.new_rs]))
+                        dataset2.append(np.array(data.vosaline_bot[:,self.ls,self.new_rs]))
+                    else:
+                        dataset2.append('')
+                        dataset2.append('')
+                    raw_data.append(dataset2)
+                if os.path.split(names)[-1] == 'Temperature.bc':
+                    dataset2 = []
+                    dataset2.append(np.array(data.votemper_top[:,self.ls,self.new_rs]))
+                    if self.layer > 1:
+                        dataset2.append(np.array(data.votemper_mid[:,self.ls,self.new_rs]))
+                        dataset2.append(np.array(data.votemper_bot[:,self.ls,self.new_rs]))
+                    else:
+                        dataset2.append('')
+                        dataset2.append('')
+                    raw_data.append(dataset2)
+                if os.path.split(names)[-1] == 'NormalVelocity.bc':
+                    dataset2 = []
+                    dataset2.append(np.array(data.vozocrtx_top[:,self.ls,self.new_rs]))
+                    if self.layer > 1:
+                        dataset2.append(np.array(data.vozocrtx_mid[:,self.ls,self.new_rs]))
+                        dataset2.append(np.array(data.vozocrtx_bot[:,self.ls,self.new_rs]))
+                    else:
+                        dataset2.append('')
+                        dataset2.append('')
+                    raw_data.append(dataset2)
+                if os.path.split(names)[-1] == 'TangentVelocity.bc':
+                    dataset2 = []
+                    dataset2.append(np.array(data.vomecrty_top[:,self.ls,self.new_rs]))
+                    if self.layer > 1:
+                        dataset2.append(np.array(data.vomecrty_mid[:,self.ls,self.new_rs]))
+                        dataset2.append(np.array(data.vomecrty_bot[:,self.ls,self.new_rs]))
+                    else:
+                        dataset2.append('')
+                        dataset2.append('')
+                    raw_data.append(dataset2)
+                    
+                
+            #daat_points = data.sossheig[:,ls,new_rs]
+            #data_array = np.array(daat_points)
+            for boundary_data in range(len(raw_data)):
+                
+                comp_name = self.var_list[boundary_data]
+                #print('comp_name')
+                for j, n in enumerate(self.name):
+                    #print('csv ', self.csv_path)
+                    filename = os.path.join(self.csv_path, n + f'_{os.path.split(comp_name[:-3])[-1]}_' +'.csv')
+                    #print('filename', filename)
+                    if i == 0:
+                        with open(filename, 'w') as f:
+                            f.write('') # reset files for fresh data when you rerun
+                        #layer = 1
+                        self.write_header_bc(filename, os.path.split(comp_name)[-1], n, layer = self.layer)
+                    if self.layer == 1:
+                        # This bit adds in the columns for the dataframes which means you get 3 layers deep of data. 
+                        #print('raw_data',raw_data)
+                        df['data'] = raw_data[boundary_data][0][:,j]
+                    elif self.layer == 3: 
+                        df['data'] = raw_data[boundary_data][0][:,j]
+                        df['data'] = raw_data[boundary_data][1][:,j]
+                        df['data'] = raw_data[boundary_data][2][:,j]
+                    #print('dataframe',df)
+                    df.to_csv(filename, header = False, index = False, sep = ' ', mode = 'a')
+                      
 
+    def file_stitcher(self):
+        for names in self.var_list:
+            comps = os.path.split(names)[-1]
+            # try to do in pairs of 3.
+            print('Names  ', comps[:-3])
+            data_paths = sorted(glob.glob(os.path.join(self.csv_path,f'*_{comps[:-3]}_*.csv')))
+            print(os.path.join(self.csv_path,f'*_{comps[:-3]}_*.csv'))
+            print('dp',data_paths)
+            
+            bash_script_path = pkg_resources.resource_filename('o_func', 'data/bash/merge_csv.sh')
+            output_file_path = os.path.join(self.layer_path,comps)
+            with open( output_file_path , 'w') as f:
+                f.write('')
+        
+            subprocess.call(["bash", bash_script_path, output_file_path] + data_paths)
+            
     def ocean_timeseries(self):
         
         ### FUNCTION here to check if files already exist if so will do nothing. 
@@ -382,114 +515,17 @@ class InMake:
             nearest_neigh = list(divmod(indices[i,0],1458)) #1458 is length of row, unravel ravel
             nn.append(nearest_neigh)
         
-        ls = [item[0] for item in nn]
+        self.ls = [item[0] for item in nn]
         rs = [item[1] for item in nn]
-        new_rs = int(np.mean(rs))
+        self.new_rs = int(np.mean(rs))
            
         
         ### This function does work but is a little long, try paralleism. 
-        def file_ripper(dataset, store):
-            choose = store[0]
-            print('Choose', choose)
-            if choose == 'T':
-                datas = store[1:]
-                print(datas)
-                self.var_list = []
-                for i in datas:
-                    self.var_list.append(os.path.join(self.layer_path, i))
-            elif choose == 'U':
-                datas = store[1:]
-                self.var_list = []
-                for i in datas:
-                    self.var_list.append(os.path.join(self.layer_path, i))
-            elif choose == 'V':
-                datas = store[1:]
-                self.var_list = []
-                for i in datas:
-                    self.var_list.append(os.path.join(self.layer_path, i))
-            #self.vel_write = os.path.join(self.layer_path, 'NormalVelocity.bc' )
-            
-            print('Paths to send to file cruncher', self.var_list)
-            
-            for i,file in enumerate(dataset):
-                
-                data = xr.open_dataset(file)
-                time = self.convert_to_seconds_since_date(data.time_counter,r'2013-10-31 00:00:00')
-                df = pd.DataFrame()
-                df['time'] = [re.sub(r'[^0-9-]', '', str(i)) for i in time]
-                
-                
-                ### here you need to use the names of variables to deploy which ones get written to. 
-                raw_data = []
-                for names in self.var_list:
-                    # try to do in pairs of 3.
-                    print('Names  ', os.path.split(names)[-1])
-                    if os.path.split(names)[-1] == 'WaterLevel.bc':
-                        dataset2 = []
-                        dataset2.append(np.array(data.sossheig[:,ls,new_rs]))
-                        dataset2.append('')
-                        dataset2.append('')
-                        raw_data.append(dataset2)
-                    if os.path.split(names)[-1] == 'Salinity.bc':
-                        dataset2 = []
-                        dataset2.append(np.array(data.vosaline_top[:,ls,new_rs]))
-                        if self.layer > 1:
-                            dataset2.append(np.array(data.vosaline_mid[:,ls,new_rs]))
-                            dataset2.append(np.array(data.vosaline_bot[:,ls,new_rs]))
-                        else:
-                            dataset2.append('')
-                            dataset2.append('')
-                        raw_data.append(dataset2)
-                    if os.path.split(names)[-1] == 'Temperature.bc':
-                        dataset2 = []
-                        dataset2.append(np.array(data.votemper_top[:,ls,new_rs]))
-                        if self.layer > 1:
-                            dataset2.append(np.array(data.votemper_mid[:,ls,new_rs]))
-                            dataset2.append(np.array(data.votemper_bot[:,ls,new_rs]))
-                        else:
-                            dataset2.append('')
-                            dataset2.append('')
-                        raw_data.append(dataset2)
-                        
-                    
-                #daat_points = data.sossheig[:,ls,new_rs]
-                #data_array = np.array(daat_points)
-                for boundary_data in range(len(raw_data)):
-                    
-                    comp_name = self.var_list[boundary_data]
-                    #print('comp_name')
-                    for j, n in enumerate(self.name):
-                        #print('csv ', self.csv_path)
-                        filename = os.path.join(self.csv_path, n + f'_{os.path.split(comp_name[:-3])[-1]}_' +'.csv')
-                        #print('filename', filename)
-                        if i == 0:
-                            with open(filename, 'w') as f:
-                                f.write('') # reset files for fresh data when you rerun
-                            layer = 1
-                            self.write_header_bc(filename, os.path.split(comp_name)[-1], n, layer = layer)
-                        if layer == 1:
-                            #print('raw_data',raw_data)
-                            df['data'] = raw_data[boundary_data][0][:,j]
-                        elif layer == 3: 
-                            df['data'] = raw_data
-                        #print('dataframe',df)
-                        df.to_csv(filename, header = False, index = False, sep = ' ', mode = 'a')
-                            
 
-        def file_stitcher(comps):
-            new_paths = sorted(glob.glob(os.path.join(self.csv_path,f'*_{comps}_*.csv')))
-            
-            script_path = pkg_resources.resource_filename('o_func', 'data/bash/merge_csv.sh')
-            with open(self.vel_write, 'w') as f:
-                f.write('')
-        
-            subprocess.call(["bash", script_path, self.vel_write] + new_paths)
-                
         T_store = ['T']
         U_store = ['U']
         V_store = ['V']
         R_store = ['R']
-        
         for item in self.component:
             if item in self.options:
                 filetype = self.options[item]['filetype']
@@ -511,18 +547,30 @@ class InMake:
         ## new loop to run task
         if len(T_store) > 1:
             dataset = all_files[0]
-            data = file_ripper(dataset, T_store)
-            
+            import time
+            starttime = time.time()
+            #Parallel(n_jobs=-1)(delayed(self.vid_plotter)(num_iters) for num_iters in range(num_of_figs))
+            self.file_ripper(T_store)
+            #Parallel(n_jobs=-1)(delayed(self.para_file_rip)(file, i) for i, file in enumerate(dataset))
+            self.non_para_file_rip(dataset)
+            endtime = time.time()-starttime
+            self.file_stitcher()
+            print('Finished in ',endtime,' minutes')
+           # file_ripper(dataset, T_store)
+
         if len(U_store) > 1:
             dataset = all_files[1]
-            data = file_ripper(dataset, U_store)
+            self.file_ripper(U_store)
+            self.non_para_file_rip(dataset)
+            self.file_stitcher()
             
         if len(V_store) > 1:
             dataset = all_files[2]
-            data = file_ripper(dataset, V_store)
-            
+            self.file_ripper(V_store)
+            self.non_para_file_rip(dataset)
+            self.file_stitcher()
         if len(R_store) > 1:
-            data = file_ripper()
+            self.file_ripper()
             
         print ('Finished')
         
@@ -533,7 +581,7 @@ class InMake:
         # for i in self.component:
         #     file_stitcher(i)    
             
-        return data  
+         
             
     def write_boundary_file(self, layer, component):
         self.layer = layer
@@ -575,7 +623,7 @@ if __name__ == '__main__':
     
     ,NormalVelocity 'TangentVelocity', 'WaterLevel', 'Salinity']
     '''
-    make_files.write_boundary_file(layer = 1, component = ['WaterLevel.bc', 'Salinity.bc'])
+    make_files.write_boundary_file(layer = 1, component = ['WaterLevel.bc', 'Salinity.bc','Temperature.bc', 'NormalVelocity.bc','TangentVelocity.bc'])
     
     
     #First step is to make the .pli files to which the boundary conditions are made. 
