@@ -37,7 +37,6 @@ from sklearn.neighbors import BallTree
 import re
 import subprocess
 import pkg_resources
-from joblib import Parallel, delayed
 
 
 
@@ -46,6 +45,8 @@ from o_func import opsys; start_path = opsys()
 from o_func.utilities.choices import DataChoice
 import o_func.utilities as util
 
+class LayerError(Exception):
+    pass
 
 class InMake:
     def __init__(self, model_dir_to_put_files, bc_paths):
@@ -57,7 +58,12 @@ class InMake:
         self.input_path = os.path.join(self.model_path[0], 'inputs')
         
         #pli_paths
-        self.loc_pli = os.path.join(start_path, 'modelling_DATA','kent_estuary_project','tidal_boundary','delft_3dfm_inputs')
+        self.loc_pli = os.path.join(start_path,
+                                    'modelling_DATA',
+                                    'kent_estuary_project',
+                                    'tidal_boundary',
+                                    'delft_3dfm_inputs'
+                                    )
         self.pli_dir = os.path.join(self.loc_pli , 'pli_files')
         #pli_constants
         self.spec_col = 758
@@ -83,33 +89,46 @@ class InMake:
             'NormalVelocity.bc': {
                 'script_name': 'normalvelocitybnd',
                 'units': 'm/s',
+                'function':'timeseries',
                 'filetype': 'U'
             },
             'TangentVelocity.bc': {
                 'script_name': 'tangentialvelocitybnd',
                 'units': 'm/s',
+                'function':'timeseries',
                 'filetype': 'V'
             },
             'WaterLevel.bc': {
                 'script_name': 'waterlevelbnd',
                 'units': 'm',
+                'function':'timeseries',
                 'filetype': 'T'
             },
             'Discharge.bc': {
                 'script_name': 'dischargebnd',
                 'units': 'm³/s',
+                'function':'timeseries',
                 'filetype': 'R'
             },
             'Salinity.bc': {
                 'script_name': 'salinitybnd',
                 'units': 'ppt',
+                'function':'timeseries',
                 'filetype': 'T'
             }
+            #guess as to what temperature filetypes would be. 
             ,
-            'Temperature.bc': {                     #guess as to what temperature filetypes would be. 
+            'Temperature.bc': {                     
                 'script_name': 'temperaturebnd',
                 'units': 'degrees',
                 'filetype': 'T'
+            }
+            ,
+            'Velocity.bc': {                     
+                'script_name': 'uxuyadvectionvelocitybnd:ux,uy',
+                'units': 'm/s',
+                'function':'t3d',
+                'filetype': 'UV'
             }
         }
         
@@ -271,7 +290,7 @@ class InMake:
         
     def write_header_bc(self,file_path, component, name, layer = 1, spacing = 'even'):
         self.spacing = spacing
-        
+        self.spacing = 'ukc4'
         """
         
         Write a text block to a file with the given file path,
@@ -286,6 +305,8 @@ class InMake:
             items = self.options[component]
             scriptname = items.get('script_name', 'Unknown')
             units = items.get('units', 'Unknown')
+            function = items.get('function', 'Unknown')
+            
                 
                   # Print all options
         except KeyError:
@@ -299,17 +320,19 @@ class InMake:
         with open(file_path, "w") as f:
             f.write("[forcing]\n")
             f.write(f"Name                            = {name}\n")
-            f.write("Function                        = timeseries\n")
+            f.write(f"Function                        = {function}\n")
             f.write("Time-interpolation              = linear\n")
             if self.layer != 1:
                 f.write("Vertical position type          = percentage from bed\n")
                 f.write("Vertical position specification = ") 
                 if self.spacing != 'even':
-                    f.write(self.spacing + "\n")
+                    #f.write(self.spacing + "\n")
+                    f.write("0 50 100\n")
                 else:
                     result = [(round(100 / self.layer * i)) for i in range(1, self.layer + 1)]
                     result_str = ' '.join(map(str, result))
                     f.write(f"{result_str}\n")
+                    # Gives you 33 67 100
                 f.write("Vertical interpolation          = linear\n")
             f.write("Quantity                        = time\n")
             f.write("Unit                            = seconds since 2013-10-31 00:00:00\n")
@@ -356,17 +379,128 @@ class InMake:
             self.var_list = []
             for i in datas:
                 self.var_list.append(os.path.join(self.layer_path, i))
+        elif choose == 'UV':
+            datas = store[1:]
+            self.var_list = []
+            for i in datas:
+                self.var_list.append(os.path.join(self.layer_path, i))
+            print('var_list',self.var_list)
+        
         #self.vel_write = os.path.join(self.layer_path, 'NormalVelocity.bc' )
         
         print('Paths to send to file cruncher', self.var_list)
         
-    #def para_file_rip(self,file, i):
+    def data_extract(self, data):
+        raw_data = []
+        for names in self.var_list:
+            # try to do in pairs of 3.
+            print('Names  ', os.path.split(names)[-1])
+            if os.path.split(names)[-1] == 'WaterLevel.bc':
+                dataset2 = []
+                dataset2.append(np.array(data.sossheig[:,self.ls,self.new_rs]))
+                dataset2.append('')
+                dataset2.append('')
+                raw_data.append(dataset2)
+                
+            if os.path.split(names)[-1] == 'Salinity.bc':
+                dataset2 = []
+                dataset2.append(np.array(data.vosaline_top[:,self.ls,self.new_rs]))
+                if self.layer > 1:
+                    dataset2.append(np.array(data.vosaline_mid[:,self.ls,self.new_rs]))
+                    dataset2.append(np.array(data.vosaline_bot[:,self.ls,self.new_rs]))
+                    
+                else:
+                    dataset2.append('')
+                    dataset2.append('')
+                raw_data.append(dataset2)
+            if os.path.split(names)[-1] == 'Temperature.bc':
+                dataset2 = []
+                dataset2.append(np.array(data.votemper_top[:,self.ls,self.new_rs]))
+                if self.layer > 1:
+                    dataset2.append(np.array(data.votemper_mid[:,self.ls,self.new_rs]))
+                    dataset2.append(np.array(data.votemper_bot[:,self.ls,self.new_rs]))
+                else:
+                    
+                    dataset2.append('')
+                    dataset2.append('')
+                raw_data.append(dataset2)
+            if os.path.split(names)[-1] == 'NormalVelocity.bc':
+                dataset2 = []
+                dataset2.append(np.array(data.vozocrtx_top[:,self.ls,self.new_rs]))
+                if self.layer > 1:
+                    dataset2.append(np.array(data.vozocrtx_mid[:,self.ls,self.new_rs]))
+                    dataset2.append(np.array(data.vozocrtx_bot[:,self.ls,self.new_rs]))
+                else:
+                    dataset2.append('')
+                    dataset2.append('')
+                raw_data.append(dataset2)
+            if os.path.split(names)[-1] == 'TangentVelocity.bc':
+                dataset2 = []
+                dataset2.append(np.array(data.vomecrty_top[:,self.ls,self.new_rs]))
+                if self.layer > 1:
+                    dataset2.append(np.array(data.vomecrty_mid[:,self.ls,self.new_rs]))
+                    dataset2.append(np.array(data.vomecrty_bot[:,self.ls,self.new_rs]))
+                else:
+                    dataset2.append('')
+                    dataset2.append('')
+                raw_data.append(dataset2)
+            if os.path.split(names)[-1] == 'Velocity.bc':
+                dataset2 = []
+                dataset2.append(np.array(data.vozocrtx_top[:,self.ls,self.new_rs]))
+                dataset2.append(np.array(data.vozocrtx_mid[:,self.ls,self.new_rs]))
+                dataset2.append(np.array(data.vozocrtx_bot[:,self.ls,self.new_rs]))
+                dataset2.append(np.array(data.vomecrty_top[:,self.ls,self.new_rs]))
+                dataset2.append(np.array(data.vomecrty_mid[:,self.ls,self.new_rs]))
+                dataset2.append(np.array(data.vomecrty_bot[:,self.ls,self.new_rs]))
+                
+                raw_data.append(dataset2)
+            return raw_data
+    
+    def main_body_data_writer(self, raw_data, i, df):
+        for boundary_data in range(len(raw_data)):
+            
+            comp_name = self.var_list[boundary_data]
+            #print('comp_name')
+            for j, n in enumerate(self.name):
+                #print('csv ', self.csv_path)
+                filename = os.path.join(self.csv_path, n + f'_{os.path.split(comp_name[:-3])[-1]}_' +'.csv')
+                #print('filename', filename)
+                
+                #print('\n Layer value here :' ,self.layer)
+                
+                if i == 0:
+                    with open(filename, 'w') as f:
+                        f.write('') # reset files for fresh data when you rerun
+                    #layer = 1
+                    self.write_header_bc(filename, os.path.split(comp_name)[-1], n, layer = self.layer)
+                if self.layer == 1:
+                    # This bit adds in the columns for the dataframes which means you get 3 layers deep of data. 
+                    #print('raw_data',raw_data)
+                    df['data'] = raw_data[boundary_data][0][:,j]
+                elif self.layer == 3: 
+                    
+                    df['bottom'] = raw_data[boundary_data][2][:,j]
+                    df['middle'] = raw_data[boundary_data][1][:,j]
+                    df['top'] = raw_data[boundary_data][0][:,j]
+                    
+                    # So you get Bottom Middle Top or just Top 
+                    
+                #print('dataframe',df)
+                df.to_csv(filename, header = False, index = False, sep = ' ', mode = 'a')
+            
+    
     def non_para_file_rip(self,dataset):
+        print('length of dataset     \n',len(dataset))
         for i,file in enumerate(dataset):
             print('ripin ', i)
             #for i,file in enumerate(dataset):
-                
+            
+            if len(dataset) == 2:
+                print('DATASET works here ...\n')
+            
             data = xr.open_dataset(file, engine ='netcdf4')
+            
+            
             time = self.convert_to_seconds_since_date(data.time_counter,r'2013-10-31 00:00:00')
             df = pd.DataFrame()
             df['time'] = [re.sub(r'[^0-9-]', '', str(i)) for i in time]
@@ -374,84 +508,17 @@ class InMake:
             
             ### here you need to use the names of variables to deploy which ones get written to. 
             ###
-            ### Sets data in groups of 3 corresponding to top, middle, bottom. Need to keep running for diff layers. 
-            raw_data = []
-            for names in self.var_list:
-                # try to do in pairs of 3.
-                print('Names  ', os.path.split(names)[-1])
-                if os.path.split(names)[-1] == 'WaterLevel.bc':
-                    dataset2 = []
-                    dataset2.append(np.array(data.sossheig[:,self.ls,self.new_rs]))
-                    dataset2.append('')
-                    dataset2.append('')
-                    raw_data.append(dataset2)
-                if os.path.split(names)[-1] == 'Salinity.bc':
-                    dataset2 = []
-                    dataset2.append(np.array(data.vosaline_top[:,self.ls,self.new_rs]))
-                    if self.layer > 1:
-                        dataset2.append(np.array(data.vosaline_mid[:,self.ls,self.new_rs]))
-                        dataset2.append(np.array(data.vosaline_bot[:,self.ls,self.new_rs]))
-                    else:
-                        dataset2.append('')
-                        dataset2.append('')
-                    raw_data.append(dataset2)
-                if os.path.split(names)[-1] == 'Temperature.bc':
-                    dataset2 = []
-                    dataset2.append(np.array(data.votemper_top[:,self.ls,self.new_rs]))
-                    if self.layer > 1:
-                        dataset2.append(np.array(data.votemper_mid[:,self.ls,self.new_rs]))
-                        dataset2.append(np.array(data.votemper_bot[:,self.ls,self.new_rs]))
-                    else:
-                        dataset2.append('')
-                        dataset2.append('')
-                    raw_data.append(dataset2)
-                if os.path.split(names)[-1] == 'NormalVelocity.bc':
-                    dataset2 = []
-                    dataset2.append(np.array(data.vozocrtx_top[:,self.ls,self.new_rs]))
-                    if self.layer > 1:
-                        dataset2.append(np.array(data.vozocrtx_mid[:,self.ls,self.new_rs]))
-                        dataset2.append(np.array(data.vozocrtx_bot[:,self.ls,self.new_rs]))
-                    else:
-                        dataset2.append('')
-                        dataset2.append('')
-                    raw_data.append(dataset2)
-                if os.path.split(names)[-1] == 'TangentVelocity.bc':
-                    dataset2 = []
-                    dataset2.append(np.array(data.vomecrty_top[:,self.ls,self.new_rs]))
-                    if self.layer > 1:
-                        dataset2.append(np.array(data.vomecrty_mid[:,self.ls,self.new_rs]))
-                        dataset2.append(np.array(data.vomecrty_bot[:,self.ls,self.new_rs]))
-                    else:
-                        dataset2.append('')
-                        dataset2.append('')
-                    raw_data.append(dataset2)
-                    
+            ### Sets data in groups of 3 corresponding to top, middle, bottom. Need to keep running for diff layers.
+            
+            
+            #####
+            raw_data = self.data_extract(data)
+            self.main_body_data_writer(raw_data, i, df)
+            #####
                 
             #daat_points = data.sossheig[:,ls,new_rs]
             #data_array = np.array(daat_points)
-            for boundary_data in range(len(raw_data)):
-                
-                comp_name = self.var_list[boundary_data]
-                #print('comp_name')
-                for j, n in enumerate(self.name):
-                    #print('csv ', self.csv_path)
-                    filename = os.path.join(self.csv_path, n + f'_{os.path.split(comp_name[:-3])[-1]}_' +'.csv')
-                    #print('filename', filename)
-                    if i == 0:
-                        with open(filename, 'w') as f:
-                            f.write('') # reset files for fresh data when you rerun
-                        #layer = 1
-                        self.write_header_bc(filename, os.path.split(comp_name)[-1], n, layer = self.layer)
-                    if self.layer == 1:
-                        # This bit adds in the columns for the dataframes which means you get 3 layers deep of data. 
-                        #print('raw_data',raw_data)
-                        df['data'] = raw_data[boundary_data][0][:,j]
-                    elif self.layer == 3: 
-                        df['data'] = raw_data[boundary_data][0][:,j]
-                        df['data'] = raw_data[boundary_data][1][:,j]
-                        df['data'] = raw_data[boundary_data][2][:,j]
-                    #print('dataframe',df)
-                    df.to_csv(filename, header = False, index = False, sep = ' ', mode = 'a')
+            
                       
 
     def file_stitcher(self):
@@ -526,7 +593,9 @@ class InMake:
         U_store = ['U']
         V_store = ['V']
         R_store = ['R']
+        UV_store = ['UV']
         for item in self.component:
+            print(item)
             if item in self.options:
                 filetype = self.options[item]['filetype']
                 if filetype == 'T':
@@ -537,12 +606,15 @@ class InMake:
                     V_store.append(item)
                 elif filetype == 'R':
                     R_store.append(item)
+                elif filetype == 'UV':
+                    UV_store.append(item)
                 else:
                     pass
         print('T_store', len(T_store))
         print('U_store', len(U_store))
         print('V_store', V_store)
         print('R_store', R_store)
+        print('UV_store', len(UV_store))
         
         ## new loop to run task
         if len(T_store) > 1:
@@ -571,6 +643,12 @@ class InMake:
             self.file_stitcher()
         if len(R_store) > 1:
             self.file_ripper()
+        if len(UV_store) > 1:
+            dataset = all_files[1:]
+            self.file_ripper(UV_store)
+            self.non_para_file_rip(dataset)
+            self.file_stitcher()
+            
             
         print ('Finished')
         
@@ -586,6 +664,22 @@ class InMake:
     def write_boundary_file(self, layer, component):
         self.layer = layer
         self.component = component
+        error = 'You need to create the Velocity.bc file which is the 3d tangent/normal velocities'
+        if self.layer > 1 and 'WaterLevel.bc' in component:
+            # Raise a custom exception to handle the error
+            raise LayerError("'WaterLevel.bc' is not allowed when layers are greater than 3.\nAs Surface height is 2D not 3D. ")
+        if self.layer > 1 and 'TangentVelocity.bc' in component:
+            # Raise a custom exception to handle the error
+            
+            raise LayerError("'TangentVelocity.bc' is not allowed when layers are greater than 3.\nAs this is a 2D component.\n" + error)
+        if self.layer > 1 and 'NormalVelocity.bc' in component:
+            # Raise a custom exception to handle the error
+            raise LayerError("'NormalVelocity.bc' is not allowed when layers are greater than 3.\nAs this is a 2D component.\n" + error)
+        if self.layer <= 1 and 'Velocity.bc' in component:
+            # Raise a custom exception to handle the error
+            raise LayerError("'Velocity.bc' is not allowed when layers are less than or equal to 1.\nAs velocity is a 3D component.\nYou need Tangent/Normal Velocity files.")
+
+            
     
         if isinstance(self.layer, int):
             self.layer_path = util.md([self.bc_paths, str(self.layer)])
@@ -623,8 +717,9 @@ if __name__ == '__main__':
     
     ,NormalVelocity 'TangentVelocity', 'WaterLevel', 'Salinity']
     '''
-    make_files.write_boundary_file(layer = 1, component = ['WaterLevel.bc', 'Salinity.bc','Temperature.bc', 'NormalVelocity.bc','TangentVelocity.bc'])
-    
+    # This line definately works as of 2023-09-18 10:56
+    #make_files.write_boundary_file(layer = 1, component = ['WaterLevel.bc', 'Salinity.bc','Temperature.bc', 'NormalVelocity.bc','TangentVelocity.bc'])
+    make_files.write_boundary_file(layer = 3, component = ['Velocity.bc'])
     
     #First step is to make the .pli files to which the boundary conditions are made. 
     

@@ -61,16 +61,17 @@ class DirGen:
         self.figures = util.md([self.outputs, 'figures'])
         self.data_proc = util.md([self.outputs, 'data_proc'])
         self.data_stats = util.md([self.outputs, 'data_stats'])
+        self.data_stats = util.md([self.outputs, 'compare'])
         
         self.Og = util.md([os.path.join(self.main_dir, 'files_bc'), 'UKO4g'])
         self.Coa = util.md([os.path.join(self.main_dir, 'files_bc'), 'UKC4oa'])
         self.Coaw = util.md([os.path.join(self.main_dir, 'files_bc'), 'UKC4oaw'])
         self.Cow = util.md([os.path.join(self.main_dir, 'files_bc'), 'UKC4ow'])
         
-        self.csv_dump1 = util.md([self.Og, 'dump_csv'])
-        self.csv_dump2 = util.md([self.Coa, 'dump_csv'])
-        self.csv_dump3 = util.md([self.Coaw, 'dump_csv'])
-        self.csv_dump4 = util.md([self.Cow, 'dump_csv'])
+        #self.csv_dump1 = util.md([self.Og, 'dump_csv'])  # This is handled in the write boundary condition script. 
+        #self.csv_dump2 = util.md([self.Coa, 'dump_csv'])
+        #self.csv_dump3 = util.md([self.Coaw, 'dump_csv'])
+        #self.csv_dump4 = util.md([self.Cow, 'dump_csv'])
         
         
         #Make video and images paths
@@ -161,6 +162,6 @@ if __name__ == '__main__':
     #from o_func.data_prepkit import DirGen
     main_path = os.path.join(start_path, r'modelling_DATA','kent_estuary_project',r'6.Final2')
     make_paths = DirGen(main_path)
-    sub_path = make_paths.dir_outputs('kent_1.0.0_UM_wind')
+    sub_path = make_paths.dir_outputs('2.0.0_wind_testing_4_months_testing_multi_layer')
     
     
