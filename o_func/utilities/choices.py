@@ -392,7 +392,7 @@ if __name__ == '__main__':
     fn = dc.dir_select()
 
 #%%
-    variables = ['owa/shelftmb', 'oa/shelftmb', 'ow/shelftmb', 'og/shelftmb']
-    directory_path3 = r'Original Data/UKC3'
-    dc = DataChoice(os.path.join(start_path, directory_path3))
-    var_path = dc.var_select(variables)
+    # variables = ['owa/shelftmb', 'oa/shelftmb', 'ow/shelftmb', 'og/shelftmb']
+    # directory_path3 = r'Original Data/UKC3'
+    # dc = DataChoice(os.path.join(start_path, directory_path3))
+    # var_path = dc.var_select(variables)

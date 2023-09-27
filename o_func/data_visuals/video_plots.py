@@ -17,8 +17,11 @@ import xarray as xr
 from matplotlib.colors import ListedColormap
 import glob
 import time
+import cmocean
 
 from joblib import Parallel, delayed
+
+from o_func.utilities.start import opsys; start_path = opsys()
 
 #from concurrent.futures import ThreadPoolExecutor
 
@@ -32,7 +35,7 @@ from o_func.data_prepkit import OpenNc
 from o_func import Plot
 
 class VideoPlots:
-    def __init__(self, dataset, xxx, yyy, bounds, path, s = 7):
+    def __init__(self, dataset, xxx, yyy, bounds, path, cmap, s = 7):
         
         # Video Speed attributes
         self.yesno_video = 'n'
@@ -70,15 +73,14 @@ class VideoPlots:
         self.labels_set = False
         
         #setting up dry land
-        self.bathy_path = glob.glob(r'F:\modelling_DATA\kent_estuary_project\6.Final2\models\01_kent_2.0.0_no_wind\2.0.0_wind_testing_4_months.dsproj_data\FlowFM\*.nc')
-
-        UKWEST_loc = start_path + r'modelling_DATA/kent_estuary_project/land_boundary/QGIS_Shapefiles/UK_WEST_POLYGON_NEGATIVE.shp'
+        self.bathy_path = glob.glob(os.path.join(start_path, 'modelling_DATA','kent_estuary_project','6.Final2','models','kent_1.0.0_UM_wind','*.dsproj_data','FlowFM','*.nc'))
+        UKWEST_loc = os.path.join(start_path,'modelling_DATA','kent_estuary_project','land_boundary','QGIS_Shapefiles','UK_WEST_POLYGON_NEGATIVE.shp')
         self.UKWEST = gpd.read_file(UKWEST_loc)
         
         #testing dry land 
         bd = xr.open_dataset(self.bathy_path[0], engine='scipy')
         from scipy.interpolate import griddata
-
+    
         # Bathymetry data at node coordinates
         node_x = bd.mesh2d_node_z.mesh2d_node_x.values
         node_y = bd.mesh2d_node_z.mesh2d_node_y.values
@@ -98,6 +100,8 @@ class VideoPlots:
         # Interpolate bathymetry data to face coordinates
         self.bathymetry_face = griddata((node_x, node_y), bathymetry_node, face_coords, method='linear')
         
+        #cmap dictionary
+        self.cmap = cmap
         
     def video_speed(self):
         ''' Time should be a list of two numbers, t = 0, t = 1
@@ -138,8 +142,8 @@ class VideoPlots:
         # UKWEST = gpd.read_file(UKWEST_loc)
         
         #trying dry land introduction
-        colors = ['grey', 'blue', 'pink']
-        cmap = ListedColormap(colors)
+        #colors = ['grey', 'blue', 'pink']
+        #cmap = ListedColormap(colors)
         
         
         # im = self.ax.tricontourf(
@@ -150,13 +154,13 @@ class VideoPlots:
         # cmap=cm.cool,
         # extend='both'
         # )
-        
+        print(self.bounds)
         im = self.ax.tricontourf(
         self.xxx,
         self.yyy,
         self.wd[i,:],
         levels= np.linspace( self.bounds[0][0],self.bounds[0][1],self.bounds[0][2]),
-        cmap=cm.cool,
+        cmap=self.cmap,
         extend='both'
         )
         
@@ -229,7 +233,7 @@ class VideoPlots:
     def joblib_para(self, num_of_figs = 10, land = 'n', vel = 'n'):
         self.land = land
         self.vel = vel
-        results = Parallel(n_jobs=-1)(delayed(self.vid_plotter)(num_iters) for num_iters in range(num_of_figs))
+        results = Parallel(n_jobs=-1, timeout = 60)(delayed(self.vid_plotter)(num_iters) for num_iters in range(num_of_figs))
 
         #self.vel_u = self.vel.
         #self.vel_v = self.vel 
@@ -262,10 +266,10 @@ class VideoPlots:
         color_min = -40
         color_max = 20
 
-        cmap = plt.cm.get_cmap('viridis')
+        #cmap = plt.cm.get_cmap('viridis')
         norm = plt.Normalize(vmin=color_min, vmax=color_max)
 
-        im = self.ax.scatter(self.xxx,self.yyy, c = self.bathymetry_face, s = 0.1, cmap = cmap, norm = norm)
+        im = self.ax.scatter(self.xxx,self.yyy, c = self.bathymetry_face, s = 0.1, cmap = self.cmap, norm = norm)
         
         # self.UKWEST.plot(ax = plt.gca(), color="white")
         
@@ -301,14 +305,15 @@ if __name__ == '__main__':
     #%% Making Directory paths
     main_path = os.path.join(start_path, r'modelling_DATA','kent_estuary_project',r'6.Final2')
     make_paths = DirGen(main_path)
-    sub_path = make_paths.dir_outputs('kent_2.0.0_no_wind')
     ### Finishing directory paths
 
     dc = DataChoice(os.path.join(main_path,'models'))
     fn = dc.dir_select()
+    sub_path = make_paths.dir_outputs(os.path.split(fn[0])[-1])
+
     #%% Lazy loading dataset
     ### Large dataset path for testing 
-    lp = glob.glob(r'F:\modelling_DATA\kent_estuary_project\5.Final\1.friction\SCW_runs\kent_2.0.0_wind\*.nc')[0]
+    lp = glob.glob(os.path.join(sub_path, '*.nc'))[0]
     sp = time.time()
     #lp = glob.glob(os.path.join(fn[0],'*.nc'))[0]
     #Make chunk sizes 10 if it all goes to pot 
@@ -321,7 +326,7 @@ if __name__ == '__main__':
                        )
 
     
-    wd_bounds = [(-4,5,70),(-4,5,16),(-3.65,-2.75),(53.20,54.52)]
+    wd_bounds = [(-4,5,300),(-4,5,16),(-3.65,-2.75),(53.20,54.52)]
 
     # Class to split the dataset into a managable chunk. 
     start_slice = OpenNc()
@@ -334,8 +339,22 @@ if __name__ == '__main__':
                     xxx     = new_data.mesh2d_face_x,
                     yyy     = new_data.mesh2d_face_y,
                     bounds  = wd_bounds,
-                    path    = png_sh_path
+                    path    = png_sh_path,
+                    cmap = cmocean.cm.deep
                     )
+    # png_sal_path = make_paths.vid_var_path(var_choice='Salinity')
+    # sal_bounds = [(0,40,80),(0,35,8),(-3.65,-2.75),(53.20,54.52)]
+    # pv = VideoPlots(dataset = new_data.salinity,
+    #                 xxx     = new_data.mesh2d_face_x,
+    #                 yyy     = new_data.mesh2d_face_y,
+    #                 bounds  = sal_bounds,
+    #                 path    = png_sal_path,
+    #                 cmap = cmocean.cm.haline
+    #                 )
+    
+    depth_bounds = [(0,65,80),(0,60,7),(-3.65,-2.75),(53.20,54.52)]
+    
+    
     
     # start = time.time()
     # make_videos = pv.vid_para_plot()
