@@ -491,14 +491,19 @@ class InMake:
     
     def non_para_file_rip(self,dataset):
         print('length of dataset     \n',len(dataset))
+        if len(dataset) == 2:
+            dataset2 = dataset[1]
+            dataset = dataset[0]
+        
         for i,file in enumerate(dataset):
             print('ripin ', i)
             #for i,file in enumerate(dataset):
             
             if len(dataset) == 2:
+                data = xr.open_dataset(file, engine ='netcdf4')
                 print('DATASET works here ...\n')
-            
-            data = xr.open_dataset(file, engine ='netcdf4')
+            else:
+                data = xr.open_dataset(file, engine ='netcdf4')
             
             
             time = self.convert_to_seconds_since_date(data.time_counter,r'2013-10-31 00:00:00')

@@ -33,6 +33,7 @@ o_func/data_prepkit/gen_directory.py
 o_func/data_prepkit/gen_video.py
 o_func/data_prepkit/open_nc.py
 o_func/data_prepkit/wind_prep.py
+o_func/data_prepkit/write_est_files.py
 o_func/data_prepkit/write_input.py
 o_func/data_visuals/__init__.py
 o_func/data_visuals/plotting_figures_for_latex.py

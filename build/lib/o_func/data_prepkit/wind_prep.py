@@ -13,7 +13,7 @@ import sys
 import numpy as np
 import matplotlib.pyplot as plt
 import xarray as xr
-import cartopy.crs as ccrs
+#import cartopy.crs as ccrs
 from datetime import datetime
 import os
 import glob
@@ -243,16 +243,28 @@ class WindWrite():
             start_index, end_index = data_source[1], data_source[2]
             vel = vel[start_index:end_index]
             print('\nERA5 data must be transposed from lat lon to lon lat\n')
-    
+            num_rows, num_cols = vel[0].shape
+            print(num_rows, num_cols) # 148,89
         else:
             start_index, end_index = data_source[1], data_source[2]
             vel = vel[start_index:end_index]
             print('\nERA5 data must be transposed from lat lon to lon lat\n')
             #print("Not coded yet, exiting scipt")
             #sys.exit()
-       
-        num_rows, num_cols = vel[0].shape
+            num_rows, num_cols = vel[0].shape
+            print(num_rows, num_cols) # 148,89
+            #if self.file.endswith('.amp'):
+                #num_rows = num_rows - 1 # Just makes a quick correction to the number of rows. 
+        
+        
+        #if num_rows == 149:
+        #    num_rows = num_rows - 1
+        
+            
+            
         t = 1
+        
+        
         for i in range(len(vel)):
             if data_source[0] == 'ERA5':
                 single_t_vel = vel[i]
@@ -260,6 +272,7 @@ class WindWrite():
                 # as it is already in the correct shape
             else:
                 single_t_vel = vel[i]
+                #print(vel.shape)
                 #print('You havent coded this yet, exiting scipt...')
                 #sys.exit()
                 
@@ -276,97 +289,97 @@ class WindWrite():
                     vel_line = ' '.join(str(value) for value in vel_values)
                     file.write(vel_line + '\n')
                         
-    def era5_plot(self, wind_file):
-        '''
-        Parameters
-        ----------
-        path : string
-            Path to ERA5 dataset for generating mock wind fields to test model simulation. 
+    # def era5_plot(self, wind_file):
+    #     '''
+    #     Parameters
+    #     ----------
+    #     path : string
+    #         Path to ERA5 dataset for generating mock wind fields to test model simulation. 
     
-        Returns
-        -------
-        None.
+    #     Returns
+    #     -------
+    #     None.
     
-        '''
-        xrdf = xr.open_dataset(wind_file)
-        lon = xrdf.longitude.values
-        lat = xrdf.latitude.values
-        u10 = xrdf.u10.values # shape = time, lat, lon
-        v10 = xrdf.v10.values
-        sp = xrdf.sp.values 
+    #     '''
+    #     xrdf = xr.open_dataset(wind_file)
+    #     lon = xrdf.longitude.values
+    #     lat = xrdf.latitude.values
+    #     u10 = xrdf.u10.values # shape = time, lat, lon
+    #     v10 = xrdf.v10.values
+    #     sp = xrdf.sp.values 
     
        
-        for i in range(1):
-            u = np.transpose(u10[i])
-            v = np.transpose(v10[i])
-            pressure = np.transpose(sp[i])/100
+    #     for i in range(1):
+    #         u = np.transpose(u10[i])
+    #         v = np.transpose(v10[i])
+    #         pressure = np.transpose(sp[i])/100
             
-            WS = np.sqrt(u**2 + v**2)
-            #WD = np.arctan2(-u, -v) * (180/np.pi)
-            projection = ccrs.PlateCarree()
-            fig, ax = plt.subplots(subplot_kw={'projection': projection})
-            ax.set_extent([lon.min(), lon.max(), lat.min(), lat.max()], crs=projection)
-            lon_mesh, lat_mesh = np.meshgrid(lon, lat)
+    #         WS = np.sqrt(u**2 + v**2)
+    #         #WD = np.arctan2(-u, -v) * (180/np.pi)
+    #         #projection = ccrs.PlateCarree()
+    #         fig, ax = plt.subplots(subplot_kw={'projection': projection})
+    #         ax.set_extent([lon.min(), lon.max(), lat.min(), lat.max()], crs=projection)
+    #         lon_mesh, lat_mesh = np.meshgrid(lon, lat)
     
-            #barb_scale = 100  # Controls the size of the wind barbs
-            # ax.barbs(lon_mesh, lat_mesh, u, v, WS, transform=projection, length=3, pivot='middle', 
-            #          barbcolor='black', flagcolor='r', linewidth=0.5, 
-            #          sizes=dict(emptybarb=0.25, spacing=0.2), zorder=10, alpha=0.8)
-            q = ax.quiver(lon_mesh, lat_mesh, u, v, WS, transform=projection, pivot='middle', 
-                      angles='uv', scale_units='xy', scale=25)
+    #         #barb_scale = 100  # Controls the size of the wind barbs
+    #         # ax.barbs(lon_mesh, lat_mesh, u, v, WS, transform=projection, length=3, pivot='middle', 
+    #         #          barbcolor='black', flagcolor='r', linewidth=0.5, 
+    #         #          sizes=dict(emptybarb=0.25, spacing=0.2), zorder=10, alpha=0.8)
+    #         q = ax.quiver(lon_mesh, lat_mesh, u, v, WS, transform=projection, pivot='middle', 
+    #                   angles='uv', scale_units='xy', scale=25)
     
-            # Add map features
-            ax.coastlines(resolution='10m')
-            ax.gridlines(draw_labels=True, linestyle='--')
-            # Create a colorbar
+    #         # Add map features
+    #         ax.coastlines(resolution='10m')
+    #         ax.gridlines(draw_labels=True, linestyle='--')
+    #         # Create a colorbar
          
-            cbar = plt.colorbar(q, orientation='vertical')
-            cbar.set_label('Wind Speed (ms$^{-1}$)')
-            #cbar.ax.yaxis.set_label_coords(4, 0.5)
-            cbar.ax.set_position([0.85, 0.1, 0.03, 0.8])
+    #         cbar = plt.colorbar(q, orientation='vertical')
+    #         cbar.set_label('Wind Speed (ms$^{-1}$)')
+    #         #cbar.ax.yaxis.set_label_coords(4, 0.5)
+    #         cbar.ax.set_position([0.85, 0.1, 0.03, 0.8])
     
     
-            # Show the wind barb map
-            plt.title('Wind Quiver')
-            plt.savefig('temp/wind_quiver_uk_t=1.pdf', dpi = 300)
+    #         # Show the wind barb map
+    #         plt.title('Wind Quiver')
+    #         plt.savefig('temp/wind_quiver_uk_t=1.pdf', dpi = 300)
             
-            # Wind pressure
+    #         # Wind pressure
             
-            lon_mesh, lat_mesh = np.meshgrid(lon, lat)
-            lon_mesh = np.transpose(lon_mesh)
-            lat_mesh = np.transpose(lat_mesh)
-            fig, ax = plt.subplots(subplot_kw={'projection': projection}, figsize = (6,4.5))
-            #fig.tight_layout()
-            # Set the map boundaries based on latitude and longitude arrays
-            ax.set_extent([lon.min(), lon.max(), lat.min(), lat.max()], crs=projection)
+    #         lon_mesh, lat_mesh = np.meshgrid(lon, lat)
+    #         lon_mesh = np.transpose(lon_mesh)
+    #         lat_mesh = np.transpose(lat_mesh)
+    #         fig, ax = plt.subplots(subplot_kw={'projection': projection}, figsize = (6,4.5))
+    #         #fig.tight_layout()
+    #         # Set the map boundaries based on latitude and longitude arrays
+    #         ax.set_extent([lon.min(), lon.max(), lat.min(), lat.max()], crs=projection)
             
-            # Plot filled contours of pressure
-            # Calculate contour levels dynamically
-            contour_interval = 20
-            lowest_value = np.floor(np.min(pressure)/10) * 10
-            highest_value = np.ceil(np.max(pressure)/10) * 10
-            contour_levels = np.arange(lowest_value, highest_value + contour_interval, contour_interval)
-            contour_levels_fill = np.arange(lowest_value, highest_value + contour_interval, contour_interval/4)
+    #         # Plot filled contours of pressure
+    #         # Calculate contour levels dynamically
+    #         contour_interval = 20
+    #         lowest_value = np.floor(np.min(pressure)/10) * 10
+    #         highest_value = np.ceil(np.max(pressure)/10) * 10
+    #         contour_levels = np.arange(lowest_value, highest_value + contour_interval, contour_interval)
+    #         contour_levels_fill = np.arange(lowest_value, highest_value + contour_interval, contour_interval/4)
     
-            contourf = ax.contourf(lon_mesh, lat_mesh, pressure, levels=contour_levels_fill, transform=projection, cmap='RdBu_r')
+    #         contourf = ax.contourf(lon_mesh, lat_mesh, pressure, levels=contour_levels_fill, transform=projection, cmap='RdBu_r')
             
-            # Overlay contour lines
-            contour_lines = ax.contour(lon_mesh.T, lat_mesh.T, pressure.T, contour_levels, colors='brown', linewidths=1)
-            plt.clabel(contour_lines, colors = 'k', fmt = '%1.0f', fontsize=5)
+    #         # Overlay contour lines
+    #         contour_lines = ax.contour(lon_mesh.T, lat_mesh.T, pressure.T, contour_levels, colors='brown', linewidths=1)
+    #         plt.clabel(contour_lines, colors = 'k', fmt = '%1.0f', fontsize=5)
     
-            # Add map features
-            ax.coastlines(resolution='10m')
-            ax.gridlines(draw_labels=True, linestyle='--')
+    #         # Add map features
+    #         ax.coastlines(resolution='10m')
+    #         ax.gridlines(draw_labels=True, linestyle='--')
             
-            # Add a colorbar
-            cbar = plt.colorbar(contourf, orientation='vertical')
-            cbar.set_label('Pressure (hPa)')
-            cbar.ax.set_position([0.85, 0.1, 0.03, 0.8])
+    #         # Add a colorbar
+    #         cbar = plt.colorbar(contourf, orientation='vertical')
+    #         cbar.set_label('Pressure (hPa)')
+    #         cbar.ax.set_position([0.85, 0.1, 0.03, 0.8])
     
             
-            # Show the wind pressure map with colorbar
-            plt.title('Wind Pressure Map')
-            plt.savefig('temp/wind_pressure_uk_t=1.pdf', dpi = 300)
+    #         # Show the wind pressure map with colorbar
+    #         plt.title('Wind Pressure Map')
+    #         plt.savefig('temp/wind_pressure_uk_t=1.pdf', dpi = 300)
     
     def era5_write(self,wind_files, time, output_path):
         self.data_type= self.data_types[1]
@@ -394,7 +407,7 @@ class WindWrite():
         start = WindWrite.to_datetime(initial_timestep).strftime('%Y-%m-%d %H:%M:%S %z+00:00') 
     
         nlon = len(lon) # set number of columns of lon
-        nlat = len(lat) # set number of columns of lat
+        nlat = len(lat) # set number of columns of la
         maxlon = max(lon)
         minlon = min(lon)
         maxlat = max(lat)
@@ -517,6 +530,8 @@ class WindWrite():
         ### For x_wind and y_wind 
         nlon = len(Wnew_lon[0,:]) # set number of columns of lon
         nlat = len(Wnew_lat[:,0]) # set number of columns of lat
+        # if nlat == 149:
+            # nlat == nlat - 1
         maxlon = max(Wnew_lon[0,:])
         minlon = min(Wnew_lon[0,:])
         maxlat = max(Wnew_lat[:,0])
@@ -527,6 +542,8 @@ class WindWrite():
       
         
         for file in met_files2:
+            self.file = file
+            
             if file.endswith('.amu'):
                 with open(output_path + file,'w') as f: # overwrites main file
                     f.write("")
@@ -555,6 +572,10 @@ class WindWrite():
                 maxlat = max(Pnew_lat[:,0])
                 minlat = min(Pnew_lat[:,0])
                 
+                # When handling met office pressure data its on a diff grid 
+                #nlat = nlat - 1 # this fixes it for the moment. Also need to change how many rows it does. 
+                
+                
                 with open(output_path + file,'w') as f: # overwrites main file
                     f.write("")
                 f.close()
@@ -581,10 +602,10 @@ if __name__ == '__main__':
     time = ['2013-10-15','2014-04-01']
     output_path = start_path + r'modelling_DATA/kent_estuary_project/wind_input/wind_test_forcing/'
     
-    ww = WindWrite() # begin class of windwriter
+    # ww = WindWrite() # begin class of windwriter
 
     # test case with era5 dataset. 
-    ww.era5_write(wind_file, time, output_path)
+    # ww.era5_write(wind_file, time, output_path)
 
     #%% UM 
     ww = WindWrite() # begin class of windwriter
