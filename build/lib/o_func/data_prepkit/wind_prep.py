@@ -253,8 +253,8 @@ class WindWrite():
             #sys.exit()
             num_rows, num_cols = vel[0].shape
             print(num_rows, num_cols) # 148,89
-            #if self.file.endswith('.amp'):
-                #num_rows = num_rows - 1 # Just makes a quick correction to the number of rows. 
+            # if self.file.endswith('.amu') or self.file.endswith('.amv'):
+            #     num_rows = num_rows - 1 # Just makes a quick correction to the number of rows. 
         
         
         #if num_rows == 149:
@@ -528,14 +528,16 @@ class WindWrite():
                                 )
         
         ### For x_wind and y_wind 
-        nlon = len(Wnew_lon[0,:]) # set number of columns of lon
-        nlat = len(Wnew_lat[:,0]) # set number of columns of lat
+        #nlon = len(Wnew_lon[0,:]) # set number of columns of lon
+        #nlat = len(Wnew_lat[:,0]) # set number of columns of lat
         # if nlat == 149:
             # nlat == nlat - 1
         maxlon = max(Wnew_lon[0,:])
         minlon = min(Wnew_lon[0,:])
         maxlat = max(Wnew_lat[:,0])
         minlat = min(Wnew_lat[:,0])
+        # When handling met office pressure data its on a diff grid 
+        # nlat = nlat - 1 # this fixes it for the moment. Also need to change how many rows it does. 
         
         #data.x_wind.shape
         # Out[44]: (2904, 1026, 950)
@@ -544,49 +546,67 @@ class WindWrite():
         for file in met_files2:
             self.file = file
             
+            
+            
             if file.endswith('.amu'):
                 with open(output_path + file,'w') as f: # overwrites main file
                     f.write("")
                 f.close()
                 print(file)
+                
+                vel = subset_lat_lon_x_wind.values
+                nlon = vel.shape[2]
+                nlat = vel.shape[1]
                 self.write_met_header(file, nlon, nlat, minlon, maxlon, minlat, maxlat,start, output_path)
                 
                 
-                vel = subset_lat_lon_x_wind.values
+                
                 self.met_body(file,vel,start, interval,data_source, output_path)
+                print('shape vel ', vel.shape)
             elif file.endswith('.amv'):
                 with open(output_path + file,'w') as f: # overwrites main file
                     f.write("")
                 f.close()
                 print(file)
-                self.write_met_header(file, nlon, nlat, minlon, maxlon, minlat, maxlat,start, output_path)
                 
                 
                 vel = subset_lat_lon_y_wind.values
+                nlon = vel.shape[2]
+                nlat = vel.shape[1]
+                self.write_met_header(file, nlon, nlat, minlon, maxlon, minlat, maxlat,start, output_path)
+
                 self.met_body(file,vel,start, interval,data_source, output_path)
+                print('shape vel ', vel.shape)
+
             elif file.endswith('.amp'):
-                nlon = len(Pnew_lon[0,:]) # set number of columns of lon
-                nlat = len(Pnew_lat[:,0]) # set number of columns of lat
+                #nlon = len(Pnew_lon[0,:]) # set number of columns of lon
+                #nlat = len(Pnew_lat[:,0])
+                
+                
+                print(' len(Pnew_lat[:,0])',  len(Pnew_lat[:,0]))# set number of columns of lat
                 maxlon = max(Pnew_lon[0,:])
                 minlon = min(Pnew_lon[0,:])
                 maxlat = max(Pnew_lat[:,0])
                 minlat = min(Pnew_lat[:,0])
                 
-                # When handling met office pressure data its on a diff grid 
-                #nlat = nlat - 1 # this fixes it for the moment. Also need to change how many rows it does. 
                 
                 
                 with open(output_path + file,'w') as f: # overwrites main file
                     f.write("")
                 f.close()
                 print(file)
-                self.write_met_header(file, nlon, nlat, minlon, maxlon, minlat, maxlat,start, output_path)
                 
                 vel = subset_lat_lon_air_pressure.values
+                nlon = vel.shape[2]
+                nlat = vel.shape[1]
+                self.write_met_header(file, nlon, nlat, minlon, maxlon, minlat, maxlat,start, output_path)
+
                 self.met_body(file,vel,start, interval,data_source, output_path)
-        
+                print('shape vel ', vel.shape)
+
     
-        
+            print('nlon was ', nlon)
+            print('nlat was ', nlat)
     #%%
     
 

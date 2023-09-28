@@ -8,3 +8,5 @@ Created on Thu Aug 17 10:41:37 2023
 from .io import winc, md
 from .choices import *
 from .general import *
+from .near_neigh import data_flattener
+from .distance import *

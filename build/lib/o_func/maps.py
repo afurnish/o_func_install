@@ -4,7 +4,7 @@ Created on Wed Apr 12 16:51:06 2023
 
 @author: aafur
 """
-from o_functions.start import opsys2;start_path = opsys2()
+from o_func.utilities.start import opsys;start_path = opsys()
 import xarray as xr
 import matplotlib.pyplot as plt
 import matplotlib.tri as tri
@@ -12,7 +12,9 @@ import numpy as np
 import geopandas as gpd
 import pandas as pd
 import glob
+import os
 
+grid_plot_path = os.path.join(start_path, 'modelling_DATA','kent_estuary_project','plotting_the_grid')
 
 def PRIMEA_loc_grid():
     grid_path = start_path + r'modelling_DATA/kent_estuary_project/5.Final/1.friction/1.3.0.0_testing_grid.dsproj_data/FlowFM/UK_West+Duddon+Raven_+liv+ribble+wyre+ll+ul+leven_kent_1.1_net.nc'
@@ -52,7 +54,7 @@ def PRIMEA_loc_grid():
 # Extract the vertex coordinates and connectivity information
     vertices = ug.nodes[:,0], ug.nodes[:,1]  # Assumes 'lon' and 'lat' are the variable names for longitude and latitude in your UGRID dataset
     faces = ug.faces  # Subtract 1 to convert from 1-based indexing to 0-based indexing
-    
+    plt.savefig(os.path.join(grid_plot_path, 'fig1'))
     # Create a matplotlib figure and axis
     #%% THIS ONE WORKS
     fig, ax = plt.subplots()
@@ -69,7 +71,7 @@ def PRIMEA_loc_grid():
     
     # Show the plot
     plt.show()
-    
+    plt.savefig(os.path.join(grid_plot_path, 'fig2'))
 #%% Testing to plot only the traingles excluding the squares
     index_rows = np.where(faces.mask[:, 3])[0]
 
@@ -91,6 +93,7 @@ def PRIMEA_loc_grid():
     square_nodes = faces.data[faces.data[:, 3] != -999, :4]
     lons = vertices[0]
     lats = vertices[1]
+    plt.savefig(os.path.join(grid_plot_path, 'fig3'))
     fig, ax = plt.subplots()
     fig.set_figheight(90)
     fig.set_figwidth(70)
@@ -131,9 +134,9 @@ def PRIMEA_loc_grid():
 
     #set lon_lats for PRIMEA area
     lon,lat = (-3.65,-2.75),(53.20,54.52)
-    
+    plt.savefig(os.path.join(grid_plot_path, 'fig4'))
     fig, ax= plt.subplots(figsize=(55, 50))
-    uk = gpd.read_file('F:/for_pete/uk_full.shp')
+    uk = gpd.read_file(os.path.join(start_path, 'for_pete','uk.shp'))
     uk.plot(cmap='Pastel2_r', legend=True, ax=ax)
     ax.set_xlim(-9, 15)
     ax.set_ylim(49.5, 61.25)
@@ -189,10 +192,10 @@ def PRIMEA_loc_grid():
     ax_inset.spines['right'].set_linewidth(wid/2)
     
     plt.savefig(start_path + r'PhD/Conferences/EGU 2023/presentation_figures/PRIMEA_loc_map.png')
-
+    plt.savefig(os.path.join(grid_plot_path, 'fig5'))
 #%%
     fig, ax= plt.subplots(figsize=(55, 50))
-    uk = gpd.read_file('F:/for_pete/uk_full.shp')
+    uk = gpd.read_file(os.path.join(start_path,'for_pete','uk_full.shp'))
     uk.plot(cmap='Pastel2_r', legend=True, ax=ax)
     ax.set_xlim(-9, 2.5)
     ax.set_ylim(49.5, 61.25)
@@ -206,10 +209,10 @@ def PRIMEA_loc_grid():
     ax.set_ylabel('Latitude', fontsize = fsize) 
     #ax.set_title('Square Plot for UK (Excluding Ireland)')
     plt.legend(loc = 'upper left', fontsize = 100)
-  
+    plt.savefig(os.path.join(grid_plot_path, 'fig6'))
 #%%
     fig, ax= plt.subplots(figsize=(55, 50))
-    uk = gpd.read_file('F:/for_pete/uk_full.shp')
+    uk = gpd.read_file(os.path.join(start_path,'for_pete','uk_full.shp'))
     uk.plot(cmap='Pastel2_r', legend=True, ax=ax)
     ax.set_xlim(lon[0],lon[1])
     ax.set_ylim(lat[0], lat[1])
@@ -227,6 +230,7 @@ def PRIMEA_loc_grid():
     plt.scatter(liverpool[0],liverpool[1],marker = '^', color = 'b', s = 1000*8,label = 'Liverpool')
     #ax.set_title('Square Plot for UK (Excluding Ireland)')
     plt.legend(loc = 'upper left', fontsize = 100)
+    plt.savefig(os.path.join(grid_plot_path, 'fig7'))
 #%%    
 if __name__ == "__main__":
     PRIMEA_loc_grid()

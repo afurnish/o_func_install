@@ -12,9 +12,12 @@ from .data_visuals.plotting_figures_for_latex import Plot
 from .utilities.finder import finder
 from .utilities.start import opsys
 from .utilities.choices import DataChoice
+from .utilities.distance import uk_bounds, uk_bounds_wide
+
 
 from .data_prepkit.gen_directory import write_directories
 from .data_prepkit.gen_directory import DirGen
 
 from .data_visuals.video_plots import VideoPlots
+
 

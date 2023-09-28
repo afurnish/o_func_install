@@ -28,6 +28,7 @@ o_func/data/SCW_files/unstruc.dia
 o_func/data/bash/merge_csv.sh
 o_func/data_metrics/__init__.py
 o_func/data_metrics/compare.py
+o_func/data_metrics/stats_processing_r_squared_etc.py
 o_func/data_prepkit/__init__.py
 o_func/data_prepkit/gen_directory.py
 o_func/data_prepkit/gen_video.py
@@ -52,5 +53,6 @@ o_func/utilities/distance.py
 o_func/utilities/finder.py
 o_func/utilities/general.py
 o_func/utilities/io.py
+o_func/utilities/near_neigh.py
 o_func/utilities/start.py
 o_func/utilities/transforms.py

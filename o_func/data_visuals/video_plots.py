@@ -154,30 +154,45 @@ class VideoPlots:
         # cmap=cm.cool,
         # extend='both'
         # )
-        print(self.bounds)
-        im = self.ax.tricontourf(
-        self.xxx,
-        self.yyy,
-        self.wd[i,:],
-        levels= np.linspace( self.bounds[0][0],self.bounds[0][1],self.bounds[0][2]),
-        cmap=self.cmap,
-        extend='both'
-        )
-        
-        
-        #if self.vel != 'n':
-           
-        
-        if self.land != 'n':
+        if self.land != 'n': # This should live underneath
             
             # # Set the colors for dry land (where z matches bathymetry)
             tolerance=self.land
             abs_differences = np.abs(self.wd[i, :] - self.bathymetry_face)
             within_tolerance = abs_differences <= tolerance
             dry_land_indices = np.where(within_tolerance)
-            self.ax.scatter(self.xxx[dry_land_indices], self.yyy[dry_land_indices], color='grey', s=1, alpha=1)
+            #print
+            #self.ax.scatter(self.xxx[dry_land_indices], self.yyy[dry_land_indices], color='grey', s=1, alpha=1)
+            new_values = self.wd[i, :].values
+            for ik in dry_land_indices:
+                new_values[ik] = 10000
+                
+            # This processes which cells are dry and changes the values in the main array rather than plotting on top 
+        
+        
+        print(self.bounds)
+        im = self.ax.tricontourf(
+        self.xxx,
+        self.yyy,
+        new_values,#self.wd[i,:],
+        levels= np.linspace( self.bounds[0][0],self.bounds[0][1],self.bounds[0][2]),
+        cmap=self.cmap,
+        extend='both'
+        )
+        # if self.land != 'n': # This should live underneath
+            
+        #     # # Set the colors for dry land (where z matches bathymetry)
+        #     tolerance=self.land
+        #     abs_differences = np.abs(self.wd[i, :] - self.bathymetry_face)
+        #     within_tolerance = abs_differences <= tolerance
+        #     dry_land_indices = np.where(within_tolerance)
+        #     self.ax.scatter(self.xxx[dry_land_indices], self.yyy[dry_land_indices], color='grey', s=1, alpha=1)
 
-
+        
+        #if self.vel != 'n':
+           
+        
+        
         self.UKWEST.plot(ax = plt.gca(), color="white")
         
         if self.cbar is None:
@@ -233,7 +248,8 @@ class VideoPlots:
     def joblib_para(self, num_of_figs = 10, land = 'n', vel = 'n'):
         self.land = land
         self.vel = vel
-        results = Parallel(n_jobs=-1, timeout = 60)(delayed(self.vid_plotter)(num_iters) for num_iters in range(num_of_figs))
+        ### There is probably a memory leak somewhere in the code. 
+        results = Parallel(n_jobs=-1, timeout = 120)(delayed(self.vid_plotter)(num_iters) for num_iters in range(num_of_figs))
 
         #self.vel_u = self.vel.
         #self.vel_v = self.vel 
@@ -331,7 +347,8 @@ if __name__ == '__main__':
     # Class to split the dataset into a managable chunk. 
     start_slice = OpenNc()
     new_data = start_slice.slice_nc(main_dataset)
-
+    #new_data.surface_height[]
+    #new_data.surface_height[0:300,4000:50000] = 10000  # This does seem to work 
 #%% Vid prep
     #make path for dataset to live
     png_sh_path = make_paths.vid_var_path(var_choice='Surface_Height')
@@ -368,7 +385,7 @@ if __name__ == '__main__':
     
     starrrr = time.time()
     #make_videos = pv.vid_norm_plot(num_of_figs=4, land = 'n')
-    make_videos2 = pv.joblib_para(num_of_figs=200, land = 0.08)
+    make_videos2 = pv.joblib_para(num_of_figs=200, land = 0.08) #land was 0.08 or 8cm 
     print('Time between: ', time.time() - starrrr)
 
     # pv = VideoPlots(dataset = new_data.surface_height,

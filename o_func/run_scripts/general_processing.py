@@ -70,7 +70,7 @@ pv = VideoPlots(dataset = new_data.surface_height,
                 path    = png_sh_path
                 )
 starrrr = t.time()
-make_videos2 = pv.joblib_para(num_of_figs=400, land = 0.07, vel = main_dataset.mesh2d_ucmag) # colour plots
+make_videos2 = pv.joblib_para(num_of_figs=40, land = 0.07, vel = main_dataset.mesh2d_ucmag) # colour plots
 print('Time between sh: ', t.time() - starrrr)
 pv.bathy_plot()
 
@@ -81,7 +81,7 @@ pvs = VideoPlots(dataset = new_data.salinity,
                 path    = png_sal_path
                 )
 starrrr = t.time()
-make_videos2 = pvs.joblib_para(num_of_figs=400) # colour plots
+make_videos2 = pvs.joblib_para(num_of_figs=40) # colour plots
 print('Time between sal: ', t.time() - starrrr)
 
 
