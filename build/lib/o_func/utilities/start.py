@@ -91,7 +91,7 @@ def find_drive_label(drive_label):
         drives_to_clear = []
         for d in drives:
             drive_info = os.popen(f"vol {d}:").read().strip()
-            if 'PD' not in drive_info:
+            if 'PD' or 'PN' not in drive_info:
                 drives_to_clear.append(d)
                 
         result = [item for item in drives if item not in drives_to_clear]
@@ -108,7 +108,7 @@ def find_drive_label(drive_label):
             
         return mount_points[0] + r'/'
 
-def opsys(drive_label="PD"):
+def opsys(drive_label="PN"):
     start_path = find_drive_label(drive_label)
     #print(f'\nDrive {drive_label} has been detected\n')
     return start_path

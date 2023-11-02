@@ -31,6 +31,7 @@ o_func/data_metrics/compare.py
 o_func/data_metrics/stats_processing_r_squared_etc.py
 o_func/data_prepkit/__init__.py
 o_func/data_prepkit/gen_directory.py
+o_func/data_prepkit/gen_interp_grid_dataset.py
 o_func/data_prepkit/gen_video.py
 o_func/data_prepkit/open_nc.py
 o_func/data_prepkit/wind_prep.py
@@ -45,6 +46,7 @@ o_func/run_scripts/general_inputs.py
 o_func/run_scripts/general_processing.py
 o_func/tests/__init__.py
 o_func/tests/bathy_viewing.py
+o_func/tests/geo_vista_viewing.py
 o_func/tests/test_utilities/__init__.py
 o_func/tests/test_utilities/test_finder.py
 o_func/utilities/__init__.py
