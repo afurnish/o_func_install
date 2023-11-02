@@ -2,7 +2,10 @@
 # -*- coding: utf-8 -*-
 """ # Generates the interpolated grid files found in the old UKC3 data. 
 
-Does it need to be run for all cycles as its only purpose is to reshape the grid. 
+Does it need to be run for all cycles as its only purpose is to reshape the grid. Yes it does 
+need to be rerun as it doesnt just generate a grid it reshapes the UKC3 datasets. You run it once per UKC3 grid cell. 
+
+I need to do the reverse and interpolate PRIMEA onto UKC3 to achieve the best results. The best way to do this would be to use ESMF grid.
 
 Created on Thu Sep 28 09:35:38 2023
 @author: af
