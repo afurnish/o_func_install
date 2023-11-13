@@ -91,7 +91,7 @@ def find_drive_label(drive_label):
         drives_to_clear = []
         for d in drives:
             drive_info = os.popen(f"vol {d}:").read().strip()
-            if 'PD' or 'PN' not in drive_info:
+            if 'PN' not in drive_info:
                 drives_to_clear.append(d)
                 
         result = [item for item in drives if item not in drives_to_clear]

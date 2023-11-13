@@ -29,7 +29,9 @@ o_func/data/bash/merge_csv.sh
 o_func/data_metrics/__init__.py
 o_func/data_metrics/compare.py
 o_func/data_metrics/stats_processing_r_squared_etc.py
+o_func/data_prepkit/MK2_MP_TEST_UKC3_interpolated_onto_PRIMEA_grid_nc_file_generator.py
 o_func/data_prepkit/__init__.py
+o_func/data_prepkit/esmf.py
 o_func/data_prepkit/gen_directory.py
 o_func/data_prepkit/gen_interp_grid_dataset.py
 o_func/data_prepkit/gen_video.py
