@@ -75,4 +75,4 @@ def near_neigh(df_loc,df_area,k):
     
     return distances, indicies
 
-def near_neigh2
+# def near_neigh2

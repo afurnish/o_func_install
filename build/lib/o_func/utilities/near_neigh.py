@@ -74,3 +74,5 @@ def near_neigh(df_loc,df_area,k):
     distances, indicies = ball.query(df_loc[["x_rad", "y_rad"]].values, k = k)
     
     return distances, indicies
+
+# def near_neigh2

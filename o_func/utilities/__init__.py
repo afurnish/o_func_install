@@ -10,3 +10,4 @@ from .choices import *
 from .general import *
 from .near_neigh import data_flattener
 from .distance import *
+from .tidal_constants import tidconst

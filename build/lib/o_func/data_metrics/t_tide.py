@@ -10,6 +10,8 @@ from o_func import opsys; start_path = opsys()
 from o_func.utilities import near_neigh
 from o_func.utilities import uk_bounds_wide
 
+from sklearn.neighbors import BallTree
+from datetime import datetime, timedelta
 from os.path import join as join
 import glob
 import xarray as xr
@@ -17,10 +19,14 @@ import csv
 import numpy as np
 import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
+import cartopy.feature as cfeature
+import pandas as pd
+
 
 
 #Location of main data in Original Dataset file. 
-loc_of_FES2014 = join(start_path, 'Original_Data','FES2014', 'world')
+dataset = 'UK_bounds' # 'world
+loc_of_FES2014 = join(start_path, 'Original_Data','FES2014', dataset)
 
 #%% Set up path locations
 vel_nor = join(loc_of_FES2014, 'northward_velocity')
@@ -88,121 +94,108 @@ class est_tide:
             data_path =  tide_ocean
         
         points = self.read_pli(points_to_predic)
+        print(points.shape)
         x, y = points[:,0], points[:,1]
         #Return an array of x and y
         #data_array[:,0] X and data_array[:,1] Y
         
         files = []
         [files.append(file) for file in (sorted(glob.glob(join(data_path, '*'))))]
-        test_data = xr.open_dataset(files[0])
-        lon, lat = test_data.lon, test_data.lat
-        lons, lats = np.meshgrid(lon, lat)
-
-        fig, ax = plt.subplots(subplot_kw={'projection': ccrs.PlateCarree()})
-        c = ax.pcolormesh(lon, lat, test_data.phase, cmap='viridis')
-        print(test_data.phase)
-        # Add colorbar
-        plt.colorbar(c, ax=ax, label='Data Values')
-        # pha
-        # amp
+        tc_names = [path.split('/')[-1].split('.')[0].upper().rjust(4) for path in files]
         
-        # assign some variable to represent each dataset that is going to get passed through    
+        for k, file in enumerate(files):
+            print(tc_names[k])
         
-        # v_2n2 = xr.open_dataset(h_path[0])
-        # v_k1 = xr.open_dataset(h_path[1])
-        # v_k2 = xr.open_dataset(h_path[2])
-        # v_m2 = xr.open_dataset(h_path[3])
-        # v_m4 = xr.open_dataset(h_path[4])
-        # v_mf = xr.open_dataset(h_path[4])
-        # v_mm = xr.open_dataset(h_path[6])
-        # v_mn4 = xr.open_dataset(h_path[7])
-        # v_ms4 = xr.open_dataset(h_path[8])
-        # v_n2 = xr.open_dataset(h_path[9])
-        # v_o1 = xr.open_dataset(h_path[10])
-        # v_p1 = xr.open_dataset(h_path[11])
-        # v_q1 = xr.open_dataset(h_path[12])
-        # v_s1 = xr.open_dataset(h_path[13])
-        # v_s2 = xr.open_dataset(h_path[14])
-        
-        # v_consts = v_2n2,v_k1,v_k2,v_m2,v_m4,v_mf,v_mm,v_mn4,v_ms4,v_n2,v_o1,v_p1,v_q1,v_s1,v_s2
-        
-        # #generate frequency table
-        # freq_df = pd.read_csv('tide_cons/tidal_conts_&_freqs.csv')
-        # dataframe_list = []
-        # for i in constants:
-        #     dataframe_list.append(np.array(freq_df.loc[freq_df['Names'].str.contains(i, case=False)]))
-        # df_freq = pd.DataFrame(np.concatenate(dataframe_list),columns = ["Name", "freq", "Name_Lower"])  
-        # df_freq['print_name'] = df_freq['Name'].str.replace(" ","")
-        # df_amp_phase = pd.DataFrame() # make empty dataframe
-        # #Generation of massive loop to run all constituents. 
-        # for i in range(len(v_consts)):
-        #     real = v_consts[i]['hRe']
-        #     imag = v_consts[i]['hIm']
-        #     #real
-        #     real_shift = np.array( np.fliplr(np.rot90(real,axes =(1,0))))
-        #     r_Neg = real_shift[: , int(len(lon_x)/2):(len(lon_x))] # negative lon
-        #     r_Pos = real_shift[:, 0 : int(len(lon_x)/2)] # positive lon
-        #     r_comb = np.concatenate((r_Neg,r_Pos), axis=1) # combine back together
-        #     r_location_data = r_comb[my:MY,mx:MX] # select the uk
-        #     #imag
-        #     imag_shift = np.array( np.fliplr(np.rot90(imag,axes =(1,0))))
-        #     i_Neg = imag_shift[: , int(len(lon_x)/2):(len(lon_x))] # negative lon
-        #     i_Pos = imag_shift[:, 0 : int(len(lon_x)/2)] # positive lon
-        #     i_comb = np.concatenate((i_Neg,i_Pos), axis=1) # combine back together
-        #     i_location_data = i_comb[my:MY,mx:MX] # select the uk
-            
-            
-        # #5%% Generation of loop to find location
-        #     print_name = df_freq['print_name'][i]
-        #     frequency = str(df_freq['freq'][i])
-        #     for j in range (lent):
-        #         amp = (abs( float((r_location_data[HY[j] , HX[j]]))+1j*float((i_location_data[HY[j] , HX[j]])) )/1000)
-        #         pha = (math.atan2(-(i_location_data[HY[j] , HX[j]]),r_location_data[HY[j] , HX[j]])/np.pi*180)
-                
-        #         csv_filename = r'/point' + r'_' + str(j + 1) + r'.csv'
-        #         f = open(new_folder + '/' + csv_filename, 'a')
-        #         if i == 0:
-        #             f.write("TC,Amplitude_(m),Phase_(Deg),Freq_(deg_hour)" + '\n')    
-        #         f.write(print_name + ',' + str(amp) + "," + str(pha) + "," + frequency + '\n')
-        #         f.close()
-            
-        # print('nPrinting Harmonics Table')
-        # print(df_freq)    
-#%% Plotting    
-# fig5, ax = plt.subplots()
-# fig5.set_figheight(15)
-# fig5.set_figwidth(15)
-# plt.pcolor(UK_lon, UK_lat, r_location_data)
-# plt.scatter(loc_x,loc_y,c = 'r')
-# for i in range(lent):
-#     plt.text(x = loc_x[i],y = loc_y[i], s = str([i]), fontdict=dict(color='red', alpha=1, size=15))
-   
+            test_data = xr.open_dataset(file)
+            lon, lat = test_data.lon, test_data.lat
+            lons, lats = np.meshgrid(lon, lat)
     
-# fig6, ax = plt.subplots()
-# fig6.set_figheight(15)
-# fig6.set_figwidth(15)
-# plt.pcolor(UK_lon, UK_lat, r_location_data)
-# plt.scatter(loc_x,loc_y,c = 'r')
-# for i in range(lent):
-#     plt.text(x = loc_x[i],y = loc_y[i], s = str([i]), fontdict=dict(color='red', alpha=1, size=15))
-# ax.set_xlim(-4.25,-3.25)
-# ax.set_ylim(53.25,54.75)
+            fig, ax = plt.subplots(subplot_kw={'projection': ccrs.PlateCarree()})
+            c = ax.pcolormesh(lon, lat, test_data.phase, cmap='viridis')
+            ax.coastlines(linewidth=1, edgecolor='black')
+            
+            # Add colorbar
+            plt.colorbar(c, ax=ax, label='Data Values')
+            plt.show
+            
+            lon_2d, lat_2d = np.meshgrid(lon, lat)
+            lon_lat_array = np.column_stack((lon_2d.ravel(), lat_2d.ravel()))
+            lon_lat_array[:, 0] = (lon_lat_array[:, 0] + 180) % 360 - 180
+    
+            
+            # lon_lat_array = np.column_stack((lon.values, lat.values))
+            # print(lon_lat_array)
+            lon_lat_array_rad = np.radians(lon_lat_array)
+    
+            ball_tree = BallTree(lon_lat_array_rad, metric='haversine')
+            points_rad = np.radians(points)
+    
+            distances, indices = ball_tree.query(points_rad, k=1)
+            # print(indices)
+            
+            lat_indicies, lon_indicies = np.unravel_index(indices, test_data.phase.shape)
+            lon_ind, lat_ind = [], []
+            [lon_ind.append( ((lon[i].values) + 180) % 360 - 180) for i in lon_indicies[:,0]]
+            [lat_ind.append(lat[i].values) for i in lat_indicies[:,0]]
+                    
+            plt.plot(lon_ind,lat_ind, '*r')
+            '''
+            These are now the points that can be used in tidal generation with FES data 
+            '''
+            print(type(lon_ind))
+            # Convert x and y indices to NumPy arrays
+            x_indices = np.array(lon_ind)
+            y_indices = np.array(lat_ind)
+        
+            amp = np.array([])
+            pha = np.array([])
+    
+            for i, l in enumerate(lat_indicies): 
+                pha = np.append(pha,test_data.phase[l[0], lon_indicies[i]].values)
+                amp = np.append(amp,test_data.amplitude[l[0], lon_indicies[i]].values)
+            # print(pha)
+            # print(amp)
+            
+            # Create a dictionary to collect the data
+            amp_dic = {tc_names[k]:amp}
+            pha_dic = {tc_names[k]:pha}
+            
+            # Convert the dictionary to a DataFrame
+            if k == 0:
+                # If it's the first iteration, create the DataFrame
+                df_amp = pd.DataFrame(amp_dic)
+                df_pha = pd.DataFrame(pha_dic)
+            else:
+                # If it's not the first iteration, append the new DataFrame to the existing one
+                df_amp = pd.concat([df_amp, pd.DataFrame(amp_dic)], axis=1)
+                df_pha = pd.concat([df_pha, pd.DataFrame(pha_dic)], axis=1)
 
-#%% Generating the tidal heights files and making it straight into a boundary condition file. 
-
-# #%% Generate naming system and extract values
-
-# start = datetime.strptime(start, '%Y-%m-%d %H:%M')
-# end = datetime.strptime(end, '%Y-%m-%d %H:%M')
-# total_minutes = int((end - start).total_seconds() / 60)
-# timestep_minutes = int(timestep)
-# t = [start + timedelta(minutes=i) for i in range(0, total_minutes + 1, timestep_minutes)]
+        return df_amp, df_pha, tc_names 
+        # assign some variable to represent each dataset that is going to get passed through    
 
 
-# #start = dtime.datetime(2013, 1, 1, 0, 0, 0)
+    def time_maker(self, time_in, time_out, timestep):
+        '''
+        This makes timeseries suitable for this suite. 
 
-# #t = [start + timedelta(hours = i) for i in range(32*24)]
+        Parameters
+        ----------
+        time_in : Should be string in format of yyyy-mm-dd hh:mm:ss
+        time_out : TYPE
+            DESCRIPTION.
 
+        Returns
+        -------
+        None.
+
+        '''
+        if isinstance(time_in or time_out, str):
+            start = datetime.strptime(time_in, '%Y-%m-%d %H:%M')
+            end = datetime.strptime(time_out, '%Y-%m-%d %H:%M')
+            total_minutes = int((end - start).total_seconds() / 60)
+            timestep_minutes = timestep
+            t = [start + timedelta(minutes=i) for i in range(0, total_minutes + 1, timestep_minutes)]
+            print(t)
 
 
 # #making blank adjustable tide maker
@@ -303,7 +296,7 @@ class est_tide:
 #             f.write(str(converted_timeseries[j]) + '    ' + str(file) + '\n')             
 #         f.write('\n')
         
-        
+        # eta = tt.t_predic(np.array(t), cons2, FREQ, tidecons2)
         
     def est_predic(self):
         pass
@@ -313,4 +306,5 @@ class est_tide:
 
 if __name__ == '__main__':
     et = est_tide()
-    et.est_amp_and_phase_extractor(points_file, h_or_v = 'height')
+    df_amp, df_pha, tc_names = et.est_amp_and_phase_extractor(points_file, h_or_v = 'height')
+    et.time_maker('2013-10-01 00:00', '2013-11-01 00:00', 5)

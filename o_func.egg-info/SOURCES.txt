@@ -60,7 +60,9 @@ o_func/utilities/distance.py
 o_func/utilities/finder.py
 o_func/utilities/gauges.py
 o_func/utilities/general.py
+o_func/utilities/grids.py
 o_func/utilities/io.py
 o_func/utilities/near_neigh.py
 o_func/utilities/start.py
+o_func/utilities/tidal_constants.py
 o_func/utilities/transforms.py
