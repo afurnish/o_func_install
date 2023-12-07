@@ -25,11 +25,13 @@ o_func/data/SCW_files/dimr_config.xml
 o_func/data/SCW_files/exclude-list.txt
 o_func/data/SCW_files/submit.q
 o_func/data/SCW_files/unstruc.dia
+o_func/data/bash/@
+o_func/data/bash/FES2014_slicer.sh
 o_func/data/bash/merge_csv.sh
 o_func/data_metrics/__init__.py
 o_func/data_metrics/compare.py
 o_func/data_metrics/stats_processing_r_squared_etc.py
-o_func/data_prepkit/MK2_MP_TEST_UKC3_interpolated_onto_PRIMEA_grid_nc_file_generator.py
+o_func/data_metrics/t_tide.py
 o_func/data_prepkit/__init__.py
 o_func/data_prepkit/esmf.py
 o_func/data_prepkit/gen_directory.py
@@ -51,10 +53,12 @@ o_func/tests/bathy_viewing.py
 o_func/tests/geo_vista_viewing.py
 o_func/tests/test_utilities/__init__.py
 o_func/tests/test_utilities/test_finder.py
+o_func/utilities/FES2014_slicer.py
 o_func/utilities/__init__.py
 o_func/utilities/choices.py
 o_func/utilities/distance.py
 o_func/utilities/finder.py
+o_func/utilities/gauges.py
 o_func/utilities/general.py
 o_func/utilities/io.py
 o_func/utilities/near_neigh.py

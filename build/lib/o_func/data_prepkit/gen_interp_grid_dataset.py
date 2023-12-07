@@ -10,6 +10,8 @@ Can use this script in conjunction with ESMF to generate the correct ideas.
 
 Created on Thu Sep 28 09:35:38 2023
 @author: af
+
+This file is based off of a combination of files in the 6. directory
 """
 import os
 import glob
