@@ -9,6 +9,7 @@ Created on Wed Dec  6 10:01:10 2023
 from o_func import opsys; start_path = opsys()
 from o_func.utilities import near_neigh
 from o_func.utilities import uk_bounds_wide
+from o_func.utilities import tidconst; tc = tidconst()
 
 from sklearn.neighbors import BallTree
 from datetime import datetime, timedelta
@@ -142,7 +143,7 @@ class est_tide:
             '''
             These are now the points that can be used in tidal generation with FES data 
             '''
-            print(type(lon_ind))
+            # print(type(lon_ind))
             # Convert x and y indices to NumPy arrays
             x_indices = np.array(lon_ind)
             y_indices = np.array(lat_ind)
@@ -195,8 +196,8 @@ class est_tide:
             total_minutes = int((end - start).total_seconds() / 60)
             timestep_minutes = timestep
             t = [start + timedelta(minutes=i) for i in range(0, total_minutes + 1, timestep_minutes)]
-            print(t)
-
+            # print(t)
+        return t
 
 # #making blank adjustable tide maker
 # con = np.char.ljust(np.char.upper(consts), 4)
@@ -296,10 +297,16 @@ class est_tide:
 #             f.write(str(converted_timeseries[j]) + '    ' + str(file) + '\n')             
 #         f.write('\n')
         
-        # eta = tt.t_predic(np.array(t), cons2, FREQ, tidecons2)
         
-    def est_predic(self):
-        pass
+        
+    def est_predic(self, t, df_amp, df_pha, tc_names):
+        amp_phase = []
+        
+        point_number = 0
+        
+        [amp_phase.append(([df_amp[i][point_number],0, df_pha[i][point_number],0])) for i in tc_names]
+            # eta = tt.t_predic(np.array(t), cons2, FREQ, tidecons2)
+        print(amp_phase)
         
     def est_compare(self, tidal_timeseries):
         pass
@@ -307,4 +314,5 @@ class est_tide:
 if __name__ == '__main__':
     et = est_tide()
     df_amp, df_pha, tc_names = et.est_amp_and_phase_extractor(points_file, h_or_v = 'height')
-    et.time_maker('2013-10-01 00:00', '2013-11-01 00:00', 5)
+    t = et.time_maker('2013-10-01 00:00', '2013-11-01 00:00', 5)
+    et.est_predic(t, df_amp, df_pha, tc_names)

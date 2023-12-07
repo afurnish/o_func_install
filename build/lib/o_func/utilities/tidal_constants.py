@@ -6,7 +6,7 @@ Created on Thu Dec  7 16:03:02 2023
 @author: af
 """
 
-from o_func import opsys; start_path = opsys()
+from o_func.utilities.start import opsys; start_path = opsys()
 
 from os.path import join
 import pandas as pd
