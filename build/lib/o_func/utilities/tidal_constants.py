@@ -27,6 +27,6 @@ def tidconst():
        
     tc = pd.read_csv(path)
     
-    tc['Names'] = tc['Names'].apply(lambda x: process_string(x))
+    tc['Names_FESstyle'] = tc['Names'].apply(lambda x: process_string(x))
     tc['Names_lower'] = tc['Names_lower'].apply(lambda x: process_string(x))
     return tc

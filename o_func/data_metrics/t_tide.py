@@ -303,10 +303,12 @@ class est_tide:
         amp_phase = []
         
         point_number = 0
-        
-        [amp_phase.append(([df_amp[i][point_number],0, df_pha[i][point_number],0])) for i in tc_names]
+        # [amp_phase.append(([df_amp[i][point_number],0, df_pha[i][point_number],0])) for i in tc_names]
+
+        [amp_phase.append(([df_pha[i][point_number],0, df_amp[i][point_number],0])) for i in tc_names]
             # eta = tt.t_predic(np.array(t), cons2, FREQ, tidecons2)
         print(amp_phase)
+        return amp_phase
         
     def est_compare(self, tidal_timeseries):
         pass
@@ -315,4 +317,44 @@ if __name__ == '__main__':
     et = est_tide()
     df_amp, df_pha, tc_names = et.est_amp_and_phase_extractor(points_file, h_or_v = 'height')
     t = et.time_maker('2013-10-01 00:00', '2013-11-01 00:00', 5)
-    et.est_predic(t, df_amp, df_pha, tc_names)
+    amp_phase = et.est_predic(t, df_amp, df_pha, tc_names)
+#%%
+    matches = []
+    matched_names = []
+    matched_freqs = []
+    unmatched_names = []
+
+    unmatched_index = []
+    for j, pattern in enumerate(tc_names):
+    # Check for matches in the "Names" column
+        mask = tc['Names_FESstyle'].str.contains(pattern)
+    
+        # If there is a match, store the information
+        if mask.any():
+            matches.append(pattern.strip())  # Remove leading spaces from the pattern
+            matched_names.extend(tc.loc[mask, 'Names'].tolist())
+            matched_freqs.extend(tc.loc[mask, 'Freq'].tolist())
+        else:
+            unmatched_index.append(j)
+            unmatched_names.append(pattern.strip())
+
+    # Create a new DataFrame with the matched results
+    result_df = pd.DataFrame({'Pattern': matches, 'Names': matched_names, 'Freq': matched_freqs})
+
+    # Print the result DataFrame
+    print(result_df)
+    # Print the unmatched items and their indexes
+    print("\nUnmatched Names:")
+    for name in unmatched_names:
+        print(name)
+    unique_names = result_df['Names'].unique()
+
+    updatedList = [value for i, value in enumerate(amp_phase) if i not in unmatched_index]
+
+
+    # Format each unique name in the desired two-dimensional style
+    CONS = [[name] for name in unique_names]
+    
+    FREQ = np.array(result_df.Freq)
+    import ttide as tt
+    eta = tt.t_predic(np.array(t), CONS, FREQ, np.array(updatedList).astype(float))
