@@ -86,7 +86,7 @@ class DirGen:
         
         #path_to_mdu = os.path.exists(os.path.join(self.model_path,"*.dsproj_data","*.mdu"))
         #if path_to_mdu == False:
-        self.DFM_Output = util.md([self.SCWrun, 'DFM_OUTPUT_kent_31' + model_name])
+        self.DFM_Output = util.md([self.SCWrun, 'DFM_OUTPUT_kent_31']) # + model_name
         #else:
             #file = os.path.split(glob.glob(path_to_mdu))[-1][:-3]
             #self.DFM_Output = util.md([self.SCWrun, file])
@@ -146,7 +146,12 @@ class DirGen:
     
 # This function can be called directly from o_func
 def write_directories(directory, model_name):
+    ''' directory in this example should be the full path main folder in kent_model folder. 
+        model name should be a reference frame. 
+    '''
+    
     main_path = os.path.join(start_path, directory)
+    
     print(main_path)
     make_paths = DirGen(main_path)
     sub_path = make_paths.dir_outputs(model_name)
@@ -162,6 +167,6 @@ if __name__ == '__main__':
     #from o_func.data_prepkit import DirGen
     main_path = os.path.join(start_path, r'modelling_DATA','kent_estuary_project',r'6.Final2')
     make_paths = DirGen(main_path)
-    sub_path = make_paths.dir_outputs('wind_test_2_weeks')
+    sub_path = make_paths.dir_outputs('nowind_test_2_weeks')
     
     #/media/af/PD/modelling_DATA/kent_estuary_project/6.Final2/models/kent_1.3.7_testing_4_days_UM_run

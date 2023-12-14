@@ -27,20 +27,21 @@ class Gauge:
         
     def plot_gauge(self, path):
         print('depth is ',self.df['Depth'])
-        matplotlib.use('Qt5Agg')  # or 'TkAgg' or another interactive backend
+        # matplotlib.use('Qt5Agg')  # or 'TkAgg' or another interactive backend
 
-        plt.figure(dpi=300)
+        plt.figure(dpi=200)
 
         plt.plot(self.df.index, self.df['Depth'], linewidth=0.5)
         plt.ylabel('Depth (m)')
         
         ax = plt.gca()
-        ax.xaxis.set_major_locator(MonthLocator(interval=3))
-        ax.xaxis.set_minor_locator(YearLocator())
-        ax.xaxis.set_major_formatter(DateFormatter('%b %Y'))
+        # ax.xaxis.set_major_locator(MonthLocator(interval=3))
+        # ax.xaxis.set_minor_locator(YearLocator())
+        # ax.xaxis.set_major_formatter(DateFormatter('%b %Y'))
 
         # Rotate x-axis labels for better visibility
         plt.xticks(rotation=45, ha='right')
+        plt.tight_layout()
         plt.savefig(path, bbox_inches='tight')
 
 if __name__ == '__main__':
