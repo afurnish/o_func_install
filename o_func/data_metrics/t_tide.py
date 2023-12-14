@@ -378,7 +378,9 @@ CONS = [[name] for name in unique_names]
 
 FREQ = np.array(result_df.Freq)
 import ttide as tt
-eta = tt.t_predic(np.array(t), CONS, FREQ, np.array(updatedList).astype(float))
+CONS2 = CONS 
+
+eta = tt.t_predic(np.array(t), np.array(CONS), FREQ, np.array(updatedList).astype(float))
 
 import matplotlib.dates as mdates
 
