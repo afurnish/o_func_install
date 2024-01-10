@@ -5,6 +5,7 @@ import pyproj
 import matplotlib.pyplot as plt
 import time
 from multiprocessing import Pool
+from tqdm import tqdm
 
 #grid_example = '/Volumes/PN/modelling_DATA/kent_estuary_project/6.Final2/models/02_kent_1.0.0_UM_wind/shortrunSCW_kent_1.0.0_UM_wind/UK_West+Duddon+Raven_+liv+ribble+wyre+ll+ul+leven_kent_1.1_net.nc'
 
@@ -183,8 +184,7 @@ def PRIMEA_to_ESMF():
     '''
 #%%    
 
-
-def regrid_primea_to_ukc4_grid(): #primea, ukc3
+if __name__ == '__main__':
     # This will open various ukc3 files as they have slightly different grids for comparrison. 
     # we will start with U since it is to hand. 
     U = xr.open_dataset("/media/af/PN/Original_Data/UKC3/sliced/oa/shelftmb_cut_to_domain/UKC4ao_1h_20131030_20131030_shelftmb_grid_U.nc")
@@ -205,7 +205,6 @@ def regrid_primea_to_ukc4_grid(): #primea, ukc3
     x_unstructured, y_unstructured = projector.transform(np.array(plon).flatten(), np.array(plat).flatten())
     x_structured, y_structured = projector.transform(np.array(lon).flatten(), np.array(lat).flatten())
     
-    start = time.time()
     def para_proc(i):
         #empty_array = np.array()
         print(i)
@@ -250,15 +249,22 @@ def regrid_primea_to_ukc4_grid(): #primea, ukc3
             plt.colorbar()
             plt.title('PRIMEA regridded onto UKC4 example')
             
-        return mask_grid
-    print('finished in ', (time.time() - start)/60, 'seconds')
+        return i, mask_grid
     
-    num_iterations = 100
+    num_iterations = 1000
     # Create a ThreadPoolExecutor
+    start = time.time()
     with Pool() as pool:
     # Pass a range of values to the pool, each value representing an iteration
-        results = pool.map(para_proc, range(num_iterations))
-    results.sort()
+        # results = pool.map(para_proc, range(num_iterations))
+        results = list(tqdm(pool.imap_unordered(para_proc, range(num_iterations)), total=num_iterations))
+
+    pool.close()
+    pool.join()
+    
+    print('Finished in ', round( ( time.time() - start ),0 ), ' seconds')
+    indices, results = zip(*results)
+    
     # results.sort(key=lambda x: x[1])
     # # Extract the arrays from the sorted results
     # sorted_arrays = [result[0] for result in results]
@@ -266,4 +272,3 @@ def regrid_primea_to_ukc4_grid(): #primea, ukc3
     # # Concatenate the arrays to form the final result
     # result_array = np.stack(sorted_arrays, axis=0)
 
-regrid_primea_to_ukc4_grid()
