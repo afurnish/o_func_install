@@ -265,6 +265,8 @@ if __name__ == '__main__':
     print('Finished in ', round( ( time.time() - start ),0 ), ' seconds')
     indices, results = zip(*results)
     
+    new_combined_array = np.stack(results, axis=0)
+    
     # results.sort(key=lambda x: x[1])
     # # Extract the arrays from the sorted results
     # sorted_arrays = [result[0] for result in results]
@@ -272,3 +274,8 @@ if __name__ == '__main__':
     # # Concatenate the arrays to form the final result
     # result_array = np.stack(sorted_arrays, axis=0)
 
+'''
+Eventually add this back into an nc file for later processing, could stick all the data 
+that is to be compared together? It would make processing results easier? Although maybe keep U,V and T seperated ? or
+combine them but keep their grids seperated? 
+'''
