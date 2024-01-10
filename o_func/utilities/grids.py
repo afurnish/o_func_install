@@ -3,6 +3,8 @@ import numpy as np
 from scipy.interpolate import griddata
 import pyproj
 import matplotlib.pyplot as plt
+import time
+from multiprocessing import Pool
 
 #grid_example = '/Volumes/PN/modelling_DATA/kent_estuary_project/6.Final2/models/02_kent_1.0.0_UM_wind/shortrunSCW_kent_1.0.0_UM_wind/UK_West+Duddon+Raven_+liv+ribble+wyre+ll+ul+leven_kent_1.1_net.nc'
 
@@ -180,42 +182,88 @@ def PRIMEA_to_ESMF():
         title:            AMM15V
     '''
 #%%    
+
+
 def regrid_primea_to_ukc4_grid(): #primea, ukc3
     # This will open various ukc3 files as they have slightly different grids for comparrison. 
     # we will start with U since it is to hand. 
     U = xr.open_dataset("/media/af/PN/Original_Data/UKC3/sliced/oa/shelftmb_cut_to_domain/UKC4ao_1h_20131030_20131030_shelftmb_grid_U.nc")
-    V = xr.open_dataset("/media/af/PN/Original_Data/UKC3/sliced/oa/shelftmb_cut_to_domain/UKC4ao_1h_20131030_20131030_shelftmb_grid_V.nc")
+    #V = xr.open_dataset("/media/af/PN/Original_Data/UKC3/sliced/oa/shelftmb_cut_to_domain/UKC4ao_1h_20131030_20131030_shelftmb_grid_V.nc")
     lon, lat = U.nav_lon, U.nav_lat
     
     
     primea_model = xr.open_dataset('/media/af/PN/modelling_DATA/kent_estuary_project/6.Final2/models/kent_1.0.0_UM_wind/kent_31_merged_map.nc', engine = 'scipy')
-    regridded_primea = '/media/af/PN/modelling_DATA/kent_estuary_project/6.Final2/models/kent_1.0.0_UM_wind/regridded_kent_31_merged_map.nc'
+    #regridded_primea = '/media/af/PN/modelling_DATA/kent_estuary_project/6.Final2/models/kent_1.0.0_UM_wind/regridded_kent_31_merged_map.nc'
     
     #start with water 
     sh = primea_model.mesh2d_s1
     plon = primea_model.mesh2d_s1.mesh2d_face_x
     plat = primea_model.mesh2d_s1.mesh2d_face_y
-    ppoints = np.column_stack((np.array(plon).flatten(), np.array(plat).flatten()))
+    #ppoints = np.column_stack((np.array(plon).flatten(), np.array(plat).flatten()))
 
     projector = pyproj.Transformer.from_crs("EPSG:4326", "EPSG:3857", always_xy=True)
     x_unstructured, y_unstructured = projector.transform(np.array(plon).flatten(), np.array(plat).flatten())
     x_structured, y_structured = projector.transform(np.array(lon).flatten(), np.array(lat).flatten())
-
-    values = griddata((x_unstructured, y_unstructured), np.array(sh[22]).flatten(), (x_structured, y_structured), method='linear')
-    interpolated_values_reshaped = values.reshape(lon.shape)
-    plt.pcolor(lon, lat, interpolated_values_reshaped)
-
-    # Find rows and columns that contain only NaN values
-    rows_to_remove = np.all(np.isnan(interpolated_values_reshaped), axis=1)
-    cols_to_remove = np.all(np.isnan(interpolated_values_reshaped), axis=0)
     
-    # Slice off the rows and columns with only NaN values to trim the fat of the image
-    interpolated_values_sliced = interpolated_values_reshaped[~rows_to_remove, :]
-    interpolated_values_sliced = interpolated_values_sliced[:, ~cols_to_remove]
-    lons_sliced = lon[~rows_to_remove, :]
-    lons_sliced = lons_sliced[:, ~cols_to_remove]
-    lats_sliced = lat[~rows_to_remove, :]
-    lats_sliced = lats_sliced[:, ~cols_to_remove]
-    plt.pcolor(lons_sliced, lats_sliced, interpolated_values_sliced)
+    start = time.time()
+    def para_proc(i):
+        #empty_array = np.array()
+        print(i)
+        values = griddata((x_unstructured, y_unstructured), np.array(sh[420]).flatten(), (x_structured, y_structured), method='linear')
+        interpolated_values_reshaped = values.reshape(lon.shape)
+        #plt.pcolor(lon, lat, interpolated_values_reshaped)
     
+        # Find rows and columns that contain only NaN values
+        rows_to_remove = np.all(np.isnan(interpolated_values_reshaped), axis=1)
+        cols_to_remove = np.all(np.isnan(interpolated_values_reshaped), axis=0)
+        
+        # Slice off the rows and columns with only NaN values to trim the fat of the image
+        interpolated_values_sliced = interpolated_values_reshaped[~rows_to_remove, :]
+        interpolated_values_sliced = interpolated_values_sliced[:, ~cols_to_remove]
+        lons_sliced = lon[~rows_to_remove, :]
+        lons_sliced = lons_sliced[:, ~cols_to_remove]
+        lats_sliced = lat[~rows_to_remove, :]
+        lats_sliced = lats_sliced[:, ~cols_to_remove]
+        
+        masked = U.vobtcrtx[20][~rows_to_remove, :]
+        masked = masked[:, ~cols_to_remove]
+        nan_mask = np.isnan(masked)
+        mask_grid = np.where(nan_mask, np.nan, interpolated_values_sliced)
+        # if i == 0:
+        #     result_array = np.empty((0, mask_grid.shape[0], mask_grid.shape[1]))
+        
+        # result_array = np.vstack([result_array, mask_grid[None, :, :]])
+        
+        plotting = 'n'
+        if plotting == 'y':
+            plt.figure()
+            plt.pcolor(lons_sliced, lats_sliced, interpolated_values_sliced,linewidth=0,rasterized=True)
+            plt.colorbar()
+            
+            plt.figure()
+            plt.pcolor(masked,linewidth=0,rasterized=True)
+            plt.colorbar()
+            plt.title('UKC4 example')
+            
+            plt.figure()
+            plt.pcolor(lons_sliced, lats_sliced, mask_grid,linewidth=0,rasterized=True)
+            plt.colorbar()
+            plt.title('PRIMEA regridded onto UKC4 example')
+            
+        return mask_grid
+    print('finished in ', (time.time() - start)/60, 'seconds')
+    
+    num_iterations = 100
+    # Create a ThreadPoolExecutor
+    with Pool() as pool:
+    # Pass a range of values to the pool, each value representing an iteration
+        results = pool.map(para_proc, range(num_iterations))
+    results.sort()
+    # results.sort(key=lambda x: x[1])
+    # # Extract the arrays from the sorted results
+    # sorted_arrays = [result[0] for result in results]
+    
+    # # Concatenate the arrays to form the final result
+    # result_array = np.stack(sorted_arrays, axis=0)
+
 regrid_primea_to_ukc4_grid()
