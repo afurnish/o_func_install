@@ -1,5 +1,8 @@
 import xarray as xr
 import numpy as np
+from scipy.interpolate import griddata
+import pyproj
+import matplotlib.pyplot as plt
 
 #grid_example = '/Volumes/PN/modelling_DATA/kent_estuary_project/6.Final2/models/02_kent_1.0.0_UM_wind/shortrunSCW_kent_1.0.0_UM_wind/UK_West+Duddon+Raven_+liv+ribble+wyre+ll+ul+leven_kent_1.1_net.nc'
 
@@ -176,3 +179,43 @@ def PRIMEA_to_ESMF():
         file_name:        ocnUKO2_V_grid_out_nom.nc
         title:            AMM15V
     '''
+#%%    
+def regrid_primea_to_ukc4_grid(): #primea, ukc3
+    # This will open various ukc3 files as they have slightly different grids for comparrison. 
+    # we will start with U since it is to hand. 
+    U = xr.open_dataset("/media/af/PN/Original_Data/UKC3/sliced/oa/shelftmb_cut_to_domain/UKC4ao_1h_20131030_20131030_shelftmb_grid_U.nc")
+    V = xr.open_dataset("/media/af/PN/Original_Data/UKC3/sliced/oa/shelftmb_cut_to_domain/UKC4ao_1h_20131030_20131030_shelftmb_grid_V.nc")
+    lon, lat = U.nav_lon, U.nav_lat
+    
+    
+    primea_model = xr.open_dataset('/media/af/PN/modelling_DATA/kent_estuary_project/6.Final2/models/kent_1.0.0_UM_wind/kent_31_merged_map.nc', engine = 'scipy')
+    regridded_primea = '/media/af/PN/modelling_DATA/kent_estuary_project/6.Final2/models/kent_1.0.0_UM_wind/regridded_kent_31_merged_map.nc'
+    
+    #start with water 
+    sh = primea_model.mesh2d_s1
+    plon = primea_model.mesh2d_s1.mesh2d_face_x
+    plat = primea_model.mesh2d_s1.mesh2d_face_y
+    ppoints = np.column_stack((np.array(plon).flatten(), np.array(plat).flatten()))
+
+    projector = pyproj.Transformer.from_crs("EPSG:4326", "EPSG:3857", always_xy=True)
+    x_unstructured, y_unstructured = projector.transform(np.array(plon).flatten(), np.array(plat).flatten())
+    x_structured, y_structured = projector.transform(np.array(lon).flatten(), np.array(lat).flatten())
+
+    values = griddata((x_unstructured, y_unstructured), np.array(sh[22]).flatten(), (x_structured, y_structured), method='linear')
+    interpolated_values_reshaped = values.reshape(lon.shape)
+    plt.pcolor(lon, lat, interpolated_values_reshaped)
+
+    # Find rows and columns that contain only NaN values
+    rows_to_remove = np.all(np.isnan(interpolated_values_reshaped), axis=1)
+    cols_to_remove = np.all(np.isnan(interpolated_values_reshaped), axis=0)
+    
+    # Slice off the rows and columns with only NaN values to trim the fat of the image
+    interpolated_values_sliced = interpolated_values_reshaped[~rows_to_remove, :]
+    interpolated_values_sliced = interpolated_values_sliced[:, ~cols_to_remove]
+    lons_sliced = lon[~rows_to_remove, :]
+    lons_sliced = lons_sliced[:, ~cols_to_remove]
+    lats_sliced = lat[~rows_to_remove, :]
+    lats_sliced = lats_sliced[:, ~cols_to_remove]
+    plt.pcolor(lons_sliced, lats_sliced, interpolated_values_sliced)
+    
+regrid_primea_to_ukc4_grid()
