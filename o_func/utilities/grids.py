@@ -1,11 +1,13 @@
 import xarray as xr
 import numpy as np
-from scipy.interpolate import griddata
+from scipy.interpolate import griddata, CloughTocher2DInterpolator
 import pyproj
 import matplotlib.pyplot as plt
 import time
 from multiprocessing import Pool
 from tqdm import tqdm
+import glob
+import dask
 
 #grid_example = '/Volumes/PN/modelling_DATA/kent_estuary_project/6.Final2/models/02_kent_1.0.0_UM_wind/shortrunSCW_kent_1.0.0_UM_wind/UK_West+Duddon+Raven_+liv+ribble+wyre+ll+ul+leven_kent_1.1_net.nc'
 
@@ -185,73 +187,104 @@ def PRIMEA_to_ESMF():
 #%%    
 
 if __name__ == '__main__':
-    # This will open various ukc3 files as they have slightly different grids for comparrison. 
-    # we will start with U since it is to hand. 
-    U = xr.open_dataset("/media/af/PN/Original_Data/UKC3/sliced/oa/shelftmb_cut_to_domain/UKC4ao_1h_20131030_20131030_shelftmb_grid_U.nc")
-    #V = xr.open_dataset("/media/af/PN/Original_Data/UKC3/sliced/oa/shelftmb_cut_to_domain/UKC4ao_1h_20131030_20131030_shelftmb_grid_V.nc")
-    lon, lat = U.nav_lon, U.nav_lat
+    
+    var_dict = {
+    'surface_height'   : {'TUV':'T',  'UKC4':'sossheig',       'PRIMEA':'mesh2d_s1'},
+    'surface_salinity ': {'TUV':'T',  'UKC4':'vosaline_top',   'PRIMEA':'mesh2d_sa1'},
+    'middle_salinity'  : {'TUV':'T',  'UKC4':'',   'PRIMEA':'na'},
+    'bottom_salinity'  : {'TUV':'T',  'UKC4':'',   'PRIMEA':'na'},
+    'surface_Uvelocity': {'TUV':'U',  'UKC4':'',   'PRIMEA':'na'},
+    'middle_Uvelocity' : {'TUV':'U',  'UKC4':'',   'PRIMEA':'na'},
+    'bottom_Uvelocity' : {'TUV':'U',  'UKC4':'',   'PRIMEA':'na'},
+    'surface_Vvelocity': {'TUV':'V',  'UKC4':'',   'PRIMEA':'na'},
+    'middle_Vvelocity' : {'TUV':'V',  'UKC4':'',   'PRIMEA':'na'},
+    'bottom_Vvelocity' : {'TUV':'V',  'UKC4':'',   'PRIMEA':'na'},
+    }
+    
+    # to call the values in this dictionary do this. 
+    [i for i in var_dict]
+    model_run = 'oa'
+    
+    if model_run == 'oa':
+        # This will open various ukc3 files as they have slightly different grids for comparrison. 
+        # we will start with U since it is to hand. 
+        #U = xr.open_dataset("/media/af/PN/Original_Data/UKC3/sliced/oa/shelftmb_cut_to_domain/UKC4ao_1h_20131030_20131030_shelftmb_grid_U.nc")
+        T = glob.glob("/media/af/PN/Original_Data/UKC3/sliced/oa/shelftmb_cut_to_domain/*T.nc")
+        U = glob.glob("/media/af/PN/Original_Data/UKC3/sliced/oa/shelftmb_cut_to_domain/*U.nc")
+        V = glob.glob("/media/af/PN/Original_Data/UKC3/sliced/oa/shelftmb_cut_to_domain/*V.nc")
+        TUV = [xr.open_mfdataset(i) for i in [T,U,V]]
+        
+        lonTUV = [i.nav_lon for i in TUV]
+        latTUV = [i.nav_lat for i in TUV]
     
     
     primea_model = xr.open_dataset('/media/af/PN/modelling_DATA/kent_estuary_project/6.Final2/models/kent_1.0.0_UM_wind/kent_31_merged_map.nc', engine = 'scipy')
     #regridded_primea = '/media/af/PN/modelling_DATA/kent_estuary_project/6.Final2/models/kent_1.0.0_UM_wind/regridded_kent_31_merged_map.nc'
-    
+    output_nc_file = '/media/af/PN/modelling_DATA/kent_estuary_project/6.Final2/models/kent_1.0.0_UM_wind/regrid_data/kent_regrid.nc' 
     #start with water 
-    sh = primea_model.mesh2d_s1
+    #sh = primea_model.mesh2d_s1
     plon = primea_model.mesh2d_s1.mesh2d_face_x
     plat = primea_model.mesh2d_s1.mesh2d_face_y
     #ppoints = np.column_stack((np.array(plon).flatten(), np.array(plat).flatten()))
 
     projector = pyproj.Transformer.from_crs("EPSG:4326", "EPSG:3857", always_xy=True)
     x_unstructured, y_unstructured = projector.transform(np.array(plon).flatten(), np.array(plat).flatten())
-    x_structured, y_structured = projector.transform(np.array(lon).flatten(), np.array(lat).flatten())
     
-    def para_proc(i):
-        #empty_array = np.array()
-        print(i)
-        values = griddata((x_unstructured, y_unstructured), np.array(sh[420]).flatten(), (x_structured, y_structured), method='linear')
-        interpolated_values_reshaped = values.reshape(lon.shape)
-        #plt.pcolor(lon, lat, interpolated_values_reshaped)
+    # You need a different unstructured grid depending on TUV
+    x_structuredT, y_structuredT = projector.transform(np.array(lonTUV[0]).flatten(), np.array(latTUV[0]).flatten())
+    x_structuredU, y_structuredU = projector.transform(np.array(lonTUV[1]).flatten(), np.array(latTUV[1]).flatten())
+    x_structuredV, y_structuredV = projector.transform(np.array(lonTUV[2]).flatten(), np.array(latTUV[2]).flatten())
+
+    print('Running regridding operation...')
+    def para_proc(lm):
+        names = []
+        primea_saves = []
+        for k in [i for i in var_dict]:
+            # perform a check to ensure the variables exist 
+            if var_dict[k]['PRIMEA'] in [i for i in primea_model.data_vars]:
+                var = var_dict[k]['PRIMEA']
+                if lm == 0:
+                    names.append(k) # keeps order of variables comparing. 
+                else:
+                    names.append('n/a')
+                # determine the grid for the regridding process.
+                if var_dict[k]['TUV'] == 'T':
+                    x_structured, y_structured = x_structuredT, y_structuredT
+                    lon = lonTUV[0]
+                elif var_dict[k]['TUV'] == 'U':
+                    x_structured, y_structured = x_structuredT, y_structuredT
+                    lon = lonTUV[1]
+                elif var_dict[k]['TUV'] == 'V':
+                    x_structured, y_structured = x_structuredT, y_structured
+                    lon = lonTUV[2] 
+        
+                #print(var_dict[k]['UKC4'])
+                ### This block repeats for all variables
+                interpolator = CloughTocher2DInterpolator((x_unstructured, y_unstructured), np.array(primea_model[var][lm]).flatten())
+                values = interpolator(x_structured, y_structured)
+                interpolated_values_reshaped = values.reshape(lon.shape)
+            
+                # Find rows and columns that contain only NaN values
+                # rows_to_remove = np.all(np.isnan(interpolated_values_reshaped), axis=1)
+                # cols_to_remove = np.all(np.isnan(interpolated_values_reshaped), axis=0)
+                
+                # Slice off the rows and columns with only NaN values to trim the fat of the image
+                # interpolated_values_sliced = interpolated_values_reshaped[~rows_to_remove, :]
+                # interpolated_values_sliced = interpolated_values_sliced[:, ~cols_to_remove]
+                
+                # This bit slices the UKC4 data to size for later analysis 
+                # TUV[TUVindexer]
+                # masked = U.vobtcrtx[20][~rows_to_remove, :]
+                # masked = masked[:, ~cols_to_remove]
+                # nan_mask = np.isnan(masked)
+                # mask_grid = np.where(nan_mask, np.nan, interpolated_values_sliced)
+                
+                # ukc4_var_save.append(masked)
+                # primea_var_save.append(mask_grid)
+                primea_saves.append(interpolated_values_reshaped)
+        return lm, primea_saves, names
     
-        # Find rows and columns that contain only NaN values
-        rows_to_remove = np.all(np.isnan(interpolated_values_reshaped), axis=1)
-        cols_to_remove = np.all(np.isnan(interpolated_values_reshaped), axis=0)
-        
-        # Slice off the rows and columns with only NaN values to trim the fat of the image
-        interpolated_values_sliced = interpolated_values_reshaped[~rows_to_remove, :]
-        interpolated_values_sliced = interpolated_values_sliced[:, ~cols_to_remove]
-        lons_sliced = lon[~rows_to_remove, :]
-        lons_sliced = lons_sliced[:, ~cols_to_remove]
-        lats_sliced = lat[~rows_to_remove, :]
-        lats_sliced = lats_sliced[:, ~cols_to_remove]
-        
-        masked = U.vobtcrtx[20][~rows_to_remove, :]
-        masked = masked[:, ~cols_to_remove]
-        nan_mask = np.isnan(masked)
-        mask_grid = np.where(nan_mask, np.nan, interpolated_values_sliced)
-        # if i == 0:
-        #     result_array = np.empty((0, mask_grid.shape[0], mask_grid.shape[1]))
-        
-        # result_array = np.vstack([result_array, mask_grid[None, :, :]])
-        
-        plotting = 'n'
-        if plotting == 'y':
-            plt.figure()
-            plt.pcolor(lons_sliced, lats_sliced, interpolated_values_sliced,linewidth=0,rasterized=True)
-            plt.colorbar()
-            
-            plt.figure()
-            plt.pcolor(masked,linewidth=0,rasterized=True)
-            plt.colorbar()
-            plt.title('UKC4 example')
-            
-            plt.figure()
-            plt.pcolor(lons_sliced, lats_sliced, mask_grid,linewidth=0,rasterized=True)
-            plt.colorbar()
-            plt.title('PRIMEA regridded onto UKC4 example')
-            
-        return i, mask_grid
-    
-    num_iterations = 1000
+    num_iterations = len(primea_model.time)//10 # // means no remainders for testing
     # Create a ThreadPoolExecutor
     start = time.time()
     with Pool() as pool:
@@ -263,10 +296,48 @@ if __name__ == '__main__':
     pool.join()
     
     print('Finished in ', round( ( time.time() - start ),0 ), ' seconds')
-    indices, results = zip(*results)
+    indices, results, names = zip(*results)
+    seperated_results = list(zip(*results)) # This is in order of the names
+    filtered_names = [row for row in names if 'n/a' not in row][0]
+
+
+    def rot(values):
+        rows_to_remove = np.all(np.isnan(values), axis=1)
+        cols_to_remove = np.all(np.isnan(values), axis=0)
+        
+        # Need to apply this to each item in the array.
+        interpolated_values_sliced = interpolated_values_reshaped[~rows_to_remove, :]
+        interpolated_values_sliced = interpolated_values_sliced[:, ~cols_to_remove]
+        
+        
+        return rows_to_remove, cols_to_remove
+    # MASK MAKER INTO COLS AND ROWS to remove larger areas of NANS but also need to remove other stuff
+    for kl, nme in enumerate(filtered_names):
+        if var_dict[nme]['TUV'] == 'T':
+            rowsT, colsT = rot(seperated_results[kl])
+            
+        elif var_dict[nme]['TUV'] == 'U':
+            rowsU, colsU = rot(seperated_results[kl])
+        elif var_dict[nme]['TUV'] == 'U':
+            rowsV, colsV = rot(seperated_results[kl])
+
     
-    new_combined_array = np.stack(results, axis=0)
     
+    # This was to stitch all the ukc4 data back together
+    #concatenated_dataarray = xr.concat(masked, dim='time_counter')
+
+    # new_combined_array = np.stack(results, axis=0)
+    # new_surface_height_array = xr.DataArray(new_combined_array, dims=concatenated_dataarray.dims, coords=concatenated_dataarray.coords)
+
+    # # Combine the existing 'vobtcrtx' and the new surface height array
+    # combined_dataset = xr.Dataset({
+    #     'vobtcrtx': concatenated_dataarray,
+    #     'surface_height': new_surface_height_array,
+    # })
+    
+    # ## Write the results out to a netcdf file. 
+    # combined_dataset.to_netcdf(output_nc_file)
+
     # results.sort(key=lambda x: x[1])
     # # Extract the arrays from the sorted results
     # sorted_arrays = [result[0] for result in results]
@@ -278,4 +349,39 @@ if __name__ == '__main__':
 Eventually add this back into an nc file for later processing, could stick all the data 
 that is to be compared together? It would make processing results easier? Although maybe keep U,V and T seperated ? or
 combine them but keep their grids seperated? 
+
+We need U, T and V to all be included as they all have their own grids which is why they 
+are different files. 
+
+plotting = 'n'
+if plotting == 'y':
+    plt.figure()
+    plt.pcolor(lons_sliced, lats_sliced, interpolated_values_sliced,linewidth=0,rasterized=True)
+    plt.colorbar()
+    
+    plt.figure()
+    plt.pcolor(masked,linewidth=0,rasterized=True)
+    plt.colorbar()
+    plt.title('UKC4 example')
+    
+    plt.figure()
+    plt.pcolor(lons_sliced, lats_sliced, mask_grid,linewidth=0,rasterized=True)
+    plt.colorbar()
+    plt.title('PRIMEA regridded onto UKC4 example')
+    
+    
+    
+    
+    
+    
+    
+    #lons_sliced = lon[~rows_to_remove, :]
+    #lons_sliced = lons_sliced[:, ~cols_to_remove]
+    #lats_sliced = lat[~rows_to_remove, :]
+    #lats_sliced = lats_sliced[:, ~cols_to_remove]
+    
+    
+    
+    # values = griddata((x_unstructured, y_unstructured), np.array(sh[420]).flatten(), (x_structured, y_structured), method='cubic')
+
 '''

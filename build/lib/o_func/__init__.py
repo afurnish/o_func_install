@@ -21,3 +21,6 @@ from .data_prepkit.gen_directory import DirGen
 from .data_visuals.video_plots import VideoPlots
 
 
+__authors__ = ['Aaron Furnish <afurnish@me.com>']
+
+__version__ = "v0.0.1"

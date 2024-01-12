@@ -271,8 +271,9 @@ if __name__ == '__main__':
     CONS = [[name] for name in unique_names]
     
     FREQ = np.array(result_df.Freq)
+    CONS2 = [item[0].encode('utf-8') for item in CONS]
     import ttide as tt
-    eta = tt.t_predic(np.array(t), CONS, FREQ, np.array(updatedList).astype(float))
+    eta = tt.t_predic(np.array(t), np.array(CONS2), FREQ, np.array(updatedList).astype(float))
 
     import matplotlib.dates as mdates
 
@@ -310,28 +311,28 @@ if __name__ == '__main__':
     plt.xlabel('Hours')
     plt.legend()
 #%% Notes 
-'''
-%Y: Year with century as a decimal number (e.g., 2023).
-%y: Year without century as a zero-padded decimal number (e.g., 23 for 2023).
-%m: Month as a zero-padded decimal number (01, 02, ..., 12).
-%b: Abbreviated month name (Jan, Feb, ..., Dec).
-%B: Full month name (January, February, ..., December).
-%d: Day of the month as a zero-padded decimal number (01, 02, ..., 31).
-%a: Abbreviated weekday name (Sun, Mon, ..., Sat).
-%A: Full weekday name (Sunday, Monday, ..., Saturday).
-%H: Hour (00, 01, ..., 23).
-%I: Hour (00, 01, ..., 12).
-%p: AM or PM.
-%M: Minute (00, 01, ..., 59).
-%S: Second (00, 01, ..., 59).
-You can combine these format codes to create custom date formats. For example:
-
-'%Y-%m-%d': 2023-12-31
-'%b %d, %Y': Dec 31, 2023
-'%A, %B %d, %Y': Saturday, December 31, 2023
-'%I:%M %p': 12:30 PM
-'''
-
+    '''
+    %Y: Year with century as a decimal number (e.g., 2023).
+    %y: Year without century as a zero-padded decimal number (e.g., 23 for 2023).
+    %m: Month as a zero-padded decimal number (01, 02, ..., 12).
+    %b: Abbreviated month name (Jan, Feb, ..., Dec).
+    %B: Full month name (January, February, ..., December).
+    %d: Day of the month as a zero-padded decimal number (01, 02, ..., 31).
+    %a: Abbreviated weekday name (Sun, Mon, ..., Sat).
+    %A: Full weekday name (Sunday, Monday, ..., Saturday).
+    %H: Hour (00, 01, ..., 23).
+    %I: Hour (00, 01, ..., 12).
+    %p: AM or PM.
+    %M: Minute (00, 01, ..., 59).
+    %S: Second (00, 01, ..., 59).
+    You can combine these format codes to create custom date formats. For example:
+    
+    '%Y-%m-%d': 2023-12-31
+    '%b %d, %Y': Dec 31, 2023
+    '%A, %B %d, %Y': Saturday, December 31, 2023
+    '%I:%M %p': 12:30 PM
+    '''
+    a =1
 #%%
 et = est_tide()
 df_amp, df_pha, tc_names = et.est_amp_and_phase_extractor('tide_gauges.pli', h_or_v = 'height')
