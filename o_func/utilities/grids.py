@@ -306,7 +306,7 @@ if __name__ == '__main__':
         cols_to_remove = np.all(np.isnan(values), axis=0)
         
         # Need to apply this to each item in the array.
-        interpolated_values_sliced = interpolated_values_reshaped[~rows_to_remove, :]
+        interpolated_values_sliced = values[~rows_to_remove, :]
         interpolated_values_sliced = interpolated_values_sliced[:, ~cols_to_remove]
         
         
