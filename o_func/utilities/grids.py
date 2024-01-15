@@ -7,7 +7,6 @@ import time
 from multiprocessing import Pool
 from tqdm import tqdm
 import glob
-import dask
 
 #grid_example = '/Volumes/PN/modelling_DATA/kent_estuary_project/6.Final2/models/02_kent_1.0.0_UM_wind/shortrunSCW_kent_1.0.0_UM_wind/UK_West+Duddon+Raven_+liv+ribble+wyre+ll+ul+leven_kent_1.1_net.nc'
 
@@ -298,29 +297,67 @@ if __name__ == '__main__':
     print('Finished in ', round( ( time.time() - start ),0 ), ' seconds')
     indices, results, names = zip(*results)
     seperated_results = list(zip(*results)) # This is in order of the names
+    seperated_results_indexed = seperated_results
+    # for m in range(len(seperated_results_indexed)):
+    #     print(seperated_results_indexed[m])
+    #     seperated_results_indexed[m] = tuple(seperated_results_indexed[m][i] for i in indices)
+    reordered_datasets = [tuple(item[i] for i in indices) for item in seperated_results_indexed]
+    
     filtered_names = [row for row in names if 'n/a' not in row][0]
 
 
-    def rot(values):
-        rows_to_remove = np.all(np.isnan(values), axis=1)
-        cols_to_remove = np.all(np.isnan(values), axis=0)
+    def rcr_PRIMEA(values): # function to remove rows n columns removal
+        if isinstance(values[0], np.ndarray):
+            rows_to_remove = np.all(np.isnan(values[0]), axis=1)
+            cols_to_remove = np.all(np.isnan(values[0]), axis=0)
+        elif isinstance(values[0], xr.core.dataarray.DataArray): # Adding in dask support
+            rows_to_remove = np.all(np.isnan(values[0].compute()), axis=1)
+            cols_to_remove = np.all(np.isnan(values[0].compute()), axis=0)
+            
+        # Need to apply this to each item in the array.
+        #interpolated_values_sliced = values[~rows_to_remove, :]
+        interpolated_values_sliced = [i[~rows_to_remove, :] for i in values ]
+        interpolated_values_sliced = [i[:, ~cols_to_remove] for i in interpolated_values_sliced]
+        return interpolated_values_sliced, rows_to_remove, cols_to_remove
+    
+    def rcr_UKC4(values, rows, cols): # function to remove rows n columns removal
         
         # Need to apply this to each item in the array.
-        interpolated_values_sliced = values[~rows_to_remove, :]
-        interpolated_values_sliced = interpolated_values_sliced[:, ~cols_to_remove]
+        #interpolated_values_sliced = values[~rows_to_remove, :]
+        interpolated_values_sliced = [i[~rows, :] for i in values ]
+        interpolated_values_sliced = [i[:, ~cols] for i in interpolated_values_sliced]
+        return interpolated_values_sliced
+
+    def mask_maker(ukc4_vals, primea_array):
+        # where masked is the processed col row ukc4 
+        nan_mask = np.isnan(ukc4_vals[0])
+        mask_grid = np.where(nan_mask, np.nan, primea_array)
         
-        
-        return rows_to_remove, cols_to_remove
+        return mask_grid
+    
+    seperated_results = reordered_datasets
     # MASK MAKER INTO COLS AND ROWS to remove larger areas of NANS but also need to remove other stuff
+    empty_PRIMEA_data_array = []
+    empty_UKC4_data_array = []
     for kl, nme in enumerate(filtered_names):
         if var_dict[nme]['TUV'] == 'T':
-            rowsT, colsT = rot(seperated_results[kl])
             
-        elif var_dict[nme]['TUV'] == 'U':
-            rowsU, colsU = rot(seperated_results[kl])
-        elif var_dict[nme]['TUV'] == 'U':
-            rowsV, colsV = rot(seperated_results[kl])
+            vals, rows, cols = rcr_PRIMEA(seperated_results[kl])
+            ukc4_dataset = rcr_UKC4( TUV[0][var_dict[nme]['UKC4']], rows, cols)
+            empty_UKC4_data_array.append(ukc4_dataset)
+            vals = mask_maker(ukc4_dataset, vals)
+            empty_PRIMEA_data_array.append(vals)
 
+        elif var_dict[nme]['TUV'] == 'U':
+            vals, rows, cols = rcr_PRIMEA(seperated_results[kl])
+            empty_PRIMEA_data_array.append(vals)
+            empty_UKC4_data_array.append(rcr_UKC4( TUV[1][var_dict[nme]['UKC4']], rows, cols ))
+        elif var_dict[nme]['TUV'] == 'U':
+            vals, rows, cols = rcr_PRIMEA(seperated_results[kl])
+            empty_PRIMEA_data_array.append(vals)
+            empty_UKC4_data_array.append(rcr_UKC4( TUV[2][var_dict[nme]['UKC4']], rows, cols ))
+    
+    # empty_data_array is now the fully formatted dataset regridded onto lower resolution grid.
     
     
     # This was to stitch all the ukc4 data back together
