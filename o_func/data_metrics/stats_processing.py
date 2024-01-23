@@ -253,16 +253,6 @@ class stats:
         return selected_dict
     #print(prefix('prim', loaded_data[4]['surface_height']))
      
-    def time_shifter(self):
-        df = pd.DataFrame({'time_primea': self.raw_data.time_primea,
-                           'time_ukc4': self.raw_data.time_counter,
-                           # 'prim_surface_height': self.raw_data,
-                           # 'prim_surface_salinity': self.raw_data,
-                           # 'ukc4_surface_height': self.raw_data,
-                           # 'ukc4_surface_salinity': self.raw_data,
-                           })
-
-        
     def load_raw(self): # Need to be able to run it for every dataset
         self.raw_data = xr.open_dataset(self.data)
         # self.time_shifted = self.time_shifter()
