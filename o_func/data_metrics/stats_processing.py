@@ -9,12 +9,14 @@ Created on Thu Sep 28 09:15:20 2023
 import pandas as pd
 import os
 import xarray as xr
+import numpy as np
+import sys
 
-from o_func.utilities.start  import opsys; start_path = opsys()
+from o_func import opsys; start_path = opsys()
 
 
 class r_stats:
-    def __init__(self, prim_data, ukc3_int_path = 'default'):
+    def __init__(self, dataset):
      self.tide_gauge_path = os.path.join(start_path,
                                          'modelling_DATA',
                                          'kent_estuary_project',
@@ -29,14 +31,14 @@ class r_stats:
                   'ukc4_on_PRIMEA_grid')     
                   
                   
-     self.prim_data = prim_data # primea data path             
+     self.data = dataset # primea data path             
                   
-     ukc3_int_path_options = {'default':{'name':'original ukc3 interp dataset',
-                                         'path': ukc3_path}
-                                 }
+     # ukc3_int_path_options = {'default':{'name':'original ukc3 interp dataset',
+     #                                     'path': ukc3_path}
+     #                             }
      
-     self.ukc3_int_path = ukc3_int_path_options[ukc3_int_path]['path']
-     print(self.ukc3_int_path)
+     # self.ukc3_int_path = ukc3_int_path_options[ukc3_int_path]['path']
+     # print(self.ukc3_int_path)
      
     @staticmethod
     def calculate_hourly_means(df):
@@ -183,26 +185,113 @@ class r_stats:
         
     def run_stats(self):
         self.load_data()
-if __name__ == "__main__":
-    from o_func import DataChoice, DirGen
-    import glob
+# if __name__ == "__main__":
+#     from o_func import DataChoice, DirGen
+#     import glob
     
-    #%% Making Directory paths
-    main_path = os.path.join(start_path, r'modelling_DATA','kent_estuary_project',r'6.Final2')
-    make_paths = DirGen(main_path)
-    ### Finishing directory paths
+#     #%% Making Directory paths
+#     main_path = os.path.join(start_path, r'modelling_DATA','kent_estuary_project',r'6.Final2')
+#     make_paths = DirGen(main_path)
+#     ### Finishing directory paths
     
-    dc = DataChoice(os.path.join(main_path,'models'))
-    fn = dc.dir_select()
-    sub_path = make_paths.dir_outputs(os.path.split(fn[0])[-1])
-    lp = glob.glob(os.path.join(sub_path, '*.nc'))[0]
-    rs = r_stats(prim_data = lp)
-    rs.load_data()
+#     dc = DataChoice(os.path.join(main_path,'models'))
+#     fn = dc.dir_select()
+#     sub_path = make_paths.dir_outputs(os.path.split(fn[0])[-1])
+#     lp = glob.glob(os.path.join(sub_path, '*.nc'))[0]
+#     rs = r_stats(prim_data = lp)
+#     rs.load_data()
         
         
+#%%   
+
+example_dataset = os.path.join(start_path, 'modelling_DATA','kent_estuary_project',r'6.Final2','models','kent_1.3.7_testing_4_days_UM_run','kent_regrid.nc')
+var_dict = {
+'surface_height'   : {'TUV':'T',  'UKC4':'sossheig',       'PRIMEA':'mesh2d_s1'},
+'surface_salinity' : {'TUV':'T',  'UKC4':'vosaline_top',   'PRIMEA':'mesh2d_sa1'},
+'middle_salinity'  : {'TUV':'T',  'UKC4':'',   'PRIMEA':'na'},
+'bottom_salinity'  : {'TUV':'T',  'UKC4':'',   'PRIMEA':'na'},
+'surface_Uvelocity': {'TUV':'U',  'UKC4':'',   'PRIMEA':'na'},
+'middle_Uvelocity' : {'TUV':'U',  'UKC4':'',   'PRIMEA':'na'},
+'bottom_Uvelocity' : {'TUV':'U',  'UKC4':'',   'PRIMEA':'na'},
+'surface_Vvelocity': {'TUV':'V',  'UKC4':'',   'PRIMEA':'na'},
+'middle_Vvelocity' : {'TUV':'V',  'UKC4':'',   'PRIMEA':'na'},
+'bottom_Vvelocity' : {'TUV':'V',  'UKC4':'',   'PRIMEA':'na'},
+}
+class stats:
+    def __init__(self, dataset):
+     self.tide_gauge_path = os.path.join(start_path,
+                                         'modelling_DATA',
+                                         'kent_estuary_project',
+                                         'validation',
+                                         'tidal_validation',
+                                         r'1.reformatted')
+     self.data = dataset # primea data path             
+     
+    @staticmethod
+    def calculate_hourly_means(df):
+        """
+        Calculate hourly means for a time series DataFrame with timestamps at the middle of each hour.
+
+        Args:
+            df (pd.DataFrame): Input DataFrame with DatetimeIndex.
+
+        Returns:
+            pd.DataFrame: DataFrame with hourly means and timestamps at the middle of each hour.
+        """
+        hourly_means = df.resample('H').mean()
+        hourly_means.index = hourly_means.index + pd.Timedelta(minutes=30)
+
+        return hourly_means
+    
+    @staticmethod
+    def prefix(desired_prefix, dictionary):    
+        selected_dict = None
+        for key, value in dictionary.items():
+            if key.startswith(desired_prefix):
+                selected_dict = value
+                break  # Stop iterating once the first matching prefix is found
+        return selected_dict
+    #print(prefix('prim', loaded_data[4]['surface_height']))
+     
+    def time_shifter(self):
+        df = pd.DataFrame({'time_primea': self.raw_data.time_primea,
+                           'time_ukc4': self.raw_data.time_counter,
+                           # 'prim_surface_height': self.raw_data,
+                           # 'prim_surface_salinity': self.raw_data,
+                           # 'ukc4_surface_height': self.raw_data,
+                           # 'ukc4_surface_salinity': self.raw_data,
+                           })
+
         
+    def load_raw(self): # Need to be able to run it for every dataset
+        self.raw_data = xr.open_dataset(self.data)
+        # self.time_shifted = self.time_shifter()
+        filtered_list_of_dicts = {}
+        for dataset_var in [i for i in var_dict]:
+            split_datasets = {var: self.raw_data[var] for var in self.raw_data.data_vars if var.endswith(dataset_var)}
+            if split_datasets:
+                filtered_list_of_dicts[dataset_var] = split_datasets # This is now a dictionary of the data
+
+        self.resampled_prim = self.raw_data.prim_surface_height.resample(time_primea='1H').mean() 
+        self.resampled_prim['time_primea'] = self.resampled_prim.time_primea + pd.to_timedelta('30min')
         
+        self.ukc4_sliced = self.raw_data.ukc4_surface_height.sel(time_counter=self.resampled_prim['time_primea'])
         
+        matching_times = (self.resampled_prim['time_primea'] == self.ukc4_sliced['time_counter']).all()
         
+
+        if matching_times:
+            print("The time arrays have identical values.")
+        else:
+            print("The time arrays do not match.")
+            print("Exiting script, take a look at the code...")
+            
+            sys.exit()
+        split_datasets = {var: self.raw_data[var] for var in self.raw_data.data_vars if var.endswith('surface_height')}
+        split_datasets = {var: self.raw_data[var] for var in self.raw_data.data_vars if var.endswith('surface_height')}
+        return self.raw_data, self.resampled_prim, self.ukc4_sliced, split_datasets, filtered_list_of_dicts
         
-        
+if __name__ == '__main__':
+    sts = stats(example_dataset)
+    loaded_data = sts.load_raw()
+    print(loaded_data[3].keys())       

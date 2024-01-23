@@ -1,16 +1,23 @@
 import xarray as xr
 import numpy as np
-from scipy.interpolate import griddata, CloughTocher2DInterpolator
+from scipy.interpolate import griddata, CloughTocher2DInterpolator, RBFInterpolator
 import pyproj
 import matplotlib.pyplot as plt
 import time
 from multiprocessing import Pool
 from tqdm import tqdm
 import glob
+import sys
+import os
+import pickle
+from o_func import opsys; start_path = opsys()
 
 #grid_example = '/Volumes/PN/modelling_DATA/kent_estuary_project/6.Final2/models/02_kent_1.0.0_UM_wind/shortrunSCW_kent_1.0.0_UM_wind/UK_West+Duddon+Raven_+liv+ribble+wyre+ll+ul+leven_kent_1.1_net.nc'
 
 #data = xr.open_dataset(grid_example)
+
+def line():
+    print('-'*60)
 
 def is_counterclockwise(A, B, C):
     area = 0.5 * ((B - A) * (C - A) - (C - A) * (B - A))
@@ -186,10 +193,22 @@ def PRIMEA_to_ESMF():
 #%%    
 
 if __name__ == '__main__':
+    start = time.time()
+    if len(sys.argv) != 2:
+        print("Usage: python script.py <input_file>")
+        sys.exit(1)
+
+    input_file = sys.argv[1]
+    full_path = os.path.join(os.getcwd(), input_file)
+    #%% Run locally
+    # input_file = '/media/af/PN/modelling_DATA/kent_estuary_project/6.Final2/models/kent_1.0.0_UM_wind/kent_31_merged_map.nc'
+    input_file = os.path.join(start_path, 'modelling_DATA','kent_estuary_project',r'6.Final2','models','kent_1.3.7_testing_4_days_UM_run','kent_31_merged_map.nc')
+    input_file_path = os.path.split(input_file)
+    #print(input_file)
     
     var_dict = {
     'surface_height'   : {'TUV':'T',  'UKC4':'sossheig',       'PRIMEA':'mesh2d_s1'},
-    'surface_salinity ': {'TUV':'T',  'UKC4':'vosaline_top',   'PRIMEA':'mesh2d_sa1'},
+    'surface_salinity': {'TUV':'T',  'UKC4':'vosaline_top',   'PRIMEA':'mesh2d_sa1'},
     'middle_salinity'  : {'TUV':'T',  'UKC4':'',   'PRIMEA':'na'},
     'bottom_salinity'  : {'TUV':'T',  'UKC4':'',   'PRIMEA':'na'},
     'surface_Uvelocity': {'TUV':'U',  'UKC4':'',   'PRIMEA':'na'},
@@ -208,18 +227,25 @@ if __name__ == '__main__':
         # This will open various ukc3 files as they have slightly different grids for comparrison. 
         # we will start with U since it is to hand. 
         #U = xr.open_dataset("/media/af/PN/Original_Data/UKC3/sliced/oa/shelftmb_cut_to_domain/UKC4ao_1h_20131030_20131030_shelftmb_grid_U.nc")
-        T = glob.glob("/media/af/PN/Original_Data/UKC3/sliced/oa/shelftmb_cut_to_domain/*T.nc")
-        U = glob.glob("/media/af/PN/Original_Data/UKC3/sliced/oa/shelftmb_cut_to_domain/*U.nc")
-        V = glob.glob("/media/af/PN/Original_Data/UKC3/sliced/oa/shelftmb_cut_to_domain/*V.nc")
+        mp = os.path.join(start_path, 'Original_Data','UKC3','sliced','oa','shelftmb_cut_to_domain')
+        T = glob.glob(os.path.join(mp, "*T.nc"))
+        U = glob.glob(os.path.join(mp, "*U.nc"))
+        V = glob.glob(os.path.join(mp, "*V.nc"))
+        print('Loading UKC4 datasets...')
         TUV = [xr.open_mfdataset(i) for i in [T,U,V]]
         
         lonTUV = [i.nav_lon for i in TUV]
         latTUV = [i.nav_lat for i in TUV]
     
     
-    primea_model = xr.open_dataset('/media/af/PN/modelling_DATA/kent_estuary_project/6.Final2/models/kent_1.0.0_UM_wind/kent_31_merged_map.nc', engine = 'scipy')
+    #primea_model = xr.open_dataset('/media/af/PN/modelling_DATA/kent_estuary_project/6.Final2/models/kent_1.0.0_UM_wind/kent_31_merged_map.nc', engine = 'scipy')
+    print('Loading PRIMEA datasets...')
+    primea_model = xr.open_dataset(input_file)#, engine = 'scipy')
+    #print(primea_model)
     #regridded_primea = '/media/af/PN/modelling_DATA/kent_estuary_project/6.Final2/models/kent_1.0.0_UM_wind/regridded_kent_31_merged_map.nc'
-    output_nc_file = '/media/af/PN/modelling_DATA/kent_estuary_project/6.Final2/models/kent_1.0.0_UM_wind/regrid_data/kent_regrid.nc' 
+    
+    output_nc_file = os.path.join(input_file_path[0],'kent_regrid.nc')
+    #output_nc_file = '/media/af/PN/modelling_DATA/kent_estuary_project/6.Final2/models/kent_1.0.0_UM_wind/regrid_data/kent_regrid.nc' 
     #start with water 
     #sh = primea_model.mesh2d_s1
     plon = primea_model.mesh2d_s1.mesh2d_face_x
@@ -233,14 +259,34 @@ if __name__ == '__main__':
     x_structuredT, y_structuredT = projector.transform(np.array(lonTUV[0]).flatten(), np.array(latTUV[0]).flatten())
     x_structuredU, y_structuredU = projector.transform(np.array(lonTUV[1]).flatten(), np.array(latTUV[1]).flatten())
     x_structuredV, y_structuredV = projector.transform(np.array(lonTUV[2]).flatten(), np.array(latTUV[2]).flatten())
-
+    line()
+    first_iteration = -1
     print('Running regridding operation...')
+    interpolator_pkl = os.path.join(input_file_path[0],'interpolator.pkl')
+    
+    def interpolator_extractor():
+        for jk, k in enumerate([i for i in var_dict]):
+            # perform a check to ensure the variables exist 
+            if var_dict[k]['PRIMEA'] in [i for i in primea_model.data_vars]:
+                var = var_dict[k]['PRIMEA']
+                interpolator = CloughTocher2DInterpolator((x_unstructured, y_unstructured), np.array(primea_model[var][0]).flatten())
+                #interpolator = CloughTocher2DInterpolator((x_unstructured, y_unstructured),fill_value=np.nan, rescale=False)
+                with open(interpolator_pkl, 'wb') as file:
+                    pickle.dump(interpolator, file)
+                #rbf_interpolator = RBFInterpolator(x_unstructured, y_unstructured)
+        #return rbf_interpolator
+    #rbf_interpolator = interpolator_extractor()
+    
+    with open(interpolator_pkl, 'rb') as file: # A quick test took 50 seconds, 5 for this part 
+        loaded_interpolator = pickle.load(file)
+
     def para_proc(lm):
         names = []
         primea_saves = []
-        for k in [i for i in var_dict]:
+        for jk, k in enumerate([i for i in var_dict]):
             # perform a check to ensure the variables exist 
             if var_dict[k]['PRIMEA'] in [i for i in primea_model.data_vars]:
+                
                 var = var_dict[k]['PRIMEA']
                 if lm == 0:
                     names.append(k) # keeps order of variables comparing. 
@@ -257,10 +303,15 @@ if __name__ == '__main__':
                     x_structured, y_structured = x_structuredT, y_structured
                     lon = lonTUV[2] 
         
-                #print(var_dict[k]['UKC4'])
-                ### This block repeats for all variables
+               
                 interpolator = CloughTocher2DInterpolator((x_unstructured, y_unstructured), np.array(primea_model[var][lm]).flatten())
-                values = interpolator(x_structured, y_structured)
+                values = interpolator(x_structured, y_structured) # A quick test and this took 8 seconds
+                
+                
+                #values = loaded_interpolator(x_structured, y_structured)
+                #values = rbf_interpolator(x_structured, y_structured, np.array(primea_model[var][lm]).flatten())
+
+                
                 interpolated_values_reshaped = values.reshape(lon.shape)
             
                 # Find rows and columns that contain only NaN values
@@ -283,9 +334,14 @@ if __name__ == '__main__':
                 primea_saves.append(interpolated_values_reshaped)
         return lm, primea_saves, names
     
-    num_iterations = len(primea_model.time)//10 # // means no remainders for testing
+    #limiter = 1 # 10 
+    num_iterations = len(primea_model.time)#//limiter # // means no remainders for testing
+    #num_iterations = 200#//limiter # // means no remainders for testing
+  
+    primea_time = primea_model.time[:(num_iterations)]
+    print('primea timestep number', len(primea_model.time))
     # Create a ThreadPoolExecutor
-    start = time.time()
+    
     with Pool() as pool:
     # Pass a range of values to the pool, each value representing an iteration
         # results = pool.map(para_proc, range(num_iterations))
@@ -294,13 +350,11 @@ if __name__ == '__main__':
     pool.close()
     pool.join()
     
-    print('Finished in ', round( ( time.time() - start ),0 ), ' seconds')
+    
     indices, results, names = zip(*results)
     seperated_results = list(zip(*results)) # This is in order of the names
     seperated_results_indexed = seperated_results
-    # for m in range(len(seperated_results_indexed)):
-    #     print(seperated_results_indexed[m])
-    #     seperated_results_indexed[m] = tuple(seperated_results_indexed[m][i] for i in indices)
+    # REORDER DATASETS
     reordered_datasets = [tuple(item[i] for i in indices) for item in seperated_results_indexed]
     
     filtered_names = [row for row in names if 'n/a' not in row][0]
@@ -339,27 +393,80 @@ if __name__ == '__main__':
     # MASK MAKER INTO COLS AND ROWS to remove larger areas of NANS but also need to remove other stuff
     empty_PRIMEA_data_array = []
     empty_UKC4_data_array = []
-    for kl, nme in enumerate(filtered_names):
+    for kl, nme in enumerate(tqdm(filtered_names, desc="Processing UKC4 data: ", unit="file")):
         if var_dict[nme]['TUV'] == 'T':
-            
             vals, rows, cols = rcr_PRIMEA(seperated_results[kl])
-            ukc4_dataset = rcr_UKC4( TUV[0][var_dict[nme]['UKC4']], rows, cols)
+            ukc4_dataset = rcr_UKC4(TUV[0][var_dict[nme]['UKC4']], rows, cols)
             empty_UKC4_data_array.append(ukc4_dataset)
             vals = mask_maker(ukc4_dataset, vals)
-            empty_PRIMEA_data_array.append(vals)
-
-        elif var_dict[nme]['TUV'] == 'U':
-            vals, rows, cols = rcr_PRIMEA(seperated_results[kl])
-            empty_PRIMEA_data_array.append(vals)
-            empty_UKC4_data_array.append(rcr_UKC4( TUV[1][var_dict[nme]['UKC4']], rows, cols ))
-        elif var_dict[nme]['TUV'] == 'U':
-            vals, rows, cols = rcr_PRIMEA(seperated_results[kl])
-            empty_PRIMEA_data_array.append(vals)
-            empty_UKC4_data_array.append(rcr_UKC4( TUV[2][var_dict[nme]['UKC4']], rows, cols ))
+            empty_PRIMEA_data_array.append(np.stack(vals, axis=0))
     
+        elif var_dict[nme]['TUV'] == 'U':
+            vals, rows, cols = rcr_PRIMEA(seperated_results[kl])
+            ukc4_dataset = rcr_UKC4(TUV[1][var_dict[nme]['UKC4']], rows, cols)
+            empty_UKC4_data_array.append(ukc4_dataset)
+            vals = mask_maker(ukc4_dataset, vals)
+            empty_PRIMEA_data_array.append(np.stack(vals, axis=0))
+            
+        elif var_dict[nme]['TUV'] == 'U':
+            vals, rows, cols = rcr_PRIMEA(seperated_results[kl])
+            ukc4_dataset = rcr_UKC4(TUV[2][var_dict[nme]['UKC4']], rows, cols)
+            empty_UKC4_data_array.append(ukc4_dataset)
+            vals = mask_maker(ukc4_dataset, vals)
+            empty_PRIMEA_data_array.append(np.stack(vals, axis=0))
+            
     # empty_data_array is now the fully formatted dataset regridded onto lower resolution grid.
+    ukc4_xrdata_array = [xr.concat(i, dim='time_counter') for i in empty_UKC4_data_array]
+    primea_data_array = empty_PRIMEA_data_array
+    #print(primea_data_array[0].shape)
+    
+    lon_2d, lat_2d = xr.broadcast(ukc4_xrdata_array[0]['nav_lon'], ukc4_xrdata_array[0]['nav_lat'])
+    time_coord = xr.DataArray(primea_time, dims='time', coords={'time': primea_time})
+    #print(primea_data_array[0])
+    # generate the primea dataarray in the UKC4 format.
+    primea_converted_data_array = [xr.DataArray(
+                            i,
+                            dims=('time', 'y', 'x'),
+                            coords={
+                                'nav_lat': (('y', 'x'), lat_2d.data),  # Replace nav_lat_values with your actual values
+                                'nav_lon': (('y', 'x'), lon_2d.data),  # Replace nav_lon_values with your actual values
+                                'time_primea': time_coord  # Assuming time_coord is your time array
+                                },
+                                # attrs={'units': 'm', 'online_operation': 'instant',
+                                #        #'interval_operation': '60 s', 'interval_write': '1 h',
+                                #        #'cell_methods': 'time: point (interval: 60 s)'
+                                #        }
+                                        ) for i in primea_data_array]
+    
+    primea_attrs_list = [primea_model[var_dict[i]['PRIMEA']] for i in filtered_names]
+    for i, k in enumerate(primea_converted_data_array): # reassign the attributes for data_storage 
+        k.attrs = primea_attrs_list[i].attrs
+        
+    dict_to_dataset = {}
+    # for key in filtered_names:
+    for ik, dataset in enumerate([primea_converted_data_array, ukc4_xrdata_array]):    
+        for ig, name in enumerate(filtered_names):
+            if ik == 0: 
+                key = 'prim_' + name
+            else:
+                key = 'ukc4_' + name
+            dict_to_dataset[key] = dataset[ig]
     
     
+    dataset = xr.Dataset(dict_to_dataset)
+    
+    if os.path.exists(output_nc_file):
+        # Delete the file
+        os.remove(output_nc_file)
+        print(f"Old File '{output_nc_file}' deleted.")
+    line()
+    print('Writing to file...')
+    dataset.to_netcdf(output_nc_file, mode = 'w')
+    
+    minutes, seconds = divmod(( time.time() - start ) , 60)
+    formatted_time = "{:02}:{:02}".format(int(minutes), int(seconds))
+
+    print('Finished regridding in', formatted_time)
     # This was to stitch all the ukc4 data back together
     #concatenated_dataarray = xr.concat(masked, dim='time_counter')
 
@@ -420,5 +527,6 @@ if plotting == 'y':
     
     
     # values = griddata((x_unstructured, y_unstructured), np.array(sh[420]).flatten(), (x_structured, y_structured), method='cubic')
+    #primea_data_array = [np.stack(i, axis=0) for i in empty_PRIMEA_data_array]
 
 '''
