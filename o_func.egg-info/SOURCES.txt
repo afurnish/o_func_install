@@ -30,7 +30,7 @@ o_func/data/bash/FES2014_slicer.sh
 o_func/data/bash/merge_csv.sh
 o_func/data_metrics/__init__.py
 o_func/data_metrics/compare.py
-o_func/data_metrics/stats_processing_r_squared_etc.py
+o_func/data_metrics/stats_processing.py
 o_func/data_metrics/t_tide.py
 o_func/data_prepkit/__init__.py
 o_func/data_prepkit/esmf.py

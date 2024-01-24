@@ -14,10 +14,10 @@ from o_func import opsys; start_path = opsys()
 
 #grid_example = '/Volumes/PN/modelling_DATA/kent_estuary_project/6.Final2/models/02_kent_1.0.0_UM_wind/shortrunSCW_kent_1.0.0_UM_wind/UK_West+Duddon+Raven_+liv+ribble+wyre+ll+ul+leven_kent_1.1_net.nc'
 
-#data = xr.open_dataset(grid_example)
-
 def line():
     print('-'*60)
+#%%
+
 
 def is_counterclockwise(A, B, C):
     area = 0.5 * ((B - A) * (C - A) - (C - A) * (B - A))
@@ -184,12 +184,14 @@ def PRIMEA_to_ESMF():
         grid_center_lon  (grid_size) float64 ...
         grid_imask       (grid_size) int32 ...
         grid_corner_lat  (grid_size, grid_corners) float64 ...
-        grid_corner_lon  (grid_size, grid_corners) float64 ...
+        grid_corner_lo    time_primea  datetime64[ns] 2013-11-01T07:00:00
+n  (grid_size, grid_corners) float64 ...
     Attributes:
         NetCDF_source_t:  ocnUKO2_V_grid_out_nom.nc
         file_name:        ocnUKO2_V_grid_out_nom.nc
         title:            AMM15V
     '''
+    
 #%%    
 
 if __name__ == '__main__':
@@ -201,10 +203,13 @@ if __name__ == '__main__':
     input_file = sys.argv[1]
     full_path = os.path.join(os.getcwd(), input_file)
     #%% Run locally
-    # input_file = '/media/af/PN/modelling_DATA/kent_estuary_project/6.Final2/models/kent_1.0.0_UM_wind/kent_31_merged_map.nc'
-    input_file = os.path.join(start_path, 'modelling_DATA','kent_estuary_project',r'6.Final2','models','kent_1.3.7_testing_4_days_UM_run','kent_31_merged_map.nc')
+        # input_file = '/media/af/PN/modelling_DATA/kent_estuary_project/6.Final2/models/kent_1.0.0_UM_wind/kent_31_merged_map.nc'
+        #/media/af/PN/modelling_DATA/kent_estuary_project/6.Final2/models/kent_1.0.0_UM_wind            # bad model ---kent_1.3.7_testing_4_days_UM_run
+    #input_file = os.path.join(start_path, 'modelling_DATA','kent_estuary_project',r'6.Final2','models','kent_1.0.0_UM_wind','kent_31_merged_map.nc')
+    #input_file = os.path.join(start_path, 'modelling_DATA','kent_estuary_project',r'6.Final2','models','kent_1.3.7_testing_4_days_UM_run','kent_31_merged_map.nc')
+
     input_file_path = os.path.split(input_file)
-    #print(input_file)
+    print('Input file:\n', input_file, '\n')
     
     var_dict = {
     'surface_height'   : {'TUV':'T',  'UKC4':'sossheig',       'PRIMEA':'mesh2d_s1'},
@@ -279,7 +284,7 @@ if __name__ == '__main__':
     
     with open(interpolator_pkl, 'rb') as file: # A quick test took 50 seconds, 5 for this part 
         loaded_interpolator = pickle.load(file)
-
+    start = time.time()
     def para_proc(lm):
         names = []
         primea_saves = []
@@ -337,25 +342,53 @@ if __name__ == '__main__':
     #limiter = 1 # 10 
     num_iterations = len(primea_model.time)#//limiter # // means no remainders for testing
     #num_iterations = 200#//limiter # // means no remainders for testing
-  
+  input_file
+
     primea_time = primea_model.time[:(num_iterations)]
+    # performing a time check to ensure all the data that needs to be there is there whihc messes up other processes later down the line
+    try:
+        # Check if primea_time is in chronological order
+        primea_time_testing = primea_time[2:-2] # removes the last and first two values for testing as delft has a habit of finishing the last model result with  aslightly diff second value. 
+        #primea_time_testing= primea_time
+        disorder_indices = np.where(np.diff(primea_time_testing) < np.timedelta64(0))[0]
+        if len(disorder_indices) > 0:
+            raise ValueError(f"Error: primea_time is not in chronological order at indices {disorder_indices}.")
+        
+        # Check if intervals between time steps are constant
+        time_diffs = np.diff(primea_time_testing)
+        inconsistent_intervals_indices = np.where(time_diffs != time_diffs[0])[0]
+        if len(inconsistent_intervals_indices) > 0:
+            raise ValueError(f"Error: Intervals between time steps are not constant at indices {inconsistent_intervals_indices}.")
+    
+    except ValueError as e:
+        print(e)
+        print('Time is not in chronological order, model may be broken or tampered with...')
+    
     print('primea timestep number', len(primea_model.time))
     # Create a ThreadPoolExecutor
     
     with Pool() as pool:
     # Pass a range of values to the pool, each value representing an iteration
         # results = pool.map(para_proc, range(num_iterations))
-        results = list(tqdm(pool.imap_unordered(para_proc, range(num_iterations)), total=num_iterations))
+        packed_results = list(tqdm(pool.imap_unordered(para_proc, range(num_iterations)), total=num_iterations))
 
     pool.close()
     pool.join()
     
-    
-    indices, results, names = zip(*results)
+    results_sorted = sorted(packed_results, key=lambda x: x[0])
+
+    indices, results, names = zip(*results_sorted)
     seperated_results = list(zip(*results)) # This is in order of the names
-    seperated_results_indexed = seperated_results
+    # for identifying errors in plots
+    # for i in range (30):
+    #     plt.figure()
+    #     time.sleep(0.5)
+    #     plt.pcolor(seperated_results[1][-1*i])
+    #     plt.savefig('/home/af/Desktop/temp.png', dpi =150)
+    #seperated_results_indexed = seperated_results
     # REORDER DATASETS
-    reordered_datasets = [tuple(item[i] for i in indices) for item in seperated_results_indexed]
+    #%%
+    #reordered_datasets = [tuple(item[i] for i in indices) for item in seperated_results_indexed]
     
     filtered_names = [row for row in names if 'n/a' not in row][0]
 
@@ -389,7 +422,7 @@ if __name__ == '__main__':
         
         return mask_grid
     
-    seperated_results = reordered_datasets
+    #seperated_results = reordered_datasets
     # MASK MAKER INTO COLS AND ROWS to remove larger areas of NANS but also need to remove other stuff
     empty_PRIMEA_data_array = []
     empty_UKC4_data_array = []

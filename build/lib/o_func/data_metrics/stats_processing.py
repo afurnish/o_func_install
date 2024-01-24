@@ -11,7 +11,6 @@ import os
 import xarray as xr
 import numpy as np
 import sys
-import matplotlib.pyplot as plt
 
 from o_func import opsys; start_path = opsys()
 
@@ -205,7 +204,7 @@ from o_func import opsys; start_path = opsys()
         
 #%%   
 # It is worth saving the original copy of the data for some comparative analysis. 
-#example_dataset = os.path.join(start_path, 'modelling_DATA','kent_estuary_project',r'6.Final2','models','kent_1.3.7_testing_4_days_UM_run','kent_regrid.nc')
+example_dataset = os.path.join(start_path, 'modelling_DATA','kent_estuary_project',r'6.Final2','models','kent_1.3.7_testing_4_days_UM_run','kent_regrid.nc')
 var_dict = {
 'surface_height'   : {'TUV':'T',  'UKC4':'sossheig',       'PRIMEA':'mesh2d_s1'},
 'surface_salinity' : {'TUV':'T',  'UKC4':'vosaline_top',   'PRIMEA':'mesh2d_sa1'},
@@ -227,12 +226,7 @@ class stats:
                                          'tidal_validation',
                                          r'1.reformatted')
      self.data = dataset # primea data path             
-     self.tide_gauge_data = glob.glob(os.path.join(start_path,
-                                               'modelling_DATA',
-                                               'kent_estuary_project',
-                                               'validation',
-                                               'tidal_validation',
-                                               r'1.reformatted', 'tide*'))
+     
     @staticmethod
     def calculate_hourly_means(df):
         """
@@ -258,98 +252,46 @@ class stats:
                 break  # Stop iterating once the first matching prefix is found
         return selected_dict
     #print(prefix('prim', loaded_data[4]['surface_height']))
-    @staticmethod
-    def print_dict_keys(dictionary, indent=0):
-        for key, value in dictionary.items():
-            if isinstance(value, dict):
-                print(' ' * indent + f"{key}:")
-                stats.print_dict_keys(value, indent + 2)
-            else:
-                print(' ' * indent + f"{key}")
-         
+     
     def load_raw(self): # Need to be able to run it for every dataset
         self.raw_data = xr.open_dataset(self.data)
         # self.time_shifted = self.time_shifter()
-        data_dict = {}
+        prim_dict = {}
+        ukc4_dict = {}
         for dataset_var in [i for i in var_dict]:
             prim_datasets = {var: self.raw_data[var] for var in self.raw_data.data_vars if var.startswith('prim')}
             ukc4_datasets = {var: self.raw_data[var] for var in self.raw_data.data_vars if var.startswith('ukc4')}
-            # print(prim_datasets)
-            # if ukc4_datasets: # doesnt matter which one it is
-            #     for primkey, value in prim_datasets.items():
-            #         prim_datasets[primkey] = value.resample(time_primea='1H').mean()
-            #         prim_datasets[primkey]['time_primea'] = prim_datasets[primkey].time_primea + pd.to_timedelta('30min')
-                    
-            #     for key, value in ukc4_datasets.items():
-            #         print(primkey)
-            #         ukc4_datasets[key] = ukc4_datasets[key].sel(time_counter=prim_datasets[primkey].time_primea)
-            #         matching_times = (self.resampled_prim['time_primea'] == self.ukc4_sliced['time_counter']).all()
-            
-            def rename_dict(dictionary):
-                modified_dict = {}
-                for old_key, value in dictionary.items():
-                    new_key = old_key[5:]  # Remove the first 5 characters
-                    modified_dict[new_key] = value
-                return modified_dict
-            
-            if ukc4_datasets: # doesnt matter which one it is
-                for (primkey, primvalue), (ukc4key, ukc4value) in zip(prim_datasets.items(), ukc4_datasets.items()):
-                    prim_datasets[primkey] = primvalue.resample(time_primea='1H').mean(skipna = True)
-                    prim_datasets[primkey]['time_primea'] = prim_datasets[primkey].time_primea + pd.to_timedelta('30min')
-                    ukc4_datasets[ukc4key] = ukc4_datasets[ukc4key].sel(time_counter=prim_datasets[primkey].time_primea)
-                    matching_times = (prim_datasets[primkey]['time_primea'] == ukc4_datasets[ukc4key]['time_counter']).all()
-                    if not matching_times:
-                        print("The time arrays do not match.")
-                        print("Exiting script, take a look at the code...")
-                        sys.exit()
-                
-                
-                
-                data_dict['ukc4'] = rename_dict(ukc4_datasets) # This is now a dictionary of the data
-                data_dict['prim'] = rename_dict(prim_datasets)
+            print(prim_datasets)
+            # # print(split_datasets)
+            if ukc4_datasets:
+                # print(dataset_var)
+                ukc4_dict['ukc4'] = ukc4_datasets # This is now a dictionary of the data
+                prim_dict['prim'] = prim_datasets
                 
         # times need to be remapped for only primea data based off the first ukc4 data        
-        #self.resampled_prim = self.raw_data.prim_surface_height.resample(time_primea='1H').mean() 
-        #self.resampled_prim['time_primea'] = self.resampled_prim.time_primea + pd.to_timedelta('30min')
+        self.resampled_prim = self.raw_data.prim_surface_height.resample(time_primea='1H').mean() 
+        self.resampled_prim['time_primea'] = self.resampled_prim.time_primea + pd.to_timedelta('30min')
         
-        # self.ukc4_sliced = self.raw_data.ukc4_surface_height.sel(time_counter=self.resampled_prim['time_primea'])
+        self.ukc4_sliced = self.raw_data.ukc4_surface_height.sel(time_counter=self.resampled_prim['time_primea'])
         
-        #matching_times = (self.resampled_prim['time_primea'] == self.ukc4_sliced['time_counter']).all()
+        matching_times = (self.resampled_prim['time_primea'] == self.ukc4_sliced['time_counter']).all()
         
 
+        if matching_times:
+            print("The time arrays have identical values.")
+        else:
+            print("The time arrays do not match.")
+            print("Exiting script, take a look at the code...")
+            
+            sys.exit()
         
-        self.data_dict = data_dict
-        return self.raw_data, data_dict, matching_times
-    ####            0                1          2
+        return self.raw_data, self.resampled_prim, self.ukc4_sliced, ukc4_dict, prim_dict
+    ####            0                  1                 2               3          4
     
-    def load_tide_gauge(self):
-        for i in self.tide_gauge_data:
-            dataset = pd.read_csv(i)
-    
-    def linear_regression(self, figpath):
-        ''' Uses one point in the dataset, like a tide gauge and samples points through time
+    def linear_regression():
+        ''' Uses entirety of dataset so needs the regridded prim and ukc4
         '''
-        prim_dict = self.data_dict['prim']
-        ukc4_dict = self.data_dict['ukc4']
-        common_keys = set(ukc4_dict.keys()) & set(prim_dict.keys())
-        extract_prims = []
-        extract_ukc4s = []
-        for variable_name in common_keys:
-        
-            ukc4_data = ukc4_dict[variable_name]
-            prim_data = prim_dict[variable_name]
-            extract_prims.append(prim_data)
-            extract_ukc4s.append(ukc4_data)
-            #coefficients = np.polyfit(prim_data[:,46,32].data.flatten(), ukc4_data[:,46,32].data.flatten(), 1)
-            # print(coefficients)
-        stats.load_tide_gauge(self)
-              # coefficients = np.polyfit(data.flatten(), np.arange(data.shape[0]).repeat(data.shape[1]), 1)
-        # return ukc4_data#prim_data
-        return extract_prims, extract_ukc4s
-        
-        
 if __name__ == '__main__':
-    import time
     from o_func import DataChoice, DirGen
     import glob
     main_path = os.path.join(start_path, r'modelling_DATA','kent_estuary_project',r'6.Final2')
@@ -358,30 +300,8 @@ if __name__ == '__main__':
     
     dc = DataChoice(os.path.join(main_path,'models'))
     #fn = os.path.split(dc.dir_select()[0])[-1]
-    #fn = 'kent_1.3.7_testing_4_days_UM_run' # bad model for testing, had issues. 
-    fn = 'kent_1.0.0_UM_wind' # bad model for testing, had issues. 
-
-    sub_path, fig_path = make_paths.dir_outputs(fn)
+    fn = 'kent_1.3.7_testing_4_days_UM_run'
+    sub_path = make_paths.dir_outputs(fn)
     lp = glob.glob(os.path.join(sub_path, '*.nc'))[0]
-    sts = stats(lp)
-    load = sts.load_raw()
-    stats.print_dict_keys(load[1]) # prints out the dictionaries of data being used. 
-    extract_prims, extract_ukc4s = sts.linear_regression(fig_path)
-    # for i in range(30):# store linear reression in known figpath
-    #     plt.figure()
-    #     plt.title('Print out time interpolated ')
-    #     print(i)
-    #     time.sleep(0.5)
-    #     plt.pcolor(extract_prims[0].nav_lon, extract_prims[0].nav_lat,extract_prims[0][i,:,:])
-    #     #plt.scatter(extract_prims[:,41,10].nav_lon.values, extract_prims[:,41,10].nav_lat.values, color = 'r')
-    #     print(linear_reg[0][1,:,:])
-    #     plt.savefig('/home/af/Desktop/temp.png', dpi = 300)
-    # for i in range(20):# store linear reression in known figpath
-    #     plt.title('Print out raw data ')
-
-    #     plt.figure()
-    #     print(i)
-    #     time.sleep(0.5)
-    #     plt.pcolor(extract_prims[0].nav_lon, extract_prims[0].nav_lat,load[0]['prim_surface_height'][i,:,:])
-    #     #plt.scatter(extract_prims[:,41,10].nav_lon.values, extract_prims[:,41,10].nav_lat.values, color = 'r')
-    #     plt.savefig('/home/af/Desktop/temp.png', dpi = 300)
+    sts = stats(example_dataset)
+    loaded_data = sts.load_raw()

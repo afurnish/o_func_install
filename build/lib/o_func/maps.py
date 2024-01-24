@@ -94,15 +94,16 @@ def PRIMEA_loc_grid():
     lons = vertices[0]
     lats = vertices[1]
     plt.savefig(os.path.join(grid_plot_path, 'fig3'))
-    fig, ax = plt.subplots()
-    fig.set_figheight(90)
-    fig.set_figwidth(70)
+    fig, ax = plt.subplots(dpi = 300)
+    fig.set_figheight(9)
+    fig.set_figwidth(7)
 
     for square in square_nodes:
         ax.plot([lons[square[0]], lons[square[1]], lons[square[2]], lons[square[3]], lons[square[0]]],
-        [lats[square[0]], lats[square[1]], lats[square[2]], lats[square[3]], lats[square[0]]], 'k-')
-    ax.triplot(vertices[0], vertices[1], faces.data[index_rows,0:3], linewidth=1.0, color='black')
-
+        [lats[square[0]], lats[square[1]], lats[square[2]], lats[square[3]], lats[square[0]]], 'k-',linewidth=0.25)
+    ax.triplot(vertices[0], vertices[1], faces.data[index_rows,0:3], linewidth=0.25, color='black')
+    plt.xlabel('Longitude', size = 17)
+    plt.ylabel('Latitude', size = 17)
 
 #def PRIMEA_loc_grid2():
     

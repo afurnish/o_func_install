@@ -112,7 +112,7 @@ class DirGen:
                 file.write('###############################################################')
         # print(self.model_path)
         
-        return self.model_path 
+        return self.model_path , self.figures
     
     def vid_var_path(self, var_choice = 'Surface_Height'):
         ''' Surface Height is the default. 
