@@ -80,6 +80,7 @@ class DirGen:
         self.png_sal = util.md([self.figures, 'png_sal'])
         
         
+        
         # Making SCW run folder
         self.SCWrun = util.md([self.model_path, 'runSCW_' + model_name])
         self.logs = util.md([self.SCWrun, 'logs'])

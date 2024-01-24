@@ -14,7 +14,7 @@ import sys
 import matplotlib.pyplot as plt
 
 from o_func import opsys; start_path = opsys()
-
+from o_func.utilities.near_neigh import near_neigh
 #%% Old Example of Data
 # class r_stats:
 #     def __init__(self, dataset):
@@ -274,17 +274,7 @@ class stats:
         for dataset_var in [i for i in var_dict]:
             prim_datasets = {var: self.raw_data[var] for var in self.raw_data.data_vars if var.startswith('prim')}
             ukc4_datasets = {var: self.raw_data[var] for var in self.raw_data.data_vars if var.startswith('ukc4')}
-            # print(prim_datasets)
-            # if ukc4_datasets: # doesnt matter which one it is
-            #     for primkey, value in prim_datasets.items():
-            #         prim_datasets[primkey] = value.resample(time_primea='1H').mean()
-            #         prim_datasets[primkey]['time_primea'] = prim_datasets[primkey].time_primea + pd.to_timedelta('30min')
-                    
-            #     for key, value in ukc4_datasets.items():
-            #         print(primkey)
-            #         ukc4_datasets[key] = ukc4_datasets[key].sel(time_counter=prim_datasets[primkey].time_primea)
-            #         matching_times = (self.resampled_prim['time_primea'] == self.ukc4_sliced['time_counter']).all()
-            
+           
             def rename_dict(dictionary):
                 modified_dict = {}
                 for old_key, value in dictionary.items():
@@ -297,6 +287,10 @@ class stats:
                     prim_datasets[primkey] = primvalue.resample(time_primea='1H').mean(skipna = True)
                     prim_datasets[primkey]['time_primea'] = prim_datasets[primkey].time_primea + pd.to_timedelta('30min')
                     ukc4_datasets[ukc4key] = ukc4_datasets[ukc4key].sel(time_counter=prim_datasets[primkey].time_primea)
+                    self.lon = prim_datasets[primkey]['nav_lon']
+                    self.lat = prim_datasets[primkey]['nav_lat']
+                    self.time = prim_datasets[primkey]['time_primea']
+                    # print(self.overall_time)
                     matching_times = (prim_datasets[primkey]['time_primea'] == ukc4_datasets[ukc4key]['time_counter']).all()
                     if not matching_times:
                         print("The time arrays do not match.")
@@ -308,41 +302,82 @@ class stats:
                 data_dict['ukc4'] = rename_dict(ukc4_datasets) # This is now a dictionary of the data
                 data_dict['prim'] = rename_dict(prim_datasets)
                 
-        # times need to be remapped for only primea data based off the first ukc4 data        
-        #self.resampled_prim = self.raw_data.prim_surface_height.resample(time_primea='1H').mean() 
-        #self.resampled_prim['time_primea'] = self.resampled_prim.time_primea + pd.to_timedelta('30min')
-        
-        # self.ukc4_sliced = self.raw_data.ukc4_surface_height.sel(time_counter=self.resampled_prim['time_primea'])
-        
-        #matching_times = (self.resampled_prim['time_primea'] == self.ukc4_sliced['time_counter']).all()
-        
-
-        
         self.data_dict = data_dict
         return self.raw_data, data_dict, matching_times
     ####            0                1          2
     
-    def load_tide_gauge(self):
+    def load_tide_gauge(self):   
+        self.tide_loc_dict = {'Heysham'  :{'x':-2.9311759, 'y':54.0345516},
+                              'Liverpool':{'x':-3.0168250, 'y':53.4307320},
+                              }
+        df_tide_loc = pd.DataFrame(self.tide_loc_dict).T.reset_index()
+        df_tide_loc = df_tide_loc.drop(df_tide_loc.columns[0], axis=1)
+        df_search_points = pd.DataFrame({'x': self.lon.data.ravel(), 'y': self.lat.data.ravel()})
+       # print(self.lat.data.shape)
+        tide_dict = {}
         for i in self.tide_gauge_data:
-            dataset = pd.read_csv(i)
-    
+            dataset = pd.read_csv(i, index_col=0, parse_dates=True)
+            name = os.path.split(i)[-1][5:-4].capitalize()
+            tide_dict[name] = dataset.resample('H').mean()
+            tide_dict[name].index = tide_dict[name].index + pd.Timedelta(minutes=30)
+            tide_dict[name] = tide_dict[name].loc[(tide_dict[name].index >= self.time[0].data) & (tide_dict[name].index <= self.time[-1].data)]
+        self.tide_data_dict = tide_dict
+        # print(self.tide_data_dict)
+        # print(df_tide_loc)
+        #print(self.lon.data.ravel())
+        # print(df_search_points)
+        dist, indices = near_neigh(df_tide_loc,df_search_points,1)
+        
+        self.tide_gauge_coords = np.unravel_index(indices, self.lon.shape)
+        empty_ind = []
+        for k in indices:
+            print(k)
+            empty_ind.append(divmod(k[0],np.shape(self.lon)[1]))
+        
+        df_search_points
+        
+        return self.tide_gauge_coords, empty_ind
+        
     def linear_regression(self, figpath):
         ''' Uses one point in the dataset, like a tide gauge and samples points through time
         '''
+        rubbish, tide_gauge_coords = stats.load_tide_gauge(self)
         prim_dict = self.data_dict['prim']
         ukc4_dict = self.data_dict['ukc4']
         common_keys = set(ukc4_dict.keys()) & set(prim_dict.keys())
         extract_prims = []
         extract_ukc4s = []
         for variable_name in common_keys:
-        
-            ukc4_data = ukc4_dict[variable_name]
-            prim_data = prim_dict[variable_name]
-            extract_prims.append(prim_data)
-            extract_ukc4s.append(ukc4_data)
-            #coefficients = np.polyfit(prim_data[:,46,32].data.flatten(), ukc4_data[:,46,32].data.flatten(), 1)
+            for tide_gauge in tide_gauge_coords:
+                # processing the data
+                ukc4_data = ukc4_dict[variable_name]
+                prim_data = prim_dict[variable_name]
+                extract_prims.append(prim_data)
+                extract_ukc4s.append(ukc4_data)
+                x = tide_gauge[0] # Now the location has been determined you can apply elsewhere. 
+                y = tide_gauge[1]
+                # Insert location of tide_gauges_here
+                primx = prim_data[4:,x,y].data.flatten() # at the testing points [4:,40,20] it is almost identical. 
+                ukc4y = ukc4_data[4:,x,y].data.flatten()
+                # Plotting up the figures
+                plt.figure()
+                plt.scatter(primx,ukc4y)    
+                
+                print(ukc4_data.time_primea.shape)
+                print(primx.shape)
+                # plt.figure()
+                # plt.scatter(ukc4_data.time_primea[4:],primx)
+                # plt.scatter(ukc4_data.time_primea[4:],ukc4y)
+                
+                plt.savefig('/home/af/Desktop/'+variable_name+'temp.png', dpi = 300)
+                # Statistical processing
+                coefficients = np.polyfit(primx, ukc4y, 1)
+                regression_line = np.poly1d(coefficients)
+                r_squared = np.corrcoef(primx, ukc4y)[0, 1] ** 2 
+                print (' other r_squared =' ,r_squared)
+
             # print(coefficients)
-        stats.load_tide_gauge(self)
+        
               # coefficients = np.polyfit(data.flatten(), np.arange(data.shape[0]).repeat(data.shape[1]), 1)
         # return ukc4_data#prim_data
         return extract_prims, extract_ukc4s
@@ -367,15 +402,23 @@ if __name__ == '__main__':
     load = sts.load_raw()
     stats.print_dict_keys(load[1]) # prints out the dictionaries of data being used. 
     extract_prims, extract_ukc4s = sts.linear_regression(fig_path)
-    # for i in range(30):# store linear reression in known figpath
-    #     plt.figure()
-    #     plt.title('Print out time interpolated ')
-    #     print(i)
-    #     time.sleep(0.5)
-    #     plt.pcolor(extract_prims[0].nav_lon, extract_prims[0].nav_lat,extract_prims[0][i,:,:])
-    #     #plt.scatter(extract_prims[:,41,10].nav_lon.values, extract_prims[:,41,10].nav_lat.values, color = 'r')
-    #     print(linear_reg[0][1,:,:])
-    #     plt.savefig('/home/af/Desktop/temp.png', dpi = 300)
+    tide_gauge, ind = sts.load_tide_gauge()
+    # SANITY CHECKER
+    for i in range(30):# store linear reression in known figpath
+        plt.figure()
+        plt.title('Print out time interpolated ')
+        print(i)
+        time.sleep(0.5)
+        plt.pcolor(extract_prims[0].nav_lon, extract_prims[0].nav_lat,extract_prims[0][i,:,:])
+        for j in ind:
+            print(j)
+            x = j[0]
+            y = j[1]
+            plt.scatter(extract_prims[0][:,x,y].nav_lon.values, extract_prims[0][:,x,y].nav_lat.values, color = 'r')
+            #plt.scatter([-2.9311759,-3.0168250],[54.0345516,53.4307320])
+        plt.scatter([-2.9311759,-3.0168250],[54.0345516,53.4307320])
+        
+        plt.savefig('/home/af/Desktop/temp.png', dpi = 300)
     # for i in range(20):# store linear reression in known figpath
     #     plt.title('Print out raw data ')
 
