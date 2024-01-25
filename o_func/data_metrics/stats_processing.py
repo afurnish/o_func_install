@@ -331,9 +331,7 @@ class stats:
         self.tide_gauge_coords = np.unravel_index(indices, self.lon.shape)
         empty_ind = []
         for k in indices:
-            print(k)
             empty_ind.append(divmod(k[0],np.shape(self.lon)[1]))
-        
         df_search_points
         
         return self.tide_gauge_coords, empty_ind
@@ -363,8 +361,8 @@ class stats:
                 plt.figure()
                 plt.scatter(primx,ukc4y)    
                 
-                print(ukc4_data.time_primea.shape)
-                print(primx.shape)
+                #print(ukc4_data.time_primea.shape)
+                #print(primx.shape)
                 # plt.figure()
                 # plt.scatter(ukc4_data.time_primea[4:],primx)
                 # plt.scatter(ukc4_data.time_primea[4:],ukc4y)
@@ -374,8 +372,10 @@ class stats:
                 coefficients = np.polyfit(primx, ukc4y, 1)
                 regression_line = np.poly1d(coefficients)
                 r_squared = np.corrcoef(primx, ukc4y)[0, 1] ** 2 
+                # ax[i].plot(subset_x, regression_line(subset_x), label='Regression Line', c = 'b', linewidth = 3)  # plot the regression line
+                # ax[i].plot(subset_x, subset_x, label='y=x', c = 'orange', linewidth = 3)  # plot the y=x line for comparison
                 print (' other r_squared =' ,r_squared)
-
+                
             # print(coefficients)
         
               # coefficients = np.polyfit(data.flatten(), np.arange(data.shape[0]).repeat(data.shape[1]), 1)
@@ -404,21 +404,23 @@ if __name__ == '__main__':
     extract_prims, extract_ukc4s = sts.linear_regression(fig_path)
     tide_gauge, ind = sts.load_tide_gauge()
     # SANITY CHECKER
-    for i in range(30):# store linear reression in known figpath
-        plt.figure()
-        plt.title('Print out time interpolated ')
-        print(i)
-        time.sleep(0.5)
-        plt.pcolor(extract_prims[0].nav_lon, extract_prims[0].nav_lat,extract_prims[0][i,:,:])
-        for j in ind:
-            print(j)
-            x = j[0]
-            y = j[1]
-            plt.scatter(extract_prims[0][:,x,y].nav_lon.values, extract_prims[0][:,x,y].nav_lat.values, color = 'r')
-            #plt.scatter([-2.9311759,-3.0168250],[54.0345516,53.4307320])
-        plt.scatter([-2.9311759,-3.0168250],[54.0345516,53.4307320])
+    # for i in range(30):# store linear reression in known figpath
+    #     plt.figure()
+    #     plt.title('Print out time interpolated ')
+    #     print(i)
+    #     time.sleep(0.5)
+    #     plt.pcolor(extract_prims[0].nav_lon, extract_prims[0].nav_lat,extract_prims[0][i,:,:])
+    #     for j in ind:
+    #         print(j)
+    #         x = j[0]
+    #         y = j[1]
+    #         plt.scatter(extract_prims[0][:,x,y].nav_lon.values, extract_prims[0][:,x,y].nav_lat.values, color = 'r')
+    #         #plt.scatter([-2.9311759,-3.0168250],[54.0345516,53.4307320])
+    #     plt.scatter([-2.9311759,-3.0168250],[54.0345516,53.4307320])
         
-        plt.savefig('/home/af/Desktop/temp.png', dpi = 300)
+    #     plt.savefig('/home/af/Desktop/temp.png', dpi = 300)
+        
+        
     # for i in range(20):# store linear reression in known figpath
     #     plt.title('Print out raw data ')
 
