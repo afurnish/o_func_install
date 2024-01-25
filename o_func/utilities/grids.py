@@ -222,6 +222,7 @@ if __name__ == '__main__':
     'surface_Vvelocity': {'TUV':'V',  'UKC4':'',   'PRIMEA':'na'},
     'middle_Vvelocity' : {'TUV':'V',  'UKC4':'',   'PRIMEA':'na'},
     'bottom_Vvelocity' : {'TUV':'V',  'UKC4':'',   'PRIMEA':'na'},
+    'bathymetry'       : {'TUV':'T',  'UKC4':'NA',       'PRIMEA':'mesh2d_node_z'}
     }
     
     # to call the values in this dictionary do this. 
@@ -255,10 +256,14 @@ if __name__ == '__main__':
     #sh = primea_model.mesh2d_s1
     plon = primea_model.mesh2d_s1.mesh2d_face_x
     plat = primea_model.mesh2d_s1.mesh2d_face_y
+    
+    bathyplon = primea_model.mesh2d_node_z.mesh2d_node_x
+    bathyplat = primea_model.mesh2d_node_z.mesh2d_node_y
     #ppoints = np.column_stack((np.array(plon).flatten(), np.array(plat).flatten()))
 
     projector = pyproj.Transformer.from_crs("EPSG:4326", "EPSG:3857", always_xy=True)
-    x_unstructured, y_unstructured = projector.transform(np.array(plon).flatten(), np.array(plat).flatten())
+    x_unstructured, y_unstructured             = projector.transform(np.array(plon).flatten(),      np.array(plat).flatten())
+    x_bathy_unstructured, y_bathy_unstructured = projector.transform(np.array(bathyplon).flatten(), np.array(bathyplat).flatten())
     
     # You need a different unstructured grid depending on TUV
     x_structuredT, y_structuredT = projector.transform(np.array(lonTUV[0]).flatten(), np.array(latTUV[0]).flatten())
@@ -270,11 +275,15 @@ if __name__ == '__main__':
     interpolator_pkl = os.path.join(input_file_path[0],'interpolator.pkl')
     
     def interpolator_extractor():
-        for jk, k in enumerate([i for i in var_dict]):
+        for jk, k in enumerate([i for i in var_dict]): # Run through the data variables from the dictioanry
             # perform a check to ensure the variables exist 
             if var_dict[k]['PRIMEA'] in [i for i in primea_model.data_vars]:
                 var = var_dict[k]['PRIMEA']
-                interpolator = CloughTocher2DInterpolator((x_unstructured, y_unstructured), np.array(primea_model[var][0]).flatten())
+                print('Last var was ', var)
+                if var == 'bathymetry': # Generating exception for bathymetry as its stucture is diff
+                    interpolator = CloughTocher2DInterpolator((x_bathy_unstructured, y_bathy_unstructured), np.array(primea_model[var][0]).flatten())
+                else:
+                    interpolator = CloughTocher2DInterpolator((x_unstructured, y_unstructured), np.array(primea_model[var][0]).flatten())
                 #interpolator = CloughTocher2DInterpolator((x_unstructured, y_unstructured),fill_value=np.nan, rescale=False)
                 with open(interpolator_pkl, 'wb') as file:
                     pickle.dump(interpolator, file)
@@ -307,9 +316,14 @@ if __name__ == '__main__':
                 elif var_dict[k]['TUV'] == 'V':
                     x_structured, y_structured = x_structuredT, y_structured
                     lon = lonTUV[2] 
-        
-               
-                interpolator = CloughTocher2DInterpolator((x_unstructured, y_unstructured), np.array(primea_model[var][lm]).flatten())
+                #print(k)
+                if k != 'bathymetry': # Generating exception for bathymetry as its stucture is diff
+                    interpolator = CloughTocher2DInterpolator((x_unstructured, y_unstructured), np.array(primea_model[var][lm]).flatten())
+                else:
+                    #print('Its getting regridded onto ', var_dict[k]['TUV'])
+                    # This one runs the bathymetry
+                    interpolator = CloughTocher2DInterpolator((x_bathy_unstructured, y_bathy_unstructured), np.array(primea_model[var]).flatten()) # bathy doesnt have time 
+                
                 values = interpolator(x_structured, y_structured) # A quick test and this took 8 seconds
                 
                 
@@ -342,7 +356,6 @@ if __name__ == '__main__':
     #limiter = 1 # 10 
     num_iterations = len(primea_model.time)#//limiter # // means no remainders for testing
     #num_iterations = 200#//limiter # // means no remainders for testing
-  input_file
 
     primea_time = primea_model.time[:(num_iterations)]
     # performing a time check to ensure all the data that needs to be there is there whihc messes up other processes later down the line
@@ -387,20 +400,26 @@ if __name__ == '__main__':
     #     plt.savefig('/home/af/Desktop/temp.png', dpi =150)
     #seperated_results_indexed = seperated_results
     # REORDER DATASETS
-    #%%
+    #%
     #reordered_datasets = [tuple(item[i] for i in indices) for item in seperated_results_indexed]
     
     filtered_names = [row for row in names if 'n/a' not in row][0]
 
 
-    def rcr_PRIMEA(values): # function to remove rows n columns removal
+    def rcr_PRIMEA(values, import_rowcol = 'n', r = None, c = None): # function to remove rows n columns removal
         if isinstance(values[0], np.ndarray):
+            #print('Is ndarray')
             rows_to_remove = np.all(np.isnan(values[0]), axis=1)
             cols_to_remove = np.all(np.isnan(values[0]), axis=0)
         elif isinstance(values[0], xr.core.dataarray.DataArray): # Adding in dask support
+            #print('its xarray')
             rows_to_remove = np.all(np.isnan(values[0].compute()), axis=1)
             cols_to_remove = np.all(np.isnan(values[0].compute()), axis=0)
-            
+        
+        if import_rowcol == 'y':
+            #print('changing rowcol')
+            rows_to_remove = r
+            cols_to_remove = c
         # Need to apply this to each item in the array.
         #interpolated_values_sliced = values[~rows_to_remove, :]
         interpolated_values_sliced = [i[~rows_to_remove, :] for i in values ]
@@ -427,12 +446,24 @@ if __name__ == '__main__':
     empty_PRIMEA_data_array = []
     empty_UKC4_data_array = []
     for kl, nme in enumerate(tqdm(filtered_names, desc="Processing UKC4 data: ", unit="file")):
+        index_of_bathymetry = filtered_names.index('bathymetry') # find bathy data
+        
+            
         if var_dict[nme]['TUV'] == 'T':
-            vals, rows, cols = rcr_PRIMEA(seperated_results[kl])
-            ukc4_dataset = rcr_UKC4(TUV[0][var_dict[nme]['UKC4']], rows, cols)
-            empty_UKC4_data_array.append(ukc4_dataset)
-            vals = mask_maker(ukc4_dataset, vals)
-            empty_PRIMEA_data_array.append(np.stack(vals, axis=0))
+            #print('this works') # fine upto here
+            if kl != index_of_bathymetry:
+                values, rows, cols = rcr_PRIMEA(seperated_results[kl])
+            else: # bathymetry option, 
+                values, rows, cols = rcr_PRIMEA(seperated_results[kl], import_rowcol = 'y', r=rows, c = cols)
+            if nme != 'bathymetry':
+                ukc4_dataset = rcr_UKC4(TUV[0][var_dict[nme]['UKC4']], rows, cols)
+                empty_UKC4_data_array.append(ukc4_dataset)
+                vals = mask_maker(ukc4_dataset, values)
+            if nme == 'bathymetry':
+                vals = mask_maker(ukc4_dataset, values)
+                empty_PRIMEA_data_array.append(np.stack(vals, axis=0))
+            else:
+                empty_PRIMEA_data_array.append(np.stack(vals, axis=0))
     
         elif var_dict[nme]['TUV'] == 'U':
             vals, rows, cols = rcr_PRIMEA(seperated_results[kl])
@@ -447,7 +478,7 @@ if __name__ == '__main__':
             empty_UKC4_data_array.append(ukc4_dataset)
             vals = mask_maker(ukc4_dataset, vals)
             empty_PRIMEA_data_array.append(np.stack(vals, axis=0))
-            
+        
     # empty_data_array is now the fully formatted dataset regridded onto lower resolution grid.
     ukc4_xrdata_array = [xr.concat(i, dim='time_counter') for i in empty_UKC4_data_array]
     primea_data_array = empty_PRIMEA_data_array
@@ -481,13 +512,19 @@ if __name__ == '__main__':
         for ig, name in enumerate(filtered_names):
             if ik == 0: 
                 key = 'prim_' + name
+                print(key)
             else:
-                key = 'ukc4_' + name
-            dict_to_dataset[key] = dataset[ig]
+                if name != 'bathymetry':
+                    key = 'ukc4_' + name
+            print(ig)
+            if ig < len(dataset):
+                dict_to_dataset[key] = dataset[ig]
+            #dict_to_dataset[key] = dataset[ig]
     
     
     dataset = xr.Dataset(dict_to_dataset)
     
+#%%
     if os.path.exists(output_nc_file):
         # Delete the file
         os.remove(output_nc_file)

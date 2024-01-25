@@ -15,196 +15,9 @@ import matplotlib.pyplot as plt
 
 from o_func import opsys; start_path = opsys()
 from o_func.utilities.near_neigh import near_neigh
-#%% Old Example of Data
-# class r_stats:
-#     def __init__(self, dataset):
-#      self.tide_gauge_path = os.path.join(start_path,
-#                                          'modelling_DATA',
-#                                          'kent_estuary_project',
-#                                          'validation',
-#                                          'tidal_validation',
-#                                          r'1.reformatted')
-#      ukc3_path = os.path.join(start_path,
-#                   'modelling_DATA',
-#                   'kent_estuary_project',
-#                   r'6.Final2',
-#                   'processed_data',
-#                   'ukc4_on_PRIMEA_grid')     
-                  
-                  
-#      self.data = dataset # primea data path             
-                  
-#      # ukc3_int_path_options = {'default':{'name':'original ukc3 interp dataset',
-#      #                                     'path': ukc3_path}
-#      #                             }
-     
-#      # self.ukc3_int_path = ukc3_int_path_options[ukc3_int_path]['path']
-#      # print(self.ukc3_int_path)
-     
-#     @staticmethod
-#     def calculate_hourly_means(df):
-#         """
-#         Calculate hourly means for a time series DataFrame with timestamps at the middle of each hour.
+from o_func.utilities.distance import Dist
 
-#         Args:
-#             df (pd.DataFrame): Input DataFrame with DatetimeIndex.
-
-#         Returns:
-#             pd.DataFrame: DataFrame with hourly means and timestamps at the middle of each hour.
-#         """
-#         hourly_means = df.resample('H').mean()
-#         hourly_means.index = hourly_means.index + pd.Timedelta(minutes=30)
-
-#         return hourly_means
-
-#     def raw_to_useful(self, prim_data,ukc3_data,var,index_only):
-#         data_to_populate = []
-#         '''
-#         Primary purpose is to allign time dimensions for accurate comparison. Data should be sampled. 
-#         Depending on the variable you may want to interpolate values between but only for plotting not for 
-#         calculating statistics. 
-        
-        
-#         Need to make sure for this function to work you load in the time coords for 
-#         primea and for ukc3 as well as the variable you wish to use:
-#             Choices:
-#                 Surface Height = sh
-#                 Salinity       = sal
-                
-#         Here it is really important to claify what time and shape dimension the data is in,
-#         if the data is sampled in 10 minute intervals this works, however is hourly intervas are
-#         used everything breaks apart. Ensure the code is robust enough to handle hourly 
-#         and 10 minute outputs or anything you may decide to throw at it.
-        
-#         # try not to let hourly stuff get to here on the hour as it messes the whole thing up. 
-#         '''
-#         #path_to_data = path + '/'+ var + '_mean_half_hour_primea_data.pickle'
-        
-        
-#         UKC3_interp = UKC3_interp.z_interpolated_time.values
-        
-#         primea_data = PRIMEA_all_data.surface_height.values
-    
-#         prim_tim_df2 = prim_tim_df[:-1] # just removes last point in case its erronous
-#         primea_data2 = primea_data[:-1,:] # repeated for the data
-        
-#         # special dataframe to index everything
-        
-#         try:
-#             # Unpickle the object from the file
-#             if var == 'sh':
-#                 print('Surface Height Running...')
-#                 with open(path_to_data, 'rb') as file:
-#                     loaded_data = pickle.load(file)
-#             elif var == 'sal':
-#                 print('Salinity Running...')
-#                 with open(path_to_data, 'rb') as file:
-#                     loaded_data = pickle.load(file)
-                
-#             with open(path + '/time_data_half_hour_sampled.pickle', 'rb') as file:
-#                 prim_tim_df4 = pickle.load(file)
-#             warnings.filterwarnings("ignore")
-#         except Exception as e:
-#             print(e)
-#             print('\nNo file detected, writing file. ETA 10 minutes')
-
-#             new_df = []
-#             warnings.filterwarnings("ignore")
-#             new_array = []
-#             for i,data in enumerate(np.transpose(primea_data2)):
-#                 del new_df
-#                 new_df = prim_tim_df2
-#                 new_df['data'] = data
-#                 new_df.index = pd.to_datetime(new_df.primea_time)
-#                 #df = new_df.drop('primea_time', axis=1)
-
-#                 hourly_means = new_df.resample('1H').mean()
-#                 hourly_means.index += pd.DateOffset(minutes=30)
-#                 new_array.append(hourly_means)
-#                 if i == 0:
-#                     prim_tim_df4 = hourly_means.index[24:]
-#                 if i % 1000 == 0:
-#                     print('Run number' + str(i).zfill(3))
-#             loaded_data = np.transpose(np.array(new_array)[:,:,0])[24:]
-        
-#             warnings.resetwarnings()
-#             if var == 'sh':
-#                 print('Making Surface Height and Running...')
-#                 with open(path_to_data, 'wb') as file:
-#                     pickle.dump(loaded_data, file)
-#             elif var == 'sal':
-#                 print('Making Salinity and Running...')
-#                 with open(path_to_data, 'wb') as file:
-#                     pickle.dump(loaded_data, file)
-#             with open(path + '/time_data_half_hour_sampled.pickle', 'wb') as file:
-#                 pickle.dump(np.transpose(prim_tim_df4), file)
-#         warnings.resetwarnings()
-#         # # code that goes here sorts the data out into half hour intervals
-#         # prim_tim_df3 = prim_tim_df2[3:-4]
-#         # prim_tim_df4 = prim_tim_df3[::6] 
-
-#         #ukc3_tim_df = ukc3_time[24:]
-        
-#         common_idx = ukc3_tim_df[ukc3_tim_df['ukc3_time'].isin(prim_tim_df4)].index
-#         if index_only != 'yes':
-#             #happy to identify that they are the same. 
-#             sliced_ukc3_tim_df = ukc3_tim_df.iloc[common_idx]
-#             sliced_ukc3_sh_df = UKC3_interp_z_interp[common_idx,:]
-#             sliced_ukc3_tim_df = sliced_ukc3_tim_df
-#             sliced_ukc3_sh_df2 = sliced_ukc3_sh_df
-            
-            
-#             # sh_primea = primea_data2[3:-4,:]
-#             sh_primea2 = loaded_data#sh_primea[::6,:]
-            
-#             #calculate_hourly_means(sh_primea)
-            
-#             sh_ukc3 = sliced_ukc3_sh_df2
-        
-#             return sh_primea2, sh_ukc3, common_idx, UKC3_interp_z_interp
-#         else:
-#             return common_idx
-        
-#     def load_data(self): 
-#         globbed = sorted(glob.glob(os.path.join( self.tide_gauge_path, '*.csv')))
-#         self.names = []
-#         self.df = []
-#         for i in globbed:
-#             self.names.append(os.path.split(i)[-1][:-4]  )  
-#             self.df.append(pd.read_csv(i))
-#         print(self.df, self.names)
-        
-        
-#         #In this case UKC4 was interpolated onto PRIMEA grid, load in that data
-        
-#         #/media/af/PD/modelling_DATA/kent_estuary_project/6.Final2/processed_data/ukc4_on_PRIMEA_grid/sossheig_ogUKC3_.nc
-#         self.ukc3_dataset = xr.open_dataset(os.path.join(self.ukc3_int_path, 'UKC3_og_interpolated_PRIMEA_grid_data.nc'))
-#         print(self.ukc3_dataset.z_interpolated_time)
-        
-#         self.primea_dataset = xr.open_dataset(self.prim_data, chunks={'time':100})
-        
-        
-#     def run_stats(self):
-#         self.load_data()
-# # if __name__ == "__main__":
-# #     from o_func import DataChoice, DirGen
-# #     import glob
-    
-# #     #%% Making Directory paths
-# #     main_path = os.path.join(start_path, r'modelling_DATA','kent_estuary_project',r'6.Final2')
-# #     make_paths = DirGen(main_path)
-# #     ### Finishing directory paths
-    
-# #     dc = DataChoice(os.path.join(main_path,'models'))
-# #     fn = dc.dir_select()
-# #     sub_path = make_paths.dir_outputs(os.path.split(fn[0])[-1])
-# #     lp = glob.glob(os.path.join(sub_path, '*.nc'))[0]
-# #     rs = r_stats(prim_data = lp)
-# #     rs.load_data()
-        
-        
-#%%   
-# It is worth saving the original copy of the data for some comparative analysis. 
+   
 #example_dataset = os.path.join(start_path, 'modelling_DATA','kent_estuary_project',r'6.Final2','models','kent_1.3.7_testing_4_days_UM_run','kent_regrid.nc')
 var_dict = {
 'surface_height'   : {'TUV':'T',  'UKC4':'sossheig',       'PRIMEA':'mesh2d_s1'},
@@ -301,7 +114,7 @@ class stats:
                 
                 data_dict['ukc4'] = rename_dict(ukc4_datasets) # This is now a dictionary of the data
                 data_dict['prim'] = rename_dict(prim_datasets)
-                
+        self.bathymetry = self.raw_data['prim_bathymetry'][0,:,:]        
         self.data_dict = data_dict
         return self.raw_data, data_dict, matching_times
     ####            0                1          2
@@ -327,7 +140,7 @@ class stats:
         #print(self.lon.data.ravel())
         # print(df_search_points)
         dist, indices = near_neigh(df_tide_loc,df_search_points,1)
-        
+        self.df_search_points = df_search_points
         self.tide_gauge_coords = np.unravel_index(indices, self.lon.shape)
         empty_ind = []
         for k in indices:
@@ -350,6 +163,10 @@ class stats:
                 # processing the data
                 ukc4_data = ukc4_dict[variable_name]
                 prim_data = prim_dict[variable_name]
+                if variable_name == 'surface_height':
+                    self.ukc4_sh = ukc4_data
+                    self.prim_sh = prim_data
+                    
                 extract_prims.append(prim_data)
                 extract_ukc4s.append(ukc4_data)
                 x = tide_gauge[0] # Now the location has been determined you can apply elsewhere. 
@@ -364,7 +181,7 @@ class stats:
                 #print(ukc4_data.time_primea.shape)
                 #print(primx.shape)
                 # plt.figure()
-                # plt.scatter(ukc4_data.time_primea[4:],primx)
+                # plt.scatter(ukc4_data.time_primea[4:],primx) # 
                 # plt.scatter(ukc4_data.time_primea[4:],ukc4y)
                 
                 plt.savefig('/home/af/Desktop/'+variable_name+'temp.png', dpi = 300)
@@ -381,8 +198,86 @@ class stats:
               # coefficients = np.polyfit(data.flatten(), np.arange(data.shape[0]).repeat(data.shape[1]), 1)
         # return ukc4_data#prim_data
         return extract_prims, extract_ukc4s
+    
+    
+    def transect(self, fig_path):
+        transect_paths = start_path + r'modelling_DATA/kent_estuary_project/land_boundary/analysis/QGIS_shapefiles/points_along_estuary_1km_spacing.csv'
+        transect_data = pd.read_csv(transect_paths)
+        transect_data = transect_data.rename(columns = {'X':'x','Y':'y'})
+        distances, indicies = near_neigh(transect_data,self.df_search_points,1)
+        empty_ind = []
+        disti = []
+        for k in indicies:
+            empty_ind.append(divmod(k[0],np.shape(self.lon)[1]))
+        unique_estuaries = np.unique(transect_data.id)
         
+        prim_time_series_at_locations = []
+        ukc4_time_series_at_locations = []
+        bathymetry_at_locations = []
+        # Iterate over the specified locations and extract time series
+        for x, y in empty_ind:
+            prim_time_series_at_locations.append(self.prim_sh[4:, x, y])
+            ukc4_time_series_at_locations.append(self.ukc4_sh[4:, x, y])
+            bathymetry_at_locations.append(self.bathymetry[x, y])
+        prim_time_series_at_locations = np.array(prim_time_series_at_locations).T
+        ukc4_time_series_at_locations = np.array(ukc4_time_series_at_locations).T
+        bathymetry_at_locations = np.array(bathymetry_at_locations).T
         
+        maxy = np.max([np.nanmax(prim_time_series_at_locations), np.nanmax(ukc4_time_series_at_locations), np.nanmax(bathymetry_at_locations)])
+        miny = np.min([np.nanmin(prim_time_series_at_locations), np.nanmin(ukc4_time_series_at_locations), np.nanmin(bathymetry_at_locations)])
+
+        # run the plotter for each estuary
+        def plotter(minmax):
+            fig, ax = plt.subplots(unique_estuaries.shape[0])
+            fig.set_figheight(15)
+            fig.set_figwidth(10)
+            for i in unique_estuaries:
+                sub_frame = transect_data.loc[transect_data['id'] == i]
+                dis = [0]
+                sub_frame_primea = prim_time_series_at_locations[:,sub_frame.index]
+                sub_frame_ukc3 = ukc4_time_series_at_locations[:,sub_frame.index]
+                sub_frame_bathymetry = bathymetry_at_locations[sub_frame.index]
+                #print(sub_frame_bathymetry[i].shape)
+                if minmax == 'max':
+                    min_primea = np.max(sub_frame_primea, axis=0)
+                    min_ukc3 =  np.max(sub_frame_ukc3, axis=0)
+                elif minmax == 'min':
+                    min_primea = np.min(sub_frame_primea, axis=0)
+                    min_ukc3 =  np.min(sub_frame_ukc3, axis=0)
+                else:
+                    min_primea = sub_frame_primea[minmax,:]
+                    min_ukc3 =  sub_frame_ukc3[minmax,:]
+                for j in range(sub_frame.shape[0]-1):
+                    #lat1, lon1, lat2, lon2
+                    d = Dist.dist_between_points(sub_frame.y.iloc[j],sub_frame.x.iloc[j], sub_frame.y.iloc[j+1],sub_frame.x.iloc[j+1])
+                    dis.append(d)
+                new_dist = np.cumsum(dis)
+                disti.append(new_dist)
+                
+                ax[i].plot(new_dist, min_primea, 'r', label = '$\mathrm{UKC4}_{\mathrm{PRIMEA}}$')
+                ax[i].plot(new_dist, min_ukc3, 'b', label = '$\mathrm{UKC4}_{\mathrm{ao}}$')
+                ax[i].plot(new_dist, sub_frame_bathymetry, 'g', label = 'Bathymetry')
+                ax[i].set_title(sub_frame.est_name.iloc[0].capitalize())
+                ax[i].set_ylim([miny, maxy])
+                fig.supxlabel("Distance transecting estaury Mouth-River (km)")
+                fig.supylabel("Height of surface (water or land) (m)")
+                if i == 0:
+                    fig.legend(loc='upper center', bbox_to_anchor=(0.8, 1.00), ncol=4)
+                    
+                plt.tight_layout()
+            # if isinstance(minmax, str):
+            plt.savefig(fig_path + '/timestep_'+ str(minmax) +'_transects_along_estuaries.png', dpi = 300)
+            # else:
+            #     #plt.subplots_adjust(top=0.5)
+            #     #fig.suptitle(str(sliced_ukc3_tim_df.iloc[minmax][0]))
+            #     plt.savefig(fig_path + '/timestep_'+ str(minmax) +'_transects_along_estuaries.png', dpi = 300)
+             
+            return sub_frame_primea
+                #print(self.prim_sh)
+        sub_frame_primea = plotter(106)
+        sub_frame_primea = plotter(100)
+        return sub_frame_primea
+
 if __name__ == '__main__':
     import time
     from o_func import DataChoice, DirGen
@@ -403,6 +298,11 @@ if __name__ == '__main__':
     stats.print_dict_keys(load[1]) # prints out the dictionaries of data being used. 
     extract_prims, extract_ukc4s = sts.linear_regression(fig_path)
     tide_gauge, ind = sts.load_tide_gauge()
+    transect = sts.transect(fig_path)
+    
+    
+    
+# EXTRA PLOTTING
     # SANITY CHECKER
     # for i in range(30):# store linear reression in known figpath
     #     plt.figure()
