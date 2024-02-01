@@ -14,10 +14,10 @@ from o_func import opsys; start_path = opsys()
 
 #grid_example = '/Volumes/PN/modelling_DATA/kent_estuary_project/6.Final2/models/02_kent_1.0.0_UM_wind/shortrunSCW_kent_1.0.0_UM_wind/UK_West+Duddon+Raven_+liv+ribble+wyre+ll+ul+leven_kent_1.1_net.nc'
 
-#data = xr.open_dataset(grid_example)
-
 def line():
     print('-'*60)
+#%%
+
 
 def is_counterclockwise(A, B, C):
     area = 0.5 * ((B - A) * (C - A) - (C - A) * (B - A))
@@ -184,12 +184,14 @@ def PRIMEA_to_ESMF():
         grid_center_lon  (grid_size) float64 ...
         grid_imask       (grid_size) int32 ...
         grid_corner_lat  (grid_size, grid_corners) float64 ...
-        grid_corner_lon  (grid_size, grid_corners) float64 ...
+        grid_corner_lo    time_primea  datetime64[ns] 2013-11-01T07:00:00
+n  (grid_size, grid_corners) float64 ...
     Attributes:
         NetCDF_source_t:  ocnUKO2_V_grid_out_nom.nc
         file_name:        ocnUKO2_V_grid_out_nom.nc
         title:            AMM15V
     '''
+    
 #%%    
 
 if __name__ == '__main__':
@@ -201,10 +203,13 @@ if __name__ == '__main__':
     input_file = sys.argv[1]
     full_path = os.path.join(os.getcwd(), input_file)
     #%% Run locally
-    # input_file = '/media/af/PN/modelling_DATA/kent_estuary_project/6.Final2/models/kent_1.0.0_UM_wind/kent_31_merged_map.nc'
-    input_file = os.path.join(start_path, 'modelling_DATA','kent_estuary_project',r'6.Final2','models','kent_1.3.7_testing_4_days_UM_run','kent_31_merged_map.nc')
+        # input_file = '/media/af/PN/modelling_DATA/kent_estuary_project/6.Final2/models/kent_1.0.0_UM_wind/kent_31_merged_map.nc'
+        #/media/af/PN/modelling_DATA/kent_estuary_project/6.Final2/models/kent_1.0.0_UM_wind            # bad model ---kent_1.3.7_testing_4_days_UM_run
+    #input_file = os.path.join(start_path, 'modelling_DATA','kent_estuary_project',r'6.Final2','models','kent_1.0.0_UM_wind','kent_31_merged_map.nc')
+    #input_file = os.path.join(start_path, 'modelling_DATA','kent_estuary_project',r'6.Final2','models','kent_1.3.7_testing_4_days_UM_run','kent_31_merged_map.nc')
+
     input_file_path = os.path.split(input_file)
-    #print(input_file)
+    print('Input file:\n', input_file, '\n')
     
     var_dict = {
     'surface_height'   : {'TUV':'T',  'UKC4':'sossheig',       'PRIMEA':'mesh2d_s1'},
@@ -217,6 +222,7 @@ if __name__ == '__main__':
     'surface_Vvelocity': {'TUV':'V',  'UKC4':'',   'PRIMEA':'na'},
     'middle_Vvelocity' : {'TUV':'V',  'UKC4':'',   'PRIMEA':'na'},
     'bottom_Vvelocity' : {'TUV':'V',  'UKC4':'',   'PRIMEA':'na'},
+    'bathymetry'       : {'TUV':'T',  'UKC4':'NA',       'PRIMEA':'mesh2d_node_z'}
     }
     
     # to call the values in this dictionary do this. 
@@ -250,10 +256,14 @@ if __name__ == '__main__':
     #sh = primea_model.mesh2d_s1
     plon = primea_model.mesh2d_s1.mesh2d_face_x
     plat = primea_model.mesh2d_s1.mesh2d_face_y
+    
+    bathyplon = primea_model.mesh2d_node_z.mesh2d_node_x
+    bathyplat = primea_model.mesh2d_node_z.mesh2d_node_y
     #ppoints = np.column_stack((np.array(plon).flatten(), np.array(plat).flatten()))
 
     projector = pyproj.Transformer.from_crs("EPSG:4326", "EPSG:3857", always_xy=True)
-    x_unstructured, y_unstructured = projector.transform(np.array(plon).flatten(), np.array(plat).flatten())
+    x_unstructured, y_unstructured             = projector.transform(np.array(plon).flatten(),      np.array(plat).flatten())
+    x_bathy_unstructured, y_bathy_unstructured = projector.transform(np.array(bathyplon).flatten(), np.array(bathyplat).flatten())
     
     # You need a different unstructured grid depending on TUV
     x_structuredT, y_structuredT = projector.transform(np.array(lonTUV[0]).flatten(), np.array(latTUV[0]).flatten())
@@ -265,11 +275,15 @@ if __name__ == '__main__':
     interpolator_pkl = os.path.join(input_file_path[0],'interpolator.pkl')
     
     def interpolator_extractor():
-        for jk, k in enumerate([i for i in var_dict]):
+        for jk, k in enumerate([i for i in var_dict]): # Run through the data variables from the dictioanry
             # perform a check to ensure the variables exist 
             if var_dict[k]['PRIMEA'] in [i for i in primea_model.data_vars]:
                 var = var_dict[k]['PRIMEA']
-                interpolator = CloughTocher2DInterpolator((x_unstructured, y_unstructured), np.array(primea_model[var][0]).flatten())
+                print('Last var was ', var)
+                if var == 'bathymetry': # Generating exception for bathymetry as its stucture is diff
+                    interpolator = CloughTocher2DInterpolator((x_bathy_unstructured, y_bathy_unstructured), np.array(primea_model[var][0]).flatten())
+                else:
+                    interpolator = CloughTocher2DInterpolator((x_unstructured, y_unstructured), np.array(primea_model[var][0]).flatten())
                 #interpolator = CloughTocher2DInterpolator((x_unstructured, y_unstructured),fill_value=np.nan, rescale=False)
                 with open(interpolator_pkl, 'wb') as file:
                     pickle.dump(interpolator, file)
@@ -279,7 +293,7 @@ if __name__ == '__main__':
     
     with open(interpolator_pkl, 'rb') as file: # A quick test took 50 seconds, 5 for this part 
         loaded_interpolator = pickle.load(file)
-
+    start = time.time()
     def para_proc(lm):
         names = []
         primea_saves = []
@@ -302,9 +316,14 @@ if __name__ == '__main__':
                 elif var_dict[k]['TUV'] == 'V':
                     x_structured, y_structured = x_structuredT, y_structured
                     lon = lonTUV[2] 
-        
-               
-                interpolator = CloughTocher2DInterpolator((x_unstructured, y_unstructured), np.array(primea_model[var][lm]).flatten())
+                #print(k)
+                if k != 'bathymetry': # Generating exception for bathymetry as its stucture is diff
+                    interpolator = CloughTocher2DInterpolator((x_unstructured, y_unstructured), np.array(primea_model[var][lm]).flatten())
+                else:
+                    #print('Its getting regridded onto ', var_dict[k]['TUV'])
+                    # This one runs the bathymetry
+                    interpolator = CloughTocher2DInterpolator((x_bathy_unstructured, y_bathy_unstructured), np.array(primea_model[var]).flatten()) # bathy doesnt have time 
+                
                 values = interpolator(x_structured, y_structured) # A quick test and this took 8 seconds
                 
                 
@@ -337,37 +356,70 @@ if __name__ == '__main__':
     #limiter = 1 # 10 
     num_iterations = len(primea_model.time)#//limiter # // means no remainders for testing
     #num_iterations = 200#//limiter # // means no remainders for testing
-  
+
     primea_time = primea_model.time[:(num_iterations)]
+    # performing a time check to ensure all the data that needs to be there is there whihc messes up other processes later down the line
+    try:
+        # Check if primea_time is in chronological order
+        primea_time_testing = primea_time[2:-2] # removes the last and first two values for testing as delft has a habit of finishing the last model result with  aslightly diff second value. 
+        #primea_time_testing= primea_time
+        disorder_indices = np.where(np.diff(primea_time_testing) < np.timedelta64(0))[0]
+        if len(disorder_indices) > 0:
+            raise ValueError(f"Error: primea_time is not in chronological order at indices {disorder_indices}.")
+        
+        # Check if intervals between time steps are constant
+        time_diffs = np.diff(primea_time_testing)
+        inconsistent_intervals_indices = np.where(time_diffs != time_diffs[0])[0]
+        if len(inconsistent_intervals_indices) > 0:
+            raise ValueError(f"Error: Intervals between time steps are not constant at indices {inconsistent_intervals_indices}.")
+    
+    except ValueError as e:
+        print(e)
+        print('Time is not in chronological order, model may be broken or tampered with...')
+    
     print('primea timestep number', len(primea_model.time))
     # Create a ThreadPoolExecutor
     
     with Pool() as pool:
     # Pass a range of values to the pool, each value representing an iteration
         # results = pool.map(para_proc, range(num_iterations))
-        results = list(tqdm(pool.imap_unordered(para_proc, range(num_iterations)), total=num_iterations))
+        packed_results = list(tqdm(pool.imap_unordered(para_proc, range(num_iterations)), total=num_iterations))
 
     pool.close()
     pool.join()
     
-    
-    indices, results, names = zip(*results)
+    results_sorted = sorted(packed_results, key=lambda x: x[0])
+
+    indices, results, names = zip(*results_sorted)
     seperated_results = list(zip(*results)) # This is in order of the names
-    seperated_results_indexed = seperated_results
+    # for identifying errors in plots
+    # for i in range (30):
+    #     plt.figure()
+    #     time.sleep(0.5)
+    #     plt.pcolor(seperated_results[1][-1*i])
+    #     plt.savefig('/home/af/Desktop/temp.png', dpi =150)
+    #seperated_results_indexed = seperated_results
     # REORDER DATASETS
-    reordered_datasets = [tuple(item[i] for i in indices) for item in seperated_results_indexed]
+    #%
+    #reordered_datasets = [tuple(item[i] for i in indices) for item in seperated_results_indexed]
     
     filtered_names = [row for row in names if 'n/a' not in row][0]
 
 
-    def rcr_PRIMEA(values): # function to remove rows n columns removal
+    def rcr_PRIMEA(values, import_rowcol = 'n', r = None, c = None): # function to remove rows n columns removal
         if isinstance(values[0], np.ndarray):
+            #print('Is ndarray')
             rows_to_remove = np.all(np.isnan(values[0]), axis=1)
             cols_to_remove = np.all(np.isnan(values[0]), axis=0)
         elif isinstance(values[0], xr.core.dataarray.DataArray): # Adding in dask support
+            #print('its xarray')
             rows_to_remove = np.all(np.isnan(values[0].compute()), axis=1)
             cols_to_remove = np.all(np.isnan(values[0].compute()), axis=0)
-            
+        
+        if import_rowcol == 'y':
+            #print('changing rowcol')
+            rows_to_remove = r
+            cols_to_remove = c
         # Need to apply this to each item in the array.
         #interpolated_values_sliced = values[~rows_to_remove, :]
         interpolated_values_sliced = [i[~rows_to_remove, :] for i in values ]
@@ -389,17 +441,29 @@ if __name__ == '__main__':
         
         return mask_grid
     
-    seperated_results = reordered_datasets
+    #seperated_results = reordered_datasets
     # MASK MAKER INTO COLS AND ROWS to remove larger areas of NANS but also need to remove other stuff
     empty_PRIMEA_data_array = []
     empty_UKC4_data_array = []
     for kl, nme in enumerate(tqdm(filtered_names, desc="Processing UKC4 data: ", unit="file")):
+        index_of_bathymetry = filtered_names.index('bathymetry') # find bathy data
+        
+            
         if var_dict[nme]['TUV'] == 'T':
-            vals, rows, cols = rcr_PRIMEA(seperated_results[kl])
-            ukc4_dataset = rcr_UKC4(TUV[0][var_dict[nme]['UKC4']], rows, cols)
-            empty_UKC4_data_array.append(ukc4_dataset)
-            vals = mask_maker(ukc4_dataset, vals)
-            empty_PRIMEA_data_array.append(np.stack(vals, axis=0))
+            #print('this works') # fine upto here
+            if kl != index_of_bathymetry:
+                values, rows, cols = rcr_PRIMEA(seperated_results[kl])
+            else: # bathymetry option, 
+                values, rows, cols = rcr_PRIMEA(seperated_results[kl], import_rowcol = 'y', r=rows, c = cols)
+            if nme != 'bathymetry':
+                ukc4_dataset = rcr_UKC4(TUV[0][var_dict[nme]['UKC4']], rows, cols)
+                empty_UKC4_data_array.append(ukc4_dataset)
+                vals = mask_maker(ukc4_dataset, values)
+            if nme == 'bathymetry':
+                vals = mask_maker(ukc4_dataset, values)
+                empty_PRIMEA_data_array.append(np.stack(vals, axis=0))
+            else:
+                empty_PRIMEA_data_array.append(np.stack(vals, axis=0))
     
         elif var_dict[nme]['TUV'] == 'U':
             vals, rows, cols = rcr_PRIMEA(seperated_results[kl])
@@ -414,7 +478,7 @@ if __name__ == '__main__':
             empty_UKC4_data_array.append(ukc4_dataset)
             vals = mask_maker(ukc4_dataset, vals)
             empty_PRIMEA_data_array.append(np.stack(vals, axis=0))
-            
+        
     # empty_data_array is now the fully formatted dataset regridded onto lower resolution grid.
     ukc4_xrdata_array = [xr.concat(i, dim='time_counter') for i in empty_UKC4_data_array]
     primea_data_array = empty_PRIMEA_data_array
@@ -448,13 +512,19 @@ if __name__ == '__main__':
         for ig, name in enumerate(filtered_names):
             if ik == 0: 
                 key = 'prim_' + name
+                print(key)
             else:
-                key = 'ukc4_' + name
-            dict_to_dataset[key] = dataset[ig]
+                if name != 'bathymetry':
+                    key = 'ukc4_' + name
+            print(ig)
+            if ig < len(dataset):
+                dict_to_dataset[key] = dataset[ig]
+            #dict_to_dataset[key] = dataset[ig]
     
     
     dataset = xr.Dataset(dict_to_dataset)
     
+#%%
     if os.path.exists(output_nc_file):
         # Delete the file
         os.remove(output_nc_file)

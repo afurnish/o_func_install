@@ -61,7 +61,7 @@ class DirGen:
         self.figures = util.md([self.outputs, 'figures'])
         self.data_proc = util.md([self.outputs, 'data_proc'])
         self.data_stats = util.md([self.outputs, 'data_stats'])
-        self.data_stats = util.md([self.outputs, 'compare'])
+        self.data_comp = util.md([self.outputs, 'compare'])
         
         self.Og = util.md([os.path.join(self.main_dir, 'files_bc'), 'UKO4g'])
         self.Coa = util.md([os.path.join(self.main_dir, 'files_bc'), 'UKC4oa'])
@@ -78,6 +78,7 @@ class DirGen:
         self.png_sh = util.md([self.figures, 'png_sh'])
         self.png_wd = util.md([self.figures, 'png_wd'])
         self.png_sal = util.md([self.figures, 'png_sal'])
+        
         
         
         # Making SCW run folder
@@ -112,7 +113,7 @@ class DirGen:
                 file.write('###############################################################')
         # print(self.model_path)
         
-        return self.model_path , self.figures
+        return self.model_path , self.figures, self.data_stats
     
     def vid_var_path(self, var_choice = 'Surface_Height'):
         ''' Surface Height is the default. 
@@ -154,7 +155,7 @@ def write_directories(directory, model_name):
     
     print(main_path)
     make_paths = DirGen(main_path)
-    sub_path = make_paths.dir_outputs(model_name)
+    sub_path, fig_path, data_stats_path = make_paths.dir_outputs(model_name)
     print(sub_path)
     
     
@@ -167,6 +168,6 @@ if __name__ == '__main__':
     #from o_func.data_prepkit import DirGen
     main_path = os.path.join(start_path, r'modelling_DATA','kent_estuary_project',r'6.Final2')
     make_paths = DirGen(main_path)
-    sub_path = make_paths.dir_outputs('nowind_test_2_weeks')
+    sub_path, fig_path, data_stats_path = make_paths.dir_outputs('nowind_test_2_weeks')
     
     #/media/af/PD/modelling_DATA/kent_estuary_project/6.Final2/models/kent_1.3.7_testing_4_days_UM_run
