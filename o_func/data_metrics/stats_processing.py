@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 from o_func import opsys; start_path = opsys()
 from o_func.utilities.near_neigh import near_neigh
 from o_func.utilities.distance import Dist
-
+from o_func.utilities.gauges import tide_gauge_loc
    
 #example_dataset = os.path.join(start_path, 'modelling_DATA','kent_estuary_project',r'6.Final2','models','kent_1.3.7_testing_4_days_UM_run','kent_regrid.nc')
 var_dict = {
@@ -126,10 +126,11 @@ class stats:
     ####            0                1          2
     
     def load_tide_gauge(self):   
-        # import pdb; pdb.set_trace()
-        self.tide_loc_dict = {'Heysham'  :{'x':-2.9311759, 'y':54.0345516},
-                              'Liverpool':{'x':-3.0168250, 'y':53.4307320},
-                              }
+        # self.tide_loc_dict = {'Heysham'  :{'x':-2.9311759, 'y':54.0345516},
+        #                       'Liverpool':{'x':-3.0168250, 'y':53.4307320},
+        #                       }
+        
+        self.tide_loc_dict = tide_gauge_loc()
         df_tide_loc = pd.DataFrame(self.tide_loc_dict).T.reset_index()
         df_tide_loc = df_tide_loc.drop(df_tide_loc.columns[0], axis=1)
         df_search_points = pd.DataFrame({'x': self.lon.data.ravel(), 'y': self.lat.data.ravel()})
@@ -158,9 +159,10 @@ class stats:
         
             This will also plot out the tidal data
         '''
+        # Start to write outputs to file. 
         with open(os.path.join(data_stats_path, 'r_squared_stats.txt'), "w") as f:
-            f.write("{:<20} {:<10} {:<10} {:<10} {:<20}\n".format("Variable", "Tide Gauge", "X", "Y", "R-squared"))
-
+            f.write("{:<20} {:<10} {:<20} {:<15} {:<20}\n".format("Variable", "Tide Gauge", "X", "Y", "R-squared"))
+            f.write((89//2)*"-*" + "\n")
         
         self.tide_save = stats.load_tide_gauge(self)
          
@@ -170,142 +172,167 @@ class stats:
         extract_prims = []
         extract_ukc4s = []
         slicer = 50
-        def min_max_scaling(data):
-            return (data - np.min(data)) / (np.max(data) - np.min(data))
-
         
-        fig2, ax2 = plt.subplots(1, len(self.tide_save)) # this is the figure for timeseries plots
         
-        for variable_name in self.common_keys:
+        # fig2, ax2 = plt.subplots(1, len(self.tide_save)) # this is the figure for timeseries plots
+        
+        for variable_name in self.common_keys: # set up common keys to remove bathymetry etc. 
             
             def figs():
                 fig, ax = plt.subplots(1, len(self.tide_save), sharey=True, sharex=True) # this is the figure for correlation plots
                 fig.set_figheight(3.5)
                 fig.set_figwidth(7)
                 return fig, ax
-            fig, ax = figs()
+           
             ukc4_data = ukc4_dict[variable_name] 
             prim_data = prim_dict[variable_name]
             unit = var_dict[variable_name]['UNITS']
             extract_prims.append(prim_data)
             extract_ukc4s.append(ukc4_data)
-            
+            self.time_sliced = self.time[slicer:]
             
             if variable_name == 'surface_height':  # there is surely a better way to do this
                 self.ukc4_sh = ukc4_data # save for later processing
                 self.prim_sh = prim_data
-    
-            # fig, ax = plt.subplots(1, len(self.tide_save), sharey=True, sharex=True)
-            
-            def make_plot(plottingx = 'prim', plottingy = 'ukc4', corr_tide = 'corr'):
+                
+            def make_data(): # save the data inside variables for use later for each tide gauge. 
+                self.primx = []
+                self.ukc4y = []
+                self.tidex = []
                 for i, tide_gauge in enumerate(self.tide_save):
                     
                     tide_gauge_name = [j for j in self.tide_loc_dict.keys()][i]
                     x,y = tide_gauge[0],tide_gauge[1] # Now the location has been determined you can apply elsewhere. 
-                    primx = {'PRIMEA Model' : min_max_scaling(prim_data[slicer:,x,y].data.flatten())} # at the testing points [4:,40,20] it is almost identical. 
-                    ukc4y = {'UKC4 Model' : min_max_scaling(ukc4_data[slicer:,x,y].data.flatten())}
-                    tidex = {'Measured Tide Gauge' : min_max_scaling(self.tide_data_dict[tide_gauge_name].Height[slicer:])}
-                    # can rerun this multiple times for surface height only. 
-                    
-                    def make_subplot(plotx, ploty):
-                        xname = [i for i in plotx.keys()][0]
-                        yname = [i for i in ploty.keys()][0]
-                        coefficients = np.polyfit(plotx[xname], ploty[yname], 1)
-                        regression_line = np.poly1d(coefficients)
-                        r_squared = np.corrcoef(plotx[xname], ploty[yname])[0, 1] ** 2 
-                        
-                        # Plotting up the figures    
-                        
-                        ax[i].scatter(plotx[xname],ploty[yname], s = 1, label = xname + ' vs '+ yname + ' correlation')
-                        ax[i].plot(plotx[xname], regression_line(plotx[xname]), label='Regression Line', c = 'b', linewidth = 0.25)  # plot the regression line
-                        ax[i].plot(plotx[xname], plotx[xname], label='y=x', c = 'orange', linewidth = 0.25)  # plot the y=x line for comparison
-                        
-                        fig.text(0.5, 0.01, xname + ' (normalised ' + unit + ')', ha='center', va='bottom', transform=fig.transFigure)
-                        fig.text(0.03, 0.5, yname + ' (normalised ' + unit + ')', va='center', rotation='vertical')
-                        ax[i].set_title(tide_gauge_name + '\n' + f'(R$^2$ ={r_squared:.2f})')
-                        ax[i].set_aspect('equal')   
-                        ax[i].legend(loc = 'lower right', fontsize = 4, frameon=False)
-                        
-                        
-                        # a =  (variable_name,' ', tide_gauge_name, ' ',plottingx,' ', plottingy,' other r_squared =' ,r_squared)
-                        with open(os.path.join(data_stats_path, 'r_squared_stats.txt'), "a") as f:
-                            table_to_return =  (variable_name, tide_gauge_name, plottingx, plottingy, r_squared)
-                            print("{:<20} {:<10} {:<10} {:<10} {:<20}".format(*table_to_return))
-                            f.write("{:<20} {:<10} {:<10} {:<10} {:<20}".format(*table_to_return))
-                            f.write('\n')
-                        return xname, yname
-                    
-                    if plottingx == 'tidegauge' :
-                        passx = tidex
-                    elif plottingx == 'ukc4':
-                        passx = ukc4y
-                    elif plottingx == 'prim':
-                        passx = primx
-                        
-                    if plottingy == 'tidegauge' :
-                        passy = tidex
-                    elif plottingy == 'ukc4':
-                        passy = ukc4y
-                    elif plottingy == 'prim':
-                        passy = primx
-                        
-                    xname , yname = make_subplot(passx, passy)
-                    
-                return xname.replace(' ', '_'), yname.replace(' ', '_')
-                    # Here run the plotting sctipt 3 times. 
-            xname, yname = make_plot()        
-            fig.savefig(os.path.join(fig_path,'correlation_' + variable_name + '_' + xname + '_' + yname + '_'+ '.png'), dpi = 300)
-            plt.close(fig)
-            if variable_name == 'surface_height':
-                fig, ax = figs()
-                xname, yname = make_plot('prim', 'tidegauge')   
-                fig.savefig(os.path.join(fig_path,'correlation_' + variable_name + '_' + xname + '_' + yname + '_'+ '.png'), dpi = 300)
-                plt.close(fig)
-                fig, ax = figs()
-                xname, yname = make_plot('ukc4', 'tidegauge')   
-                fig.savefig(os.path.join(fig_path,'correlation_' + variable_name + '_' + xname + '_' + yname + '_'+ '.png'), dpi = 300)
-                plt.close(fig)
-                
-                # ax[i].plot(subset_x, regression_line(subset_x), label='Regression Line', c = 'b', linewidth = 3)  # plot the regression line
-                # ax[i].plot(subset_x, subset_x, label='y=x', c = 'orange', linewidth = 3)  # plot the y=x line for comparison
+                    self.primx.append({'PRIMEA Model' : prim_data[slicer:,x,y].data.flatten()}) # at the testing points [4:,40,20] it is almost identical. 
+                    self.ukc4y.append({'UKC4 Model' : ukc4_data[slicer:,x,y].data.flatten()})
+                    self.tidex.append({'Measured Tide Gauge' : self.tide_data_dict[tide_gauge_name].Height[slicer:]})
+            # fig, ax = plt.subplots(1, len(self.tide_save), sharey=True, sharex=True)
+            # 
+            make_data()
             
+            def corr_plot(x, y, n = 'y'): 
+                '''
+            
+
+                Parameters
+                ----------
+                plotx : Refers to the dataset that should be plotted for the x
+                ploty : refers to the dataset that should be plotted for the y
+
+                Returns
+                -------
+                None.
+
+                '''
+                def min_max_scaling(data):
+                    return (data - np.min(data)) / (np.max(data) - np.min(data))
+
                 
-            # print(coefficients)
-        
-              # coefficients = np.polyfit(data.flatten(), np.arange(data.shape[0]).repeat(data.shape[1]), 1)
-        # return ukc4_data#prim_data
+                fig, ax = figs() # Generate a figure the size of the two tide gauges. 
+                for i, tide_gauge in enumerate(self.tide_save):
+                    # produces Heysham and Liverpool as strings. 
+                    plotx = x[i]     # x dataset pulled out
+                    ploty = y[i]     # y dataset for one location held in dictionary of its name. 
+                    
+                    xname, yname = [i for i in plotx.keys()][0], [i for i in ploty.keys()][0] # get keys
+                    if n == 'y':
+                        plotx = min_max_scaling(plotx[xname])
+                        ploty = min_max_scaling(ploty[yname])
+                    coefficients = np.polyfit(plotx, ploty, 1)
+                    regression_line = np.poly1d(coefficients)
+                    r_squared = np.corrcoef(plotx, ploty)[0, 1] ** 2 
+                    
+                    # Plotting up the figures    
+                    
+                    ax[i].scatter(plotx,ploty, s = 1, label = xname + ' vs '+ yname + ' correlation')
+                    ax[i].plot(plotx, regression_line(plotx), label='Regression Line', c = 'b', linewidth = 0.25)  # plot the regression line
+                    ax[i].plot(plotx, plotx, label='y=x', c = 'orange', linewidth = 0.25)  # plot the y=x line for comparison
+                    
+                    fig.text(0.5, 0.01, xname + ' (normalised ' + unit + ')', ha='center', va='bottom', transform=fig.transFigure)
+                    fig.text(0.03, 0.5, yname + ' (normalised ' + unit + ')', va='center', rotation='vertical')
+                    tide_gauge_name = [j for j in self.tide_loc_dict.keys()][i]
+                    ax[i].set_title(tide_gauge_name + '\n' + f'(R$^2$ ={r_squared:.2f})')
+                    ax[i].set_aspect('equal')   
+                    ax[i].legend(loc = 'lower right', fontsize = 4, frameon=False)
+                    with open(os.path.join(data_stats_path, 'r_squared_stats.txt'), "a") as f:
+                        table_to_return =  (variable_name, tide_gauge_name, xname, yname, r_squared)
+                        print("{:<20} {:<10} {:<20} {:<15} {:<20}".format(*table_to_return))
+                        f.write("{:<20} {:<10} {:<20} {:<15} {:<20}".format(*table_to_return))
+                        f.write('\n')
+                        
+                fig.savefig(os.path.join(fig_path,'correlation_' + variable_name + '_' + xname.replace(' ','_') + '_' + yname.replace(' ','_') + '_'+ '.png'), dpi = 300)
+                plt.close(fig)
+            
+            #plot up ukc4 vs prim for all pairs of variables. 
+            # import pdb; pdb.set_trace()
+            
+            primx = self.primx
+            ukc4y = self.ukc4y
+            tidex = self.tidex
+            corr_plot(primx, ukc4y)
+            if variable_name == 'surface_height':
+                corr_plot(tidex, primx) # plot primea vs tide gauge. 
+                corr_plot(tidex, ukc4y) # plot ukc4 vs tide gauge. 
+                         
+            def timeseries_plot(list_of_data):
+                # len_list = len(list_of_data) # how many plots on one figure. 
+                # num_of_figs = len(list_of_data[0]) # how many tide gauge plots in total. 
+                
+                
+                for i, tide_gauge in enumerate(self.tide_save):
+                    fig, ax = plt.subplots() # this is the figure for correlation plots
+                    fig.set_figheight(2) # plotting up tidal signal. 
+                    fig.set_figwidth(7)
+                    # key list
+                    model_keys = [] # length of 3 
+                    for model in list_of_data:
+                        mk = [j for j in model[i].keys()][0]# model is the dataset itself for both heysham and liberpool. 
+                        model_keys.append(mk) # should be like PRIMEA Model key etc., 
+
+                        ax.plot(self.time_sliced,model[i][mk], label = mk)     
+                    tide_gauge_name = [j for j in self.tide_loc_dict.keys()][i]
+                   
+                    ax.legend(loc = 'lower right', fontsize = 4, frameon=False)
+
+                        
+                    fig.savefig(os.path.join(fig_path,'timeseries_' + variable_name + '_' + tide_gauge_name + '.png'), dpi = 300)
+                    plt.close(fig)
+            # Run timeseries for both datasest aga    
+            timeseries_plot([self.tidex, self.primx, self.ukc4y]) # Will make a plot of all together per location. 
+            print(self.ukc4y)
+           
         return extract_prims, extract_ukc4s
     
-    def tidal_plots(self, fig_path):
-        '''
-        I need to plot the number of tide guage locations, 
-        which then plots 2 figures, in each figure should be plotted
-        the tide gauge, ukc4 and primea data values. 
+    # def tidal_plots(self, fig_path):
+    #     '''
+    #     I need to plot the number of tide guage locations, 
+    #     which then plots 2 figures, in each figure should be plotted
+    #     the tide gauge, ukc4 and primea data values. 
         
-        This can then be done for salinity ensuring to only plot the tide 
-        gauge if the data exists. 
-        '''
+    #     This can then be done for salinity ensuring to only plot the tide 
+    #     gauge if the data exists. 
+    #     '''
         
         
-        prim_dict = self.data_dict['prim']
-        ukc4_dict = self.data_dict['ukc4']
+    #     prim_dict = self.data_dict['prim']
+    #     ukc4_dict = self.data_dict['ukc4']
         
-        fig, ax = plt.subplots(len(self.tide_save), 1)
-        for i, variable_name in enumerate(self.common_keys):
-            for tide_gauge in self.tide_save:
-                x = tide_gauge[0] # Now the location has been determined you can apply elsewhere. 
-                y = tide_gauge[1]
+    #     fig, ax = plt.subplots(len(self.tide_save), 1)
+    #     for i, variable_name in enumerate(self.common_keys):
+    #         for tide_gauge in self.tide_save:
+    #             x = tide_gauge[0] # Now the location has been determined you can apply elsewhere. 
+    #             y = tide_gauge[1]
                 
-                ukc4_data = ukc4_dict[variable_name]
-                prim_data = prim_dict[variable_name]
-                primx = prim_data[50:,x,y].data.flatten() # at the testing points [4:,40,20] it is almost identical. 
-                ukc4y = ukc4_data[50:,x,y].data.flatten()
-                ax[i].plot(self.time[50:], primx)
-                ax[i].plot(self.time[50:], ukc4y)
+    #             ukc4_data = ukc4_dict[variable_name]
+    #             prim_data = prim_dict[variable_name]
+    #             primx = prim_data[50:,x,y].data.flatten() # at the testing points [4:,40,20] it is almost identical. 
+    #             ukc4y = ukc4_data[50:,x,y].data.flatten()
+    #             ax[i].plot(self.time[50:], primx)
+    #             ax[i].plot(self.time[50:], ukc4y)
                 
                 
-                # plt.savefig(os.path.join(fig_path, 'tide_gauge_validation_' + variable_name +'.png'), dpi = 150)
-                plt.close
+    #             # plt.savefig(os.path.join(fig_path, 'tide_gauge_validation_' + variable_name +'.png'), dpi = 150)
+    #             plt.close
         
     def transect(self, fig_path):
         transect_paths = start_path + r'modelling_DATA/kent_estuary_project/land_boundary/analysis/QGIS_shapefiles/points_along_estuary_1km_spacing.csv'
@@ -452,7 +479,7 @@ if __name__ == '__main__':
     tide_gauge, ind = sts.load_tide_gauge()
     transect = sts.transect(fig_path)
     prim, ukc4, height_diff = sts.max_compare(fig_path)
-    tp = sts.tidal_plots(fig_path)
+    # tp = sts.tidal_plots(fig_path)
     
 # EXTRA PLOTTING
     # SANITY CHECKER

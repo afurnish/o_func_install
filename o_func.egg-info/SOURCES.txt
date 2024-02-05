@@ -54,6 +54,7 @@ o_func/tests/geo_vista_viewing.py
 o_func/tests/test_utilities/__init__.py
 o_func/tests/test_utilities/test_finder.py
 o_func/utilities/FES2014_slicer.py
+o_func/utilities/VORF_handler.py
 o_func/utilities/__init__.py
 o_func/utilities/choices.py
 o_func/utilities/distance.py

@@ -10,6 +10,12 @@ import matplotlib.pyplot as plt
 import matplotlib
 from matplotlib.dates import MonthLocator, YearLocator, DateFormatter
 
+def tide_gauge_loc():
+    tgl = {'Heysham'  :{'x':-2.9311759, 'y':54.0345516},
+           'Liverpool':{'x':-3.0168250, 'y':53.4307320},
+           }
+    return tgl
+
 
 class Gauge:
     def __init__(self,file_path):
