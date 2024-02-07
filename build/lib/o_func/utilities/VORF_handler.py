@@ -37,9 +37,16 @@ def nearest_neighbour(data, v):
 
 #%% Process the data with VORF algorithm 
 #we're gonna go straight from CD to MSL rather than going from CD to ODN
-heysham = [-2.92025,54.031833]
-liverpool = [-3.018,53.449694]
+
+from o_func.utilities.gauges import tide_gauge_loc
+tg = tide_gauge_loc()
+# heysham = [-2.92025,54.031833]
+# liverpool = [-3.018,53.449694]
 workington = [-3.567167,54.650722]
+
+heysham = [tg['Heysham']['x'],tg['Heysham']['y']]
+liverpool = [tg['Liverpool']['x'],tg['Liverpool']['y']]
+
 
 
 header_list = ["x", "y", "z"]

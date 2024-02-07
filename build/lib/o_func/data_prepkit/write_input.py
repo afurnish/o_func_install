@@ -25,6 +25,12 @@ Created on Thu Jan 12 13:22:52 2023
 - Pull in desired outer coordinates - pli file 
 - Nearest neighbour algorithum to stick pli to UKC3 dataset
 - Generate new pli file where necessary. 
+
+
+SANITY CHECK 
+Performed on the 7th Feb 2024, you did flip them upside down, checked the file you flipped. 
+
+
 '''
 import glob
 import xarray as xr
@@ -66,7 +72,7 @@ class InMake:
                                     )
         self.pli_dir = os.path.join(self.loc_pli , 'pli_files')
         #pli_constants
-        self.spec_col = 758
+        self.spec_col = 758# This should really be remade to find these points using lat and lon sections
         self.upper = 688 #690 fits within the new delft grid with a square edge
         self.lower = 601 #600
         

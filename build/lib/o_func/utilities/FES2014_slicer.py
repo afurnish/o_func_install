@@ -92,13 +92,14 @@ class FES_Slice:
 
         folder_list = ["eastward_velocity", "load_tide", "northward_velocity", "ocean_tide", "ocean_tide_extrapolated"]
 
+        
         # Create subdirectories inside the subfolder
         for folder_name in folder_list:
             folder_paths.append(os.path.join(main_folder_path, folder_name))
             folder_path = os.path.join(main_folder_path, folder_name)
             os.makedirs(folder_path, exist_ok=True)
             
-        return folder_list
+        return folder_paths
         
 if __name__ == '__main__':
     

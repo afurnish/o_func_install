@@ -23,7 +23,21 @@ import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 import pandas as pd
 
+import ttide as tt
+import matplotlib.dates as mdates
 
+'''
+SANINITY CHECK TO SELF
+
+So I have discovered I definately have flipped the forcing data which is instoducing some phase lag. 
+This was discovered when on original file at time one most northerly point (top) 87, number was -2.16, 
+yet at southerly point 01 number was -2.52. When analysing using phase analysis,
+The tide gauge is plotted here at the most southerly point, indexing zero (points file 01) which lines up 
+with the northerly point (top) -2.16, which suggests to me that the points to force the ocean boundary were flipped in the NS line. 
+
+The code will be rectified as of the 7th feb 2024. 
+
+'''
 
 #Location of main data in Original Dataset file. 
 dataset = 'UK_bounds' # 'world
@@ -41,6 +55,10 @@ tide_load = join(loc_of_FES2014, 'load_tide')
 
 
 test_model_location = join(start_path ,'modelling_DATA','kent_estuary_project','6.Final2','models','02_kent_1.0.0_UM_wind','shortrunSCW_kent_1.0.0_UM_wind')
+#  The one below is the upsisde down (actual right way up model)
+# test_model_location = join(start_path ,'modelling_DATA','kent_estuary_project','7.met_office','models','upside_down_ocean_bound','runSCW_upside_down_ocean_bound')
+
+
 water_bc_file = join(test_model_location, 'WaterLevel.bc')
 points_file = join(test_model_location, '001_delft_ocean_boundary_UKC3_b601t688_length-87_points.pli')
 
@@ -102,6 +120,7 @@ class est_tide:
         points = self.read_pli(points_to_predic)
         print(points.shape)
         x, y = points[:,0], points[:,1]
+        # import pdb; pdb.set_trace()
         #Return an array of x and y
         #data_array[:,0] X and data_array[:,1] Y
         
@@ -228,10 +247,11 @@ class est_tide:
 
 if __name__ == '__main__':
     et = est_tide()
+    # For this its generating the points at the ocean boundary for the locations. 
     df_amp, df_pha, tc_names = et.est_amp_and_phase_extractor(points_file, h_or_v = 'height')
     df_amp = df_amp/100
     t = et.time_maker('2013-10-30 00:00', '2013-11-30 00:00', 5)
-    amp_phase = et.est_predic(t, df_pha, df_amp, tc_names)
+    amp_phase = et.est_predic(t, df_pha, df_amp, tc_names) # sorts out the amplitude and phasing into correct format
 #%%
     matches = []
     matched_names = []
@@ -272,15 +292,14 @@ if __name__ == '__main__':
     
     FREQ = np.array(result_df.Freq)
     CONS2 = [item[0].encode('utf-8') for item in CONS]
-    import ttide as tt
+    
     eta = tt.t_predic(np.array(t), np.array(CONS2), FREQ, np.array(updatedList).astype(float))
-
-    import matplotlib.dates as mdates
+    
 
 #%% PLOT the lines
     # Set ticks for every week
     fig = plt.subplots(figsize=(20,7))
-    plt.plot(t,eta, label = 'FES_predicted tide gauge')
+    plt.plot(t,eta, label = 'FES_predicted southerly boundary point')
     
     plt.tight_layout()
     plt.xticks(rotation=45, ha='right')  # Adjust rotation and alignment as needed
@@ -307,7 +326,7 @@ if __name__ == '__main__':
     #plt.gca().xaxis.set_major_locator(mdates.WeekdayLocator())
     plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%H %M')) 
     # plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%b %d'))  # Adjust the format as needed
-    plt.xlim(t[400], t[700])
+    plt.xlim(t[400], t[1400])
     plt.xlabel('Hours')
     plt.legend()
 #%% Notes 
@@ -395,12 +414,18 @@ plt.plot(t,eta, 'b',label = 'FES_predicted tide gauge')
     
 hey = pd.read_csv(heysham, parse_dates=['Date'])
 
-plt.plot(hey.Date - pd.to_timedelta('0 hours'), hey.Height, 'r', label = 'Heysham Tide Gauge')
+y = hey.Height-1.1
+plt.plot(hey.Date - pd.to_timedelta('0 hours'), y, 'r', label = 'Heysham Tide Gauge')
 
 plt.xlim(t[0], t[-1])
 plt.ylim(min(eta)-2, max(eta)+2)
-plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%H %M')) 
+# plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%H %M')) 
 plt.legend()
+plt.xlim([t[0], t[2000]])
+
+'''
+I think I need to set a timeseries data point that can passed to another function in the suite. 
+'''
 
 # tidal_analysis = tt.t_tide(hey.Height, dt = 3600, lat = 54)
 

@@ -37,6 +37,7 @@ o_func/data_prepkit/esmf.py
 o_func/data_prepkit/gen_directory.py
 o_func/data_prepkit/gen_interp_grid_dataset.py
 o_func/data_prepkit/gen_video.py
+o_func/data_prepkit/locations.py
 o_func/data_prepkit/open_nc.py
 o_func/data_prepkit/wind_prep.py
 o_func/data_prepkit/write_est_files.py
