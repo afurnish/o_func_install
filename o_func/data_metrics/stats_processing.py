@@ -154,6 +154,11 @@ class stats:
         
         return self.empty_ind # self.tide_gauge_coords,
         
+    
+    def load_ocean_bound(self):
+        pass
+        # ocean_bnd = 
+    
     def linear_regression(self, figpath, data_stats_path):
         ''' Uses one point in the dataset, like a tide gauge and samples points through time
         
@@ -209,7 +214,7 @@ class stats:
             # fig, ax = plt.subplots(1, len(self.tide_save), sharey=True, sharex=True)
             # 
             make_data()
-            
+            # import pdb; pdb.set_trace()
             def corr_plot(x, y, n = 'y'): 
                 '''
             

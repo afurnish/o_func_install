@@ -23,6 +23,9 @@ import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 import pandas as pd
 
+import ttide as tt
+import matplotlib.dates as mdates
+
 
 
 #Location of main data in Original Dataset file. 
@@ -272,10 +275,9 @@ if __name__ == '__main__':
     
     FREQ = np.array(result_df.Freq)
     CONS2 = [item[0].encode('utf-8') for item in CONS]
-    import ttide as tt
+    
     eta = tt.t_predic(np.array(t), np.array(CONS2), FREQ, np.array(updatedList).astype(float))
-
-    import matplotlib.dates as mdates
+    
 
 #%% PLOT the lines
     # Set ticks for every week
@@ -395,12 +397,18 @@ plt.plot(t,eta, 'b',label = 'FES_predicted tide gauge')
     
 hey = pd.read_csv(heysham, parse_dates=['Date'])
 
-plt.plot(hey.Date - pd.to_timedelta('0 hours'), hey.Height, 'r', label = 'Heysham Tide Gauge')
+y = hey.Height-1.1
+plt.plot(hey.Date - pd.to_timedelta('0 hours'), y, 'r', label = 'Heysham Tide Gauge')
 
 plt.xlim(t[0], t[-1])
 plt.ylim(min(eta)-2, max(eta)+2)
-plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%H %M')) 
+# plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%H %M')) 
 plt.legend()
+plt.xlim([t[0], t[2000]])
+
+'''
+I think I need to set a timeseries data point that can passed to another function in the suite. 
+'''
 
 # tidal_analysis = tt.t_tide(hey.Height, dt = 3600, lat = 54)
 
