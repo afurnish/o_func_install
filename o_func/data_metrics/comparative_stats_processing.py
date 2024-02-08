@@ -291,14 +291,15 @@ class stats:
                     # key list
                     model_keys = [] # length of 3 
                     for model in list_of_data:
+                        print(model)
                         mk = [j for j in model[i].keys()][0]# model is the dataset itself for both heysham and liberpool. 
+                        print(mk)
                         model_keys.append(mk) # should be like PRIMEA Model key etc., 
 
                         ax.plot(self.time_sliced,model[i][mk], label = mk, linewidth = 1)     
                     tide_gauge_name = [j for j in self.tide_loc_dict.keys()][i]
-                    import pdb; pdb.set_trace()
+                    # import pdb; pdb.set_trace()
                     ax.legend(loc = 'lower right', fontsize = 4, frameon=False)
-
                         
                     fig.savefig(os.path.join(fig_path,'timeseries_' + variable_name + '_' + tide_gauge_name + '.png'), dpi = 300)
                     # plt.close(fig)
@@ -442,6 +443,20 @@ class stats:
                 fig.set_figheight(7)
                 fig.set_figwidth(5)
                 pcm = ax.pcolor(self.lon, self.lat, height_difference)
+                
+                def sanity_plot(var, saveas):
+                    fig3, ax3 = plt.subplots() # this is the figure for correlation plots
+                    fig3.set_figheight(7) # plotting up tidal signal. 
+                    fig3.set_figwidth(5)
+                    pcm = ax3.pcolor(self.lon, self.lat, var)
+                    cbar = plt.colorbar(pcm)
+                    cbar.set_label(j + ' ' + saveas)
+                    plt.savefig(fig_path + '/SanityCheck/' + saveas + '_' + j + '_' + i + '.png', dpi = 300)
+                    
+                sanity_plot(heightprim, 'prim_height')
+                sanity_plot(heightukc4, 'ukc4_height')
+                    
+                    
                 pcm.set_array(height_difference)
                 #pcm.set_clim(-1, 1)
                 cbar = plt.colorbar(pcm)
@@ -519,3 +534,4 @@ if __name__ == '__main__':
     #     plt.pcolor(extract_prims[0].nav_lon, extract_prims[0].nav_lat,load[0]['prim_surface_height'][i,:,:])
     #     #plt.scatter(extract_prims[:,41,10].nav_lon.values, extract_prims[:,41,10].nav_lat.values, color = 'r')
     #     plt.savefig('/home/af/Desktop/temp.png', dpi = 300)
+[plt.close() for i in range(400)]

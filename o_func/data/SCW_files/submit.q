@@ -47,6 +47,13 @@ cd DFM_OUTPUT_kent_31
 module load delft3dfm/63285
 dfmoutput mapmerge --infile kent_31_0000_map.nc kent_31_0001_map.nc kent_31_0002_map.nc kent_31_0003_map.nc kent_31_0004_map.nc kent_31_0005_map.nc kent_31_0006_map.nc kent_31_0007_map.nc kent_31_0008_map.nc kent_31_0009_map.nc kent_31_0010_map.nc kent_31_0011_map.nc kent_31_0012_map.nc kent_31_0013_map.nc kent_31_0014_map.nc kent_31_0015_map.nc kent_31_0016_map.nc kent_31_0017_map.nc kent_31_0018_map.nc kent_31_0019_map.nc kent_31_0020_map.nc kent_31_0021_map.nc kent_31_0022_map.nc kent_31_0023_map.nc kent_31_0024_map.nc kent_31_0025_map.nc kent_31_0026_map.nc kent_31_0027_map.nc kent_31_0028_map.nc kent_31_0029_map.nc kent_31_0030_map.nc kent_31_0031_map.nc kent_31_0032_map.nc kent_31_0033_map.nc kent_31_0034_map.nc kent_31_0035_map.nc kent_31_0036_map.nc kent_31_0037_map.nc kent_31_0038_map.nc kent_31_0039_map.nc # CHANGE result file names
 
+#post_processing_of_data
+rm *00* # removes all of the older generation files. 
+module load anaconda &>/dev/null
+eval "$(/apps/languages/anaconda/2021.11/bin/conda shell.bash hook)"
+conda activate phd
+regrid.py kent_31_merged_map.nc
+#regrid.py /scratch/b.osu903/kent/validation_testing/runSCW_upside_down_ocea    n_bound-65866722/DFM_OUTPUT_kent_31/kent_31_merged_map.nc
 #Finish
 echo "Run Finished!"
 

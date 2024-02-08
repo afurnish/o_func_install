@@ -43,6 +43,8 @@ from sklearn.neighbors import BallTree
 import re
 import subprocess
 import pkg_resources
+import platform
+
 
 # import dask
 
@@ -202,7 +204,6 @@ class InMake:
     def write_pli(self):
         
         self.x , self.y, self.z = self.UKC3_testcase()
-        # import pdb; pdb.set_trace()
         
         lower = InMake.find_index(self.loc_bounds['South']['lon'],self.loc_bounds['South']['lat'],self.x, self.y)
         upper = InMake.find_index(self.loc_bounds['North']['lon'],self.loc_bounds['North']['lat'],self.x, self.y)
@@ -216,7 +217,9 @@ class InMake:
         self.long = self.x[self.lower:self.upper,self.spec_col] # lazy boundary line generator
         self.lati = self.y[self.lower:self.upper,self.spec_col] # lazy boundary line generator
         
-        self.dirname = 'PLI_FILE_delft_ocean_boundary_UKC4_b' + str(self.lower) + 't' + str(self.upper) + '_length-' + str(len(self.long)) + '_points.pli'
+        # self.dirname = 'PLI_FILE_delft_ocean_boundary_UKC4_b' + str(self.lower) + 't' + str(self.upper) + '_length-' + str(len(self.long)) + '_points.pli'
+        # self.dirname = '001_delft_ocean_boundary_UKC4_b' + str(self.lower) + 't' + str(self.upper) + '_length-' + str(len(self.long)) 
+        self.dirname = '001_delft_ocean_boundary_UKC3_b601t688_length-' + str(len(self.long)) + '_points' # need to fix this properly
         path = os.path.join(self.input_path, self.dirname)
         #path = os.path.join(self.pli_dir, dirname)
         f = open(path , "w")
@@ -438,7 +441,6 @@ class InMake:
                     dataset2.append('')
                     dataset2.append('')
                 raw_data.append(dataset2)
-            # import pdb; pdb.set_trace()
             if os.path.split(names)[-1] == 'NormalVelocity.bc':
                 dataset2 = []
                 dataset2.append(np.array(data.vozocrtx_top[:,self.ls,self.new_rs]))
@@ -469,7 +471,7 @@ class InMake:
                 dataset2.append(np.array(data.vomecrty_bot[:,self.ls,self.new_rs]))
                 
                 raw_data.append(dataset2)
-            return raw_data
+        return raw_data
     
     def main_body_data_writer(self, raw_data, i, df):
         # self.old_j = []
@@ -515,7 +517,6 @@ class InMake:
             
     
     def non_para_file_rip(self,dataset):
-        # import pdb; pdb.set_trace()
         print('length of dataset     \n',len(dataset))
         # if len(dataset) == 2:
         #     # dataset2 = dataset[1]
@@ -532,6 +533,7 @@ class InMake:
             df = pd.DataFrame()
             df['time'] = [re.sub(r'[^0-9-]', '', str(i)) for i in time]
 
+            
             raw_data = self.data_extract(data)
             self.main_body_data_writer(raw_data, i, df)
             
@@ -540,7 +542,6 @@ class InMake:
         '''
         Only works with smaller datasets otherwise dask throws a fit. 
         '''
-        # import pdb; pdb.set_trace()
         data = xr.open_mfdataset(dataset, parallel=True)#, chunks =  {'time_counter':100})
         # for i,file in enumerate(dataset):
         #     print('ripin ', i)
@@ -552,10 +553,8 @@ class InMake:
         time = self.convert_to_seconds_since_date(data.time_counter,r'2013-10-30 00:00:00')
         df = pd.DataFrame()
         df['time'] = [re.sub(r'[^0-9-]', '', str(i)) for i in time]
-
         raw_data = self.data_extract(data)
         self.main_body_data_writer(raw_data,0,df)
-        # import pdb; pdb.set_trace() 
         # self.new_j.reverse()
         # result = [elem1 == elem2 for elem1, elem2 in zip(self.old_j, self.new_j)]
         # all_true = np.all(result) # This is the variable that if True declares that the process works. 
@@ -565,7 +564,7 @@ class InMake:
             comps = os.path.split(names)[-1]
             # try to do in pairs of 3.
             print('Names  ', comps[:-3])
-            data_paths = sorted(glob.glob(os.path.join(self.csv_path,f'*_{comps[:-3]}_*.csv')))
+            data_paths = sorted(glob.glob(os.path.join(self.csv_path,f'*_{comps[:-3]}_.csv')))
             print(os.path.join(self.csv_path,f'*_{comps[:-3]}_*.csv'))
             print('dp',data_paths)
             
@@ -573,8 +572,10 @@ class InMake:
             output_file_path = os.path.join(self.layer_path,comps)
             with open( output_file_path , 'w') as f:
                 f.write('')
-        
-            subprocess.call(["bash", bash_script_path, output_file_path] + data_paths)
+            if platform.system() == "Windows":
+                subprocess.call([r"C:/Program Files/Git/bin/bash.exe", bash_script_path, output_file_path] + data_paths)
+            else: # for mac or linux
+                subprocess.call([r"bash", bash_script_path, output_file_path] + data_paths)
             
     def ocean_timeseries(self):
         
@@ -634,7 +635,6 @@ class InMake:
         R_store = ['R']
         UV_store = ['UV']
         
-        # import pdb; pdb.set_trace()
         for item in self.component:
             print(item)
             if item in self.options:
@@ -656,7 +656,6 @@ class InMake:
         print('V_store', V_store)
         print('R_store', R_store)
         print('UV_store', len(UV_store))
-        
         ## new loop to run task
         if len(T_store) > 1:
             dataset = all_files[0]

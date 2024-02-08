@@ -37,28 +37,36 @@ import xarray as xr
 import matplotlib.pyplot as plt
 import numpy as np
 import os
-from unittest.mock import patch
+# from unittest.mock import patch
 import pandas as pd
 from sklearn.neighbors import BallTree
 import re
 import subprocess
 import pkg_resources
+import platform
 
+
+# import dask
+
+# Set the option to split large chunks
 
 
 #homemade packages. 
 from o_func import opsys; start_path = opsys()
 from o_func.utilities.choices import DataChoice
 import o_func.utilities as util
+from o_func.data_prepkit import primea_bounds_for_ukc4_slicing  # import boundaries of primea model in ukc4 lon and lats
 
 class LayerError(Exception):
     pass
 
 class InMake:
-    def __init__(self, model_dir_to_put_files, bc_paths):
+    def __init__(self, model_dir_to_put_files, bc_paths, original_data_path, p = 'n'):
         '''
         model_dir_to_put_files: Should be a function of the dir_gen part of package. 
         '''
+        self.p = p
+        self.full_path = os.path.join(original_data_path, '*')
         #model_paths
         self.model_path = model_dir_to_put_files
         self.input_path = os.path.join(self.model_path[0], 'inputs')
@@ -72,24 +80,25 @@ class InMake:
                                     )
         self.pli_dir = os.path.join(self.loc_pli , 'pli_files')
         #pli_constants
-        self.spec_col = 758# This should really be remade to find these points using lat and lon sections
-        self.upper = 688 #690 fits within the new delft grid with a square edge
-        self.lower = 601 #600
+        # self.spec_col = 758# This should really be remade to find these points using lat and lon sections
+        # self.upper = 688 #690 fits within the new delft grid with a square edge
+        # self.lower = 601 #600
         
+        self.loc_bounds = primea_bounds_for_ukc4_slicing()
         
-        #bc_PATHS 
         self.bc_paths = bc_paths
         #original_data_paths
         '''
         KEY TO NOTE
          I have overridden the manual choice so it always runs the og folder for now. 
         '''
-        directory_path3 = os.path.join('Original_Data','UKC3')
-        dc = DataChoice(os.path.join(start_path, directory_path3))
+        # directory_path3 = os.path.join('Original_Data','UKC3')
+        # dc = DataChoice(os.path.join(start_path, directory_path3))
         # Automate input within the function
-        with patch('builtins.input', return_value='4'):
-            self.var_path = dc.var_select()
+        # with patch('builtins.input', return_value='4'): # This autoselected the og data.n
+        #     self.var_path = dc.var_select()
         
+        self.var_path = original_data_path
         #dictionary of boundary file types. 
         self.options = {
             'NormalVelocity.bc': {
@@ -137,7 +146,22 @@ class InMake:
                 'filetype': 'UV'
             }
         }
+    
+    @staticmethod
+    def find_index(lonval, latval, lonarray, latarray):
+
+        lon_indices = np.argwhere(lonarray == lonval).flatten().reshape(-1, 2)
+        lat_indices = np.argwhere(latarray == latval).flatten().reshape(-1, 2)
+        lon_set = {tuple(row) for row in lon_indices}
+        lat_set = {tuple(row) for row in lat_indices}
+        common_pairs = lon_set.intersection(lat_set)
         
+        common_indices = np.array(list(common_pairs))
+        # Sort the common indices
+        common_indices.sort(axis=0)
+        common_indices_list = common_indices.tolist()[0]
+       
+        return common_indices_list
     @staticmethod
     def convert_to_seconds_since_date(timeseries, date_str):
         """
@@ -164,52 +188,38 @@ class InMake:
             script_name = item_data.get('script_name', 'Unknown')
             units = item_data.get('units', 'Unknown')
             print(f"Item: {item_name}, Script Name: {script_name}, Units: {units}")
-
-    
-    # def PRIMEA_coastline(self):
-                
-    #     plt.rcParams["figure.figsize"] = [20, 15]
-    #     plt.rcParams['font.size'] = '16'
-    #     plt.rcParams["figure.autolayout"] = True
-
-    #     # set path for coastal shapefile
-    #     UKWEST_coastline = gpd.read_file(os.path.join(start_path,
-    #                                       'modelling_DATA',
-    #                                       'kent_estuary_project',
-    #                                       'land_boundary',
-    #                                       'QGIS_Shapefiles',
-    #                                       'UK_WEST_KENT_EPSG_4326_clipped_med_domain.shp'
-    #                                        ))
-
-    #     return UKWEST_coastline
     
     def UKC3_testcase(self):
-        full_path = os.path.join(start_path, 'Original_Data' ,'UKC3','owa','shelftmb','*')
-    
-        first = glob.glob(full_path)[0]
+        # full_path = os.path.join(start_path, 'Original_Data' ,'UKC3','owa','shelftmb','*')
+        first = sorted(glob.glob(self.full_path))[0]
         
         T = xr.open_dataset(first)
-       #fig, ax = plt.subplots(figsize=(30,30))
 
         z = T.sossheig.values[0,:,:]
         x = T.nav_lon.values
         y = T.nav_lat.values
 
-       #plt.contourf(x,y,z)
-        
-       #ax.set_xlim(-3.65,-2.75)
-       #ax.set_ylim(53.20,54.52)
-        
         return x, y, z
     
     def write_pli(self):
         
         self.x , self.y, self.z = self.UKC3_testcase()
         
+        lower = InMake.find_index(self.loc_bounds['South']['lon'],self.loc_bounds['South']['lat'],self.x, self.y)
+        upper = InMake.find_index(self.loc_bounds['North']['lon'],self.loc_bounds['North']['lat'],self.x, self.y)
+        
+        self.lower = lower[0]
+        self.upper = upper[0]
+        
+        if lower[1] == upper[1]:
+            self.spec_col = lower[1]
+    
         self.long = self.x[self.lower:self.upper,self.spec_col] # lazy boundary line generator
         self.lati = self.y[self.lower:self.upper,self.spec_col] # lazy boundary line generator
         
-        self.dirname = 'PLI_FILE_delft_ocean_boundary_UKC4_b' + str(self.lower) + 't' + str(self.upper) + '_length-' + str(len(self.long)) + '_points.pli'
+        # self.dirname = 'PLI_FILE_delft_ocean_boundary_UKC4_b' + str(self.lower) + 't' + str(self.upper) + '_length-' + str(len(self.long)) + '_points.pli'
+        # self.dirname = '001_delft_ocean_boundary_UKC4_b' + str(self.lower) + 't' + str(self.upper) + '_length-' + str(len(self.long)) 
+        self.dirname = '001_delft_ocean_boundary_UKC3_b601t688_length-' + str(len(self.long)) + '_points' # need to fix this properly
         path = os.path.join(self.input_path, self.dirname)
         #path = os.path.join(self.pli_dir, dirname)
         f = open(path , "w")
@@ -399,6 +409,7 @@ class InMake:
     def data_extract(self, data):
         raw_data = []
         for names in self.var_list:
+            print(names)
             # try to do in pairs of 3.
             print('Names  ', os.path.split(names)[-1])
             if os.path.split(names)[-1] == 'WaterLevel.bc':
@@ -460,14 +471,20 @@ class InMake:
                 dataset2.append(np.array(data.vomecrty_bot[:,self.ls,self.new_rs]))
                 
                 raw_data.append(dataset2)
-            return raw_data
+        return raw_data
     
     def main_body_data_writer(self, raw_data, i, df):
+        # self.old_j = []
+        # self.new_j = []
         for boundary_data in range(len(raw_data)):
             
             comp_name = self.var_list[boundary_data]
+            print(comp_name)
             #print('comp_name')
             for j, n in enumerate(self.name):
+                # print(j)
+                newj = (j+1)*-1
+                # print((j+1)*-1)
                 #print('csv ', self.csv_path)
                 filename = os.path.join(self.csv_path, n + f'_{os.path.split(comp_name[:-3])[-1]}_' +'.csv')
                 #print('filename', filename)
@@ -482,62 +499,72 @@ class InMake:
                 if self.layer == 1:
                     # This bit adds in the columns for the dataframes which means you get 3 layers deep of data. 
                     #print('raw_data',raw_data)
-                    df['data'] = raw_data[boundary_data][0][:,j]
+                    df['data'] = raw_data[boundary_data][0][:,newj]
+                    # self.old_j.append(raw_data[boundary_data][0][:,j])
+                    # self.new_j.append(raw_data[boundary_data][0][:,newj])
+                    
+                    
                 elif self.layer == 3: 
                     
-                    df['bottom'] = raw_data[boundary_data][2][:,j]
-                    df['middle'] = raw_data[boundary_data][1][:,j]
-                    df['top'] = raw_data[boundary_data][0][:,j]
+                    df['bottom'] = raw_data[boundary_data][2][:,newj]
+                    df['middle'] = raw_data[boundary_data][1][:,newj]
+                    df['top'] = raw_data[boundary_data][0][:,newj]
                     
                     # So you get Bottom Middle Top or just Top 
-                    
+                
                 #print('dataframe',df)
                 df.to_csv(filename, header = False, index = False, sep = ' ', mode = 'a')
             
     
     def non_para_file_rip(self,dataset):
         print('length of dataset     \n',len(dataset))
-        if len(dataset) == 2:
-            dataset2 = dataset[1]
-            dataset = dataset[0]
-        
+        # if len(dataset) == 2:
+        #     # dataset2 = dataset[1]
+        #     dataset = dataset[0]
+        # # data = xr.open_mfdataset(dataset, parallel=True, chunks =  {'time_counter':10, 'nav_lon':100, 'nav_lat':100})
         for i,file in enumerate(dataset):
-            print('ripin ', i)
-            #for i,file in enumerate(dataset):
-            
+            print('ripin non para', i)
             if len(dataset) == 2:
                 data = xr.open_dataset(file, engine ='netcdf4')
-                print('DATASET works here ...\n')
+                print('DATASET works here ...\n') # why on earth did I put this in as a conditional statement
             else:
-                data = xr.open_dataset(file, engine ='netcdf4')
-            
-            
+                data = xr.open_dataset(file, engine ='netcdf4')   
             time = self.convert_to_seconds_since_date(data.time_counter,r'2013-10-31 00:00:00')
             df = pd.DataFrame()
             df['time'] = [re.sub(r'[^0-9-]', '', str(i)) for i in time]
+
             
-            
-            ### here you need to use the names of variables to deploy which ones get written to. 
-            ###
-            ### Sets data in groups of 3 corresponding to top, middle, bottom. Need to keep running for diff layers.
-            
-            
-            #####
             raw_data = self.data_extract(data)
             self.main_body_data_writer(raw_data, i, df)
-            #####
-                
-            #daat_points = data.sossheig[:,ls,new_rs]
-            #data_array = np.array(daat_points)
             
-                      
+            
+    def para_file_rip(self,dataset):
+        '''
+        Only works with smaller datasets otherwise dask throws a fit. 
+        '''
+        data = xr.open_mfdataset(dataset, parallel=True)#, chunks =  {'time_counter':100})
+        # for i,file in enumerate(dataset):
+        #     print('ripin ', i)
+        #     if len(dataset) == 2:
+        #         data = xr.open_dataset(file, engine ='netcdf4')
+        #         print('DATASET works here ...\n') # why on earth did I put this in as a conditional statement
+        #     else:
+        #         data = xr.open_dataset(file, engine ='netcdf4')   
+        time = self.convert_to_seconds_since_date(data.time_counter,r'2013-10-30 00:00:00')
+        df = pd.DataFrame()
+        df['time'] = [re.sub(r'[^0-9-]', '', str(i)) for i in time]
+        raw_data = self.data_extract(data)
+        self.main_body_data_writer(raw_data,0,df)
+        # self.new_j.reverse()
+        # result = [elem1 == elem2 for elem1, elem2 in zip(self.old_j, self.new_j)]
+        # all_true = np.all(result) # This is the variable that if True declares that the process works. 
 
     def file_stitcher(self):
         for names in self.var_list:
             comps = os.path.split(names)[-1]
             # try to do in pairs of 3.
             print('Names  ', comps[:-3])
-            data_paths = sorted(glob.glob(os.path.join(self.csv_path,f'*_{comps[:-3]}_*.csv')))
+            data_paths = sorted(glob.glob(os.path.join(self.csv_path,f'*_{comps[:-3]}_.csv')))
             print(os.path.join(self.csv_path,f'*_{comps[:-3]}_*.csv'))
             print('dp',data_paths)
             
@@ -545,16 +572,18 @@ class InMake:
             output_file_path = os.path.join(self.layer_path,comps)
             with open( output_file_path , 'w') as f:
                 f.write('')
-        
-            subprocess.call(["bash", bash_script_path, output_file_path] + data_paths)
+            if platform.system() == "Windows":
+                subprocess.call([r"C:/Program Files/Git/bin/bash.exe", bash_script_path, output_file_path] + data_paths)
+            else: # for mac or linux
+                subprocess.call([r"bash", bash_script_path, output_file_path] + data_paths)
             
     def ocean_timeseries(self):
         
         ### FUNCTION here to check if files already exist if so will do nothing. 
         
-        T_path = os.path.join(self.var_path[0],'*T.nc')
-        U_path = os.path.join(self.var_path[0],'*U.nc')
-        V_path = os.path.join(self.var_path[0],'*V.nc')
+        T_path = os.path.join(self.var_path,'*T.nc')
+        U_path = os.path.join(self.var_path,'*U.nc')
+        V_path = os.path.join(self.var_path,'*V.nc')
         
         ### Create a large list of all files. 
         all_files = []
@@ -565,7 +594,7 @@ class InMake:
             all_files.append(files)
             
         df = pd.DataFrame()
-        dataset = xr.open_dataset(start_path + r'Original_Data/UKC3/NEMO_shelftmb/UKC4aow_1h_20131130_20131130_shelftmb_grid_T.nc')
+        dataset = xr.open_dataset(all_files[0][0])#start_path + r'Original_Data/UKC3/NEMO_shelftmb/UKC4aow_1h_20131130_20131130_shelftmb_grid_T.nc')
         lon = dataset.sossheig.nav_lon.values
         lat = dataset.sossheig.nav_lat.values
         combined_x_y_arrays = np.dstack([lon.ravel(),lat.ravel()])[0]
@@ -590,7 +619,7 @@ class InMake:
         
         nn = [] #locations of points
         for i in range(len(indices)):
-            nearest_neigh = list(divmod(indices[i,0],1458)) #1458 is length of row, unravel ravel
+            nearest_neigh = list(divmod(indices[i,0],self.x.shape[1])) #1458 is length of row, unravel ravel
             nn.append(nearest_neigh)
         
         self.ls = [item[0] for item in nn]
@@ -605,6 +634,7 @@ class InMake:
         V_store = ['V']
         R_store = ['R']
         UV_store = ['UV']
+        
         for item in self.component:
             print(item)
             if item in self.options:
@@ -626,7 +656,6 @@ class InMake:
         print('V_store', V_store)
         print('R_store', R_store)
         print('UV_store', len(UV_store))
-        
         ## new loop to run task
         if len(T_store) > 1:
             dataset = all_files[0]
@@ -635,7 +664,10 @@ class InMake:
             #Parallel(n_jobs=-1)(delayed(self.vid_plotter)(num_iters) for num_iters in range(num_of_figs))
             self.file_ripper(T_store)
             #Parallel(n_jobs=-1)(delayed(self.para_file_rip)(file, i) for i, file in enumerate(dataset))
-            self.non_para_file_rip(dataset)
+            if self.p == 'y':
+                self.para_file_rip(dataset)
+            else:
+                self.non_para_file_rip(dataset)
             endtime = time.time()-starttime
             self.file_stitcher()
             print('Finished in ',endtime,' minutes')
@@ -644,20 +676,29 @@ class InMake:
         if len(U_store) > 1:
             dataset = all_files[1]
             self.file_ripper(U_store)
-            self.non_para_file_rip(dataset)
+            if self.p == 'y':
+                self.para_file_rip(dataset)
+            else:
+                self.non_para_file_rip(dataset)
             self.file_stitcher()
             
         if len(V_store) > 1:
             dataset = all_files[2]
             self.file_ripper(V_store)
-            self.non_para_file_rip(dataset)
+            if self.p == 'y':
+                self.para_file_rip(dataset)
+            else:
+                self.non_para_file_rip(dataset)
             self.file_stitcher()
         if len(R_store) > 1:
             self.file_ripper()
         if len(UV_store) > 1:
             dataset = all_files[1:]
             self.file_ripper(UV_store)
-            self.non_para_file_rip(dataset)
+            if self.p == 'y':
+                self.para_file_rip(dataset)
+            else:
+                self.non_para_file_rip(dataset)
             self.file_stitcher()
             
             
@@ -715,8 +756,10 @@ if __name__ == '__main__':
     dc = DataChoice(os.path.join(main_path,'models'))
     fn = dc.dir_select()
     
-    
-    make_files = InMake(fn, bc_paths[1][0]) #  Pass model path folder into make file folder. 
+    # To work this needs to have all of the datasets in it. 
+    # full_path = os.path.join(start_path, 'Original_Data' ,'UKC3','owa','shelftmb')
+    full_path = os.path.join(start_path, 'Original_Data' ,'UKC3','sliced','oa','shelftmb_cut_to_domain')
+    make_files = InMake(fn, bc_paths[1][1], full_path, p = 'y') #  Pass model path folder into make file folder. 
     
     make_files.write_pli()
     
@@ -729,8 +772,8 @@ if __name__ == '__main__':
     ,NormalVelocity 'TangentVelocity', 'WaterLevel', 'Salinity']
     '''
     # This line definately works as of 2023-09-18 10:56
-    #make_files.write_boundary_file(layer = 1, component = ['WaterLevel.bc', 'Salinity.bc','Temperature.bc', 'NormalVelocity.bc','TangentVelocity.bc'])
-    make_files.write_boundary_file(layer = 3, component = ['Velocity.bc'])
+    make_files.write_boundary_file(layer = 1, component = ['WaterLevel.bc', 'Salinity.bc','Temperature.bc', 'NormalVelocity.bc','TangentVelocity.bc'])
+    # make_files.write_boundary_file(layer = 3, component = ['Velocity.bc'])
     
     #First step is to make the .pli files to which the boundary conditions are made. 
     
