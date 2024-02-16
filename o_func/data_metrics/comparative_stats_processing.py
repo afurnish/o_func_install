@@ -484,7 +484,7 @@ if __name__ == '__main__':
     # main_path = os.path.join(start_path, r'modelling_DATA','kent_estuary_project',r'6.Final2')
     # fn = 'kent_1.0.0_UM_wind' # 
     main_path = os.path.join(start_path, r'modelling_DATA','kent_estuary_project',r'7.met_office')
-    fn = 'PRIMEA_riv_yawind_oa_1l' # 
+    fn = 'PRIMEA_riv_nawind_oa_1l_flipped' # 
     
     
     make_paths = DirGen(main_path)
