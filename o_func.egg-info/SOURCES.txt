@@ -44,12 +44,14 @@ o_func/data_prepkit/wind_prep.py
 o_func/data_prepkit/write_est_files.py
 o_func/data_prepkit/write_input.py
 o_func/data_visuals/__init__.py
+o_func/data_visuals/image_viewer.py
 o_func/data_visuals/plotting_figures_for_latex.py
 o_func/data_visuals/test.py
 o_func/data_visuals/video_plots.py
 o_func/run_scripts/__init__.py
 o_func/run_scripts/general_inputs.py
 o_func/run_scripts/general_processing.py
+o_func/run_scripts/model_generator.py
 o_func/tests/__init__.py
 o_func/tests/bathy_viewing.py
 o_func/tests/geo_vista_viewing.py
@@ -67,6 +69,7 @@ o_func/utilities/general.py
 o_func/utilities/grids.py
 o_func/utilities/io.py
 o_func/utilities/local_regrid.py
+o_func/utilities/mdu_compare.py
 o_func/utilities/near_neigh.py
 o_func/utilities/scw_regrid.py
 o_func/utilities/start.py

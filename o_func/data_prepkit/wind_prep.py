@@ -438,7 +438,7 @@ class WindWrite():
         '''
         Wind_files should be directory to wind files location for UM grid. 
         '''
-        nc_path = os.path.join(wind_files,'*.nc')
+        nc_path = os.path.join(wind_files,'oa','*.nc')
         
         files = []
         for file in sorted(glob.glob(nc_path)):
