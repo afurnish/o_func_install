@@ -173,6 +173,6 @@ if __name__ == '__main__':
     # main_path = os.path.join(start_path, r'modelling_DATA','kent_estuary_project',r'6.Final2')
     main_path = os.path.join(start_path, r'modelling_DATA','kent_estuary_project',r'7.met_office')
     make_paths = DirGen(main_path)
-    sub_path, fig_path, data_stats_path = make_paths.dir_outputs('PRIMEA_riv_nawind_oa_1l')
+    sub_path, fig_path, data_stats_path = make_paths.dir_outputs('kent_1.30_base_from_5.Final')
     
     #/media/af/PD/modelling_DATA/kent_estuary_project/6.Final2/models/kent_1.3.7_testing_4_days_UM_run

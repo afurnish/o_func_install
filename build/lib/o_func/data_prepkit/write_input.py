@@ -483,7 +483,7 @@ class InMake:
             #print('comp_name')
             for j, n in enumerate(self.name):
                 # print(j)
-                newj = (j+1)*-1
+                newj = j # (j+1)*-1 #This code flips the plotting upside down
                 # print((j+1)*-1)
                 #print('csv ', self.csv_path)
                 filename = os.path.join(self.csv_path, n + f'_{os.path.split(comp_name[:-3])[-1]}_' +'.csv')

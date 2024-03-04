@@ -29,6 +29,7 @@ o_func/data/bash/@
 o_func/data/bash/FES2014_slicer.sh
 o_func/data/bash/merge_csv.sh
 o_func/data_metrics/__init__.py
+o_func/data_metrics/comparative_stats_processing.py
 o_func/data_metrics/compare.py
 o_func/data_metrics/stats_processing.py
 o_func/data_metrics/t_tide.py
@@ -52,6 +53,7 @@ o_func/run_scripts/general_processing.py
 o_func/tests/__init__.py
 o_func/tests/bathy_viewing.py
 o_func/tests/geo_vista_viewing.py
+o_func/tests/plotting_max_for_peter.py
 o_func/tests/test_utilities/__init__.py
 o_func/tests/test_utilities/test_finder.py
 o_func/utilities/FES2014_slicer.py
@@ -64,6 +66,7 @@ o_func/utilities/gauges.py
 o_func/utilities/general.py
 o_func/utilities/grids.py
 o_func/utilities/io.py
+o_func/utilities/local_regrid.py
 o_func/utilities/near_neigh.py
 o_func/utilities/scw_regrid.py
 o_func/utilities/start.py
