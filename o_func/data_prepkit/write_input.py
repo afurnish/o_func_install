@@ -758,24 +758,26 @@ if __name__ == '__main__':
     
     # To work this needs to have all of the datasets in it. 
     # full_path = os.path.join(start_path, 'Original_Data' ,'UKC3','owa','shelftmb')
-    full_path = os.path.join(start_path, 'Original_Data' ,'UKC3','sliced','oa','shelftmb_cut_to_domain')
-    make_files = InMake(fn, bc_paths[1][1], full_path, p = 'y') #  Pass model path folder into make file folder. 
+    for model_data in ['oa', 'owa', 'ow']:
     
-    make_files.write_pli()
-    
-    #make_files.write_bc(layer = 3)
-    ### ALL POSSIBLE OPTIONS
-    
-    '''
-    boundary_files_to_write = ['velocity_normal', 'velocity_tangent', 'water_level', 'discharge', 'salinity']
-    
-    ,NormalVelocity 'TangentVelocity', 'WaterLevel', 'Salinity']
-    '''
-    # This line definately works as of 2023-09-18 10:56
-    make_files.write_boundary_file(layer = 1, component = ['WaterLevel.bc', 'Salinity.bc','Temperature.bc', 'NormalVelocity.bc','TangentVelocity.bc'])
-    # make_files.write_boundary_file(layer = 3, component = ['Velocity.bc'])
-    
-    #First step is to make the .pli files to which the boundary conditions are made. 
+        full_path = os.path.join(start_path, 'Original_Data' ,'UKC3','sliced',model_data,'shelftmb_cut_to_domain')
+        make_files = InMake(fn, bc_paths[1][1], full_path, p = 'y') #  Pass model path folder into make file folder. 
+        
+        make_files.write_pli()
+        
+        #make_files.write_bc(layer = 3)
+        ### ALL POSSIBLE OPTIONS
+        
+        '''
+        boundary_files_to_write = ['velocity_normal', 'velocity_tangent', 'water_level', 'discharge', 'salinity']
+        
+        ,NormalVelocity 'TangentVelocity', 'WaterLevel', 'Salinity']
+        '''
+        # This line definately works as of 2023-09-18 10:56
+        make_files.write_boundary_file(layer = 1, component = ['WaterLevel.bc', 'Salinity.bc','Temperature.bc', 'NormalVelocity.bc','TangentVelocity.bc'])
+        # make_files.write_boundary_file(layer = 3, component = ['Velocity.bc'])
+        
+        #First step is to make the .pli files to which the boundary conditions are made. 
     
     
     
