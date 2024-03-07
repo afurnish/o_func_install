@@ -193,6 +193,13 @@ rivers_df = pd.DataFrame(data_list)
 output_river_path = join(start_path, 'modelling_DATA/kent_estuary_project/river_boundary_conditions')
 # rivers_df.to_csv(join(output_river_path, 'River_Climatology_Time_Series_Updated.csv'), index=False)
 num_days = 366
+# Using a placeholder year, let's use 2020 for simplicity since it's a leap year, ensuring 366 days
+date_range = pd.date_range(start='2020-01-01', end='2020-12-31')
+
+# Format the dates to only show month and day as strings like "MM-DD"
+formatted_dates = date_range.strftime('%m-%d')
+
+# Reindex the DataFrame with these formatted dates
 time_series_df = pd.DataFrame(index=np.arange(num_days))
 
 # Iterate through each river in the original DataFrame
@@ -210,9 +217,34 @@ for index, row in rivers_df.iterrows():
     series = pd.Series(trimmed_data, index=np.arange(num_days), name=row['River Name'])
     # Join this series as a new column in the time_series_df DataFrame
     time_series_df = time_series_df.join(series)
-time_series_df.index.name = 'time'
+time_series_df.index = formatted_dates
+time_series_df.index.name = 'month_day'
 
-time_series_df.to_csv(join(output_river_path, 'River_Climatology_Time_Series_Updated.csv'), index=True)
+time_series_df.to_csv(join(output_river_path, 'River_Climatology_Time_Series.csv'), index=True)
 
 # Now 'time_series_df' is structured with rivers as columns, and the index is numerical from 0 to 365
 
+path_to_bc_file = join(start_path, 'modelling_DATA/kent_estuary_project/river_boundary_conditions/delft_bc_files/amm15_river_climatology')
+# Iterate over the columns in the DataFrame
+from datetime import datetime
+start_date = datetime(2013, 10, 30)
+# Define a function to calculate seconds since the start date
+def seconds_since_start(date, start_date):
+    delta = date - start_date
+    return int(delta.total_seconds())
+
+
+
+for river_name in time_series_df.columns:
+    # Extract the data for the current river
+    river_data = time_series_df[river_name]
+    
+    # Define the filename using the river name and the .bc extension
+    filename = f"{river_name}.bc"
+    
+    # Save the river data to a file
+    # Assuming you want to save it as a CSV for example. Adjust the path as needed.
+    river_data.to_csv(join(path_to_bc_file, filename), header=False)
+    
+    # If you prefer to save it in a different format or with specific formatting,
+    # you may need to adjust the saving method accordingly.
