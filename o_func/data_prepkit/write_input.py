@@ -483,7 +483,7 @@ class InMake:
             #print('comp_name')
             for j, n in enumerate(self.name):
                 # print(j)
-                newj = j # (j+1)*-1 #This code flips the plotting upside down
+                newj = (j+1)*-1 # or regular j This code flips the plotting upside down
                 # print((j+1)*-1)
                 #print('csv ', self.csv_path)
                 filename = os.path.join(self.csv_path, n + f'_{os.path.split(comp_name[:-3])[-1]}_' +'.csv')
@@ -737,6 +737,7 @@ class InMake:
             self.layer_path = util.md([self.bc_paths, str(self.layer)])
             print(self.layer_path)
         self.csv_path = util.md([self.layer_path,'dump_CSV'])
+        
         make_files.ocean_timeseries()
         #component = 'velocity_normal'
 
@@ -758,28 +759,29 @@ if __name__ == '__main__':
     
     # To work this needs to have all of the datasets in it. 
     # full_path = os.path.join(start_path, 'Original_Data' ,'UKC3','owa','shelftmb')
-    for model_data in ['oa', 'owa', 'ow']:
+    # og oa oaw ow
+    # for k, model_data in enumerate(['og', 'oa', 'owa', 'ow']):
+    model_data = 'ow'
+    full_path = os.path.join(start_path, 'Original_Data' ,'UKC3','sliced',model_data,'shelftmb_cut_to_domain')
+    make_files = InMake(fn, bc_paths[1][3], full_path, p = 'y') #  Pass model path folder into make file folder. 
     
-        full_path = os.path.join(start_path, 'Original_Data' ,'UKC3','sliced',model_data,'shelftmb_cut_to_domain')
-        make_files = InMake(fn, bc_paths[1][1], full_path, p = 'y') #  Pass model path folder into make file folder. 
+    make_files.write_pli()
+    
+    #make_files.write_bc(layer = 3)
+    ### ALL POSSIBLE OPTIONS
+    
+    '''
+    boundary_files_to_write = ['velocity_normal', 'velocity_tangent', 'water_level', 'discharge', 'salinity']
+    
+    ,NormalVelocity 'TangentVelocity', 'WaterLevel', 'Salinity']
+    '''
+    # This line definately works as of 2023-09-18 10:56
+    make_files.write_boundary_file(layer = 1, component = ['WaterLevel.bc', 'Salinity.bc','Temperature.bc', 'NormalVelocity.bc','TangentVelocity.bc'])
+    # make_files.write_boundary_file(layer = 3, component = ['Velocity.bc'])
+    
+    #First step is to make the .pli files to which the boundary conditions are made. 
+    
         
-        make_files.write_pli()
         
-        #make_files.write_bc(layer = 3)
-        ### ALL POSSIBLE OPTIONS
         
-        '''
-        boundary_files_to_write = ['velocity_normal', 'velocity_tangent', 'water_level', 'discharge', 'salinity']
         
-        ,NormalVelocity 'TangentVelocity', 'WaterLevel', 'Salinity']
-        '''
-        # This line definately works as of 2023-09-18 10:56
-        make_files.write_boundary_file(layer = 1, component = ['WaterLevel.bc', 'Salinity.bc','Temperature.bc', 'NormalVelocity.bc','TangentVelocity.bc'])
-        # make_files.write_boundary_file(layer = 3, component = ['Velocity.bc'])
-        
-        #First step is to make the .pli files to which the boundary conditions are made. 
-    
-    
-    
-    
-    
