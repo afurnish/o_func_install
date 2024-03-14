@@ -28,13 +28,13 @@ from o_func import opsys; start_path = opsys()
 original_forcing_for_model_xyz = join(start_path, 'modelling_DATA/kent_estuary_project/7.met_office/models/PRIMEA_riv_nawind_oa_1l_original/PRIMEA_riv_nawind_oa_1l.dsproj_data/bed_level_deepened_channel(testing).xyz')
 orig_data_load = np.loadtxt(original_forcing_for_model_xyz)
 # Separate the columns for clarity
-lon = orig_data_load[:, 0];lat = orig_data_load[:, 1];values = orig_data_load[:, 2]
+lon_orig = orig_data_load[:, 0];lat_orig = orig_data_load[:, 1];values_orig = orig_data_load[:, 2]
 
-grid_lon = np.linspace(lon.min(), lon.max(), num=400)  # Adjust num for desired resolution
-grid_lat = np.linspace(lat.min(), lat.max(), num=400)  # Adjust num for desired resolution
+grid_lon = np.linspace(lon_orig.min(), lon_orig.max(), num=400)  # Adjust num for desired resolution
+grid_lat = np.linspace(lat_orig.min(), lat_orig.max(), num=400)  # Adjust num for desired resolution
 grid_lon, grid_lat = np.meshgrid(grid_lon, grid_lat)
 # Interpolate unstructured (lon, lat) points to the grid
-grid_values = griddata((lon, lat), values, (grid_lon, grid_lat), method='cubic')
+grid_values = griddata((lon_orig, lat_orig), values_orig, (grid_lon, grid_lat), method='cubic')
 orig_xy_dataarray = xr.DataArray(grid_values, coords=[('lat', grid_lat[:,0]), ('lon', grid_lon[0,:])], dims=['lat', 'lon'])
 
 
@@ -123,6 +123,26 @@ lat_diff_ukc4, lon_diff_ukc4 = calculate_grid_cell_size(ukc4_bathy.lat.values, u
 lat_diff_xy, lon_diff_xy = np.diff(orig_xy_dataarray.lat.values).mean()*111, np.diff(orig_xy_dataarray.lon.values).mean() * np.cos(np.radians(53)) * 111.32
 
 
+
+#%% Need to interpolate what I have done onto a grid. 
+
+# Extract the target grid's X and Y coordinates
+target_x = matched_ukc4_bathy.x
+target_y = matched_ukc4_bathy.y
+
+# Interpolate your original data onto the target grid
+# You might need to flatten the target_x and target_y if they're 2D arrays
+interpolated_values = griddata(
+    (lon_orig, lat_orig),  # Original points
+    values_orig,  # Original values
+    (target_x, target_y),  # Target grid points
+    method='cubic'  # Interpolation method
+)
+interpolated_values_array = xr.DataArray(interpolated_values,
+                              dims=['y', 'x'],
+                              coords={'y': (('y', 'x'), target_y.values),
+                                      'x': (('y', 'x'), target_x.values)})
+
 #%% Plotting the grids
 vmin = min(matched_ukc4_bathy.min(), prim_bathy.min(), difference.min())
 vmax = max(matched_ukc4_bathy.max(), prim_bathy.max(), difference.max())
@@ -152,8 +172,13 @@ axs[2].set_title('Difference in ukc4/prim')
 axs[2].set_xlabel('Longitude')
 axs[2].set_ylabel('Latitude')
 
-# Plot the new data
-cax4 = axs[3].pcolormesh(orig_xy_dataarray.lon, orig_xy_dataarray.lat, orig_xy_dataarray, vmin=vmin, vmax=vmax, shading='auto', cmap=cmap)
+# # Plot the new data
+# cax4 = axs[3].pcolormesh(orig_xy_dataarray.lon, orig_xy_dataarray.lat, orig_xy_dataarray, vmin=vmin, vmax=vmax, shading='auto', cmap=cmap)
+# axs[3].set_title('XYZ Data prim input')
+# axs[3].set_xlabel('Longitude')
+# axs[3].set_ylabel('Latitude') 
+# Plot the new data THIS has plotted the original bathy I forced primea with onto the same grid as the bathy for the UKC4 map. 
+cax4 = axs[3].pcolormesh(matched_ukc4_bathy.x, matched_ukc4_bathy.y, interpolated_values, vmin=vmin, vmax=vmax, shading='auto', cmap=cmap)
 axs[3].set_title('XYZ Data prim input')
 axs[3].set_xlabel('Longitude')
 axs[3].set_ylabel('Latitude')
@@ -188,6 +213,141 @@ cell_size_xyz     = f"{lat_diff_xy:.2f}km by {lon_diff_xy:.2f}km"  # Replace wit
 # Add a colorbar for the new plot (or adjust to share one colorbar if preferred)
 fig.colorbar(cax6, ax=axs, orientation='vertical', fraction=0.005, pad=0.02, aspect=50, label='Bathymetry')
 
+#%%
 # fig, ax = plt.subplots(); plt.scatter(wd.mesh2d_face_x, wd.mesh2d_face_y, c = wd-sh, s = 1)
 # fig2, axs2 = plt.subplots()
 # plt.scatter(orig_data_load[:,0], orig_data_load[:,1], c = orig_data_load[:,2])
+
+# Set up the figure and axes for 1 row and 3 columns
+fig, axs = plt.subplots(1, 3, figsize=(18, 6), constrained_layout=True)
+
+# Assume vmin, vmax, and cmap are predefined for consistent color scaling across plots
+cmap = cmo.delta
+vmin = -10  # Example minimum value
+vmax = 10   # Example maximum value
+
+# Plot UKC4 Bathy (assuming matched_ukc4_bathy is an xarray DataArray)
+cax1 = axs[0].pcolormesh(matched_ukc4_bathy.x, matched_ukc4_bathy.y, matched_ukc4_bathy, vmin=vmin, vmax=vmax, shading='auto', cmap=cmap)
+axs[0].set_title('UKC4 Bathy from Monsoon')
+axs[0].set_xlabel('Longitude')
+axs[0].set_ylabel('Latitude')
+
+# Plot original PRIMEA (assuming prim_bathy is an xarray DataArray)
+cax2 = axs[1].pcolormesh(matched_ukc4_bathy.x, matched_ukc4_bathy.y, interpolated_values, vmin=vmin, vmax=vmax, shading='auto', cmap=cmap)
+axs[1].set_title('XYZ Data prim input onto UKC4 grid')
+axs[1].set_xlabel('Longitude')
+axs[1].set_ylabel('Latitude')
+
+# Calculate and plot the difference (assuming you have two compatible datasets for subtraction)
+difference = matched_ukc4_bathy - interpolated_values  # Adjust according to actual data structures
+cax3 = axs[2].pcolormesh(difference.x, difference.y, difference, vmin=vmin, vmax=vmax, shading='auto', cmap=cmap)
+axs[2].set_title('Difference (UKC4 - PRIMEA)')
+axs[2].set_xlabel('Longitude')
+axs[2].set_ylabel('Latitude')
+
+# Adding colorbars to each plot for clarity
+fig.colorbar(cax1, ax=axs[0], orientation='vertical', fraction=0.046, pad=0.04, label='Depth (m)')
+fig.colorbar(cax2, ax=axs[1], orientation='vertical', fraction=0.046, pad=0.04, label='Depth (m)')
+fig.colorbar(cax3, ax=axs[2], orientation='vertical', fraction=0.046, pad=0.04, label='Depth Difference (m)')
+
+# Explanation regarding negative numbers
+# Assuming that in your dataset, more negative numbers represent greater depths
+plt.figtext(0.5, 0, 'In the difference plot, more positive values indicate areas where PRIMEA is deeper than UKC4.', ha='center', fontsize=12, bbox={"facecolor":"orange", "alpha":0.5, "pad":5})
+
+#%%
+import geopandas as gpd
+
+# Adjust the path as necessary
+shapefile_path = join(start_path,'modelling_DATA','kent_estuary_project','land_boundary','QGIS_Shapefiles','UK_WEST_POLYGON_NEGATIVE.shp')
+
+# shapefile_path = join(start_path,'modelling_DATA','kent_estuary_project','bathymetry','new_bathymetry_ukc4','NEGATIVE_POLYGON_WIDENED_RIVERS.shp')
+land_boundary = gpd.read_file(shapefile_path)
+
+from shapely.geometry import Point
+
+# Assuming 'difference' is your DataArray with 'x' and 'y' coordinates
+
+# Convert grid points to shapely Points
+points = [Point(x, y) for x, y in zip(np.ravel(difference.x), np.ravel(difference.y))]
+
+# Check if each point is within any polygon
+mask = np.array([land_boundary.contains(point).any() for point in points])
+
+# Reshape the mask to match the DataArray's shape
+mask_reshaped = mask.reshape(difference.shape)
+
+difference_masked = difference.where(~mask_reshaped, other=np.nan)
+primea_masked = interpolated_values_array.where(~mask_reshaped, other=np.nan)
+
+#%%
+# fig, ax = plt.subplots(); plt.scatter(wd.mesh2d_face_x, wd.mesh2d_face_y, c = wd-sh, s = 1)
+# fig2, axs2 = plt.subplots()
+# plt.scatter(orig_data_load[:,0], orig_data_load[:,1], c = orig_data_load[:,2])
+
+# Set up the figure and axes for 1 row and 3 columns
+fig, axs = plt.subplots(1, 3, figsize=(18, 8))
+
+# Assume vmin, vmax, and cmap are predefined for consistent color scaling across plots
+cmap = cmo.delta
+vmin = -10  # Example minimum value
+vmax = 10   # Example maximum value
+
+matched_ukc4_bathy_nan = matched_ukc4_bathy
+matched_ukc4_bathy_nan.values[matched_ukc4_bathy_nan.values == 0] = np.nan
+
+# Plot UKC4 Bathy (assuming matched_ukc4_bathy is an xarray DataArray)
+cax1 = axs[0].pcolormesh(matched_ukc4_bathy_nan.x, matched_ukc4_bathy_nan.y, matched_ukc4_bathy_nan, vmin=vmin, vmax=vmax, shading='auto', cmap=cmap)
+axs[0].set_title('UKC4 Bathymetry')
+axs[0].set_xlabel('Longitude')
+axs[0].set_ylabel('Latitude')
+
+# Plot original PRIMEA (assuming prim_bathy is an xarray DataArray)
+cax2 = axs[1].pcolormesh(primea_masked.x, primea_masked.y, primea_masked, vmin=vmin, vmax=vmax, shading='auto', cmap=cmap)
+axs[1].set_title('PRIMEA forced Bathymetry')
+axs[1].set_xlabel('Longitude')
+# axs[1].set_ylabel('Latitude')
+
+# Calculate and plot the difference (assuming you have two compatible datasets for subtraction)
+# difference = matched_ukc4_bathy - interpolated_values  # Adjust according to actual data structures
+
+cax3 = axs[2].pcolormesh(difference_masked.x, difference_masked.y, difference_masked, vmin=vmin, vmax=vmax, shading='auto', cmap=cmap)
+axs[2].set_title('Difference (UKC4 - PRIMEA)')
+axs[2].set_xlabel('Longitude')
+# axs[2].set_ylabel('Latitude')
+
+# Adding colorbars to each plot for clarity
+# fig.colorbar(cax1, ax=axs[0], orientation='vertical', fraction=0.046, pad=0.04, label='Depth (m)')
+# fig.colorbar(cax2, ax=axs[1], orientation='vertical', fraction=0.046, pad=0.04, label='Depth (m)')
+fig.colorbar(cax3, ax=axs[2], orientation='vertical', fraction=0.046, pad=0.04, label='Depth Difference (m)')
+
+# Explanation regarding negative numbers
+# Assuming that in your dataset, more negative numbers represent greater depths
+plt.figtext(0.5, 0.02, 'In the difference plot, more positive values indicate areas where PRIMEA is deeper than UKC4.', ha='center', fontsize=12, bbox={"facecolor":"orange", "alpha":0.5, "pad":5})
+# plt.subplots_adjust(bottom=2)  # Adjust bottom margin
+
+
+# If we cut out the data from the UKC4 bathymetry and place it over the existing bathymetry collected we end up with this map here. 
+primea_updated = primea_masked.where(np.isnan(matched_ukc4_bathy_nan), matched_ukc4_bathy_nan)
+
+place_to_store_new_bathy = join(start_path,'Original_Data','UKC3','ukc4_bathy','UKC4_bathy_with_extra_rivers.nc')
+xyz_file_path = join(start_path,'Original_Data','UKC3','ukc4_bathy','UKC4_bathy_with_extra_rivers.xyz')
+
+primea_updated.to_netcdf(place_to_store_new_bathy)
+
+# Flatten the arrays to create a 2D table
+lat_flat = primea_updated.y.values.flatten()
+lon_flat = primea_updated.x.values.flatten()
+z_flat = primea_updated.values.flatten()
+import pandas as pd
+# Create a DataFrame
+df = pd.DataFrame({
+    'Longitude': lon_flat,
+    'Latitude': lat_flat,
+    'Height': z_flat
+})
+df = df.dropna(subset=['Height'])
+
+df['Longitude'] = df['Longitude'].map(lambda x: f'{x:.7f}')
+df['Latitude'] = df['Latitude'].map(lambda x: f'{x:.7f}')
+df.to_csv(xyz_file_path, sep='\t', index=False, header=False)
+
