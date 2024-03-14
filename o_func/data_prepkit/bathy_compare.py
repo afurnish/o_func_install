@@ -258,9 +258,9 @@ plt.figtext(0.5, 0, 'In the difference plot, more positive values indicate areas
 import geopandas as gpd
 
 # Adjust the path as necessary
-shapefile_path = join(start_path,'modelling_DATA','kent_estuary_project','land_boundary','QGIS_Shapefiles','UK_WEST_POLYGON_NEGATIVE.shp')
+# shapefile_path = join(start_path,'modelling_DATA','kent_estuary_project','land_boundary','QGIS_Shapefiles','UK_WEST_POLYGON_NEGATIVE.shp')
 
-# shapefile_path = join(start_path,'modelling_DATA','kent_estuary_project','bathymetry','new_bathymetry_ukc4','NEGATIVE_POLYGON_WIDENED_RIVERS.shp')
+shapefile_path = join(start_path,'modelling_DATA','kent_estuary_project','bathymetry','new_bathymetry_ukc4','NEGATIVE_POLYGON_WIDENED_RIVERS.shp')
 land_boundary = gpd.read_file(shapefile_path)
 
 from shapely.geometry import Point
@@ -329,15 +329,32 @@ plt.figtext(0.5, 0.02, 'In the difference plot, more positive values indicate ar
 # If we cut out the data from the UKC4 bathymetry and place it over the existing bathymetry collected we end up with this map here. 
 primea_updated = primea_masked.where(np.isnan(matched_ukc4_bathy_nan), matched_ukc4_bathy_nan)
 
+# to the front of primea updated we need to add 5 columns of junk. 
+# were gonna use a bigger dataset, and expand the other dataset out by some. 
+# This is what you need if you were to slice manually
+# sliced_ukc4_bathy = ukc4_bathy[597:687+1,758:795+1]
+# its now (91, 43)
+
 place_to_store_new_bathy = join(start_path,'Original_Data','UKC3','ukc4_bathy','UKC4_bathy_with_extra_rivers.nc')
 xyz_file_path = join(start_path,'Original_Data','UKC3','ukc4_bathy','UKC4_bathy_with_extra_rivers.xyz')
 
 primea_updated.to_netcdf(place_to_store_new_bathy)
 
+#%% This is part of a plan to add extra data to the area. 
+primea_updated_expanded_front = primea_masked.pad({'x': (5, 0)}, constant_values=np.nan)
+primea_updated_expanded_front = primea_updated_expanded_front.rename({'x': 'lon', 'y': 'lat'})
+
+sliced_ukc4_bathy = ukc4_bathy[597:687+1,758-5:795+1] # pulls in extra data from the left. 
+sliced_ukc4_bathy_nan = sliced_ukc4_bathy
+sliced_ukc4_bathy_nan.values[sliced_ukc4_bathy_nan.values == 0] = np.nan
+
+primea_updated_expanded_front = primea_updated_expanded_front.assign_coords(lat=sliced_ukc4_bathy.coords['lat'], lon=sliced_ukc4_bathy.coords['lon'])
+primea_updated_front_add_on = primea_updated_expanded_front.where(np.isnan(sliced_ukc4_bathy), sliced_ukc4_bathy)
+
 # Flatten the arrays to create a 2D table
-lat_flat = primea_updated.y.values.flatten()
-lon_flat = primea_updated.x.values.flatten()
-z_flat = primea_updated.values.flatten()
+lat_flat = primea_updated_front_add_on.lat.values.flatten()
+lon_flat = primea_updated_front_add_on.lon.values.flatten()
+z_flat = primea_updated_front_add_on.values.flatten()
 import pandas as pd
 # Create a DataFrame
 df = pd.DataFrame({
@@ -350,4 +367,7 @@ df = df.dropna(subset=['Height'])
 df['Longitude'] = df['Longitude'].map(lambda x: f'{x:.7f}')
 df['Latitude'] = df['Latitude'].map(lambda x: f'{x:.7f}')
 df.to_csv(xyz_file_path, sep='\t', index=False, header=False)
-
+# fig, ax = plt.subplots()
+# plt.pcolormesh(sliced_ukc4_bathy)
+# fig2, ax2 = plt.subplots()
+# plt.pcolormesh(matched_ukc4_bathy)
