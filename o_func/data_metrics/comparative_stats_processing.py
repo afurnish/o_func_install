@@ -130,11 +130,16 @@ class Stats:
     ####            0                1          2
     
     def load_tide_gauge(self):   
-        # self.tide_loc_dict = {'Heysham'  :{'x':-2.9311759, 'y':54.0345516},
-        #                       'Liverpool':{'x':-3.0168250, 'y':53.4307320},
-        #                       }
+        self.tide_loc_dict = {
+                               'Heysham'  :{'x':-2.9594670, 'y':54.0328370},
+                               # 'Heysham'  :{'x':-2.9574780, 'y':54.0333366},
+                               # 'Liverpool':{'x':-3.1554490, 'y':53.4930250}, # Looks good but too deep on liverpool 
+                               # 'Liverpool':{'x':-3.1391550, 'y':53.4622030}, 
+                               # 'Liverpool':{'x':-3.1988680, 'y':53.4797420}, 
+                                 'Liverpool':{'x':-3.0741720, 'y':53.4634140}, 
+                              }
         
-        self.tide_loc_dict = tide_gauge_loc()
+        # self.tide_loc_dict = tide_gauge_loc()
         df_tide_loc = pd.DataFrame(self.tide_loc_dict).T.reset_index()
         df_tide_loc = df_tide_loc.drop(df_tide_loc.columns[0], axis=1)
         df_search_points = pd.DataFrame({'x': self.lon.data.ravel(), 'y': self.lat.data.ravel()})
@@ -342,7 +347,6 @@ class Stats:
                     ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))  # Format dates
                     ax.xaxis.set_major_locator(mdates.AutoDateLocator())  # Automatically set tick locations
                     fig.autofmt_xdate()
-                    
                     ax.set_ylabel('SSH (m)')
                     # ax.set_xlabel('Time')
                     plt.tight_layout()  
@@ -612,11 +616,12 @@ class Stats:
         
 if __name__ == '__main__':
     
-    for fn in ['PRIMEA_riv_nawind_oa_1l_flipped',
-               'PRIMEA_riv_nawind_oa_1l_original',
-               'PRIMEA_riv_yawind_oa_1l_flipped',
+    for fn in ['bathymetry_testing',
+               # 'PRIMEA_riv_nawind_oa_1l_flipped',
+               # 'PRIMEA_riv_nawind_oa_1l_original',
+               # 'PRIMEA_riv_yawind_oa_1l_flipped',
                # 'PRIMEA_riv_yawind_oa_1l_original',
-               'kent_1.30_base_from_5.Final',
+               # 'kent_1.30_base_from_5.Final',
                 ]:
     
         from o_func import DataChoice, DirGen
