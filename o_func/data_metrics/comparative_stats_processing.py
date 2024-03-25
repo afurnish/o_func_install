@@ -23,16 +23,20 @@ from o_func.utilities.gauges import tide_gauge_loc
    
 #example_dataset = os.path.join(start_path, 'modelling_DATA','kent_estuary_project',r'6.Final2','models','kent_1.3.7_testing_4_days_UM_run','kent_regrid.nc')
 var_dict = {
-'surface_height'   : {'TUV':'T',  'UKC4':'sossheig',       'PRIMEA':'mesh2d_s1',  'UNITS':'m'  },
-'surface_salinity' : {'TUV':'T',  'UKC4':'vosaline_top',   'PRIMEA':'mesh2d_sa1', 'UNITS':'psu' },
-'middle_salinity'  : {'TUV':'T',  'UKC4':'',               'PRIMEA':'na',         'UNITS':'na' },
-'bottom_salinity'  : {'TUV':'T',  'UKC4':'',               'PRIMEA':'na',         'UNITS':'na' },
-'surface_Uvelocity': {'TUV':'U',  'UKC4':'',               'PRIMEA':'na',         'UNITS':'na' },
-'middle_Uvelocity' : {'TUV':'U',  'UKC4':'',               'PRIMEA':'na',         'UNITS':'na' },
-'bottom_Uvelocity' : {'TUV':'U',  'UKC4':'',               'PRIMEA':'na',         'UNITS':'na' },
-'surface_Vvelocity': {'TUV':'V',  'UKC4':'',               'PRIMEA':'na',         'UNITS':'na' },
-'middle_Vvelocity' : {'TUV':'V',  'UKC4':'',               'PRIMEA':'na',         'UNITS':'na' },
-'bottom_Vvelocity' : {'TUV':'V',  'UKC4':'',               'PRIMEA':'na',         'UNITS':'na' },
+'surface_height'   : {'TUV':'T',  'UKC4':'sossheig',       'PRIMEA':'mesh2d_s1',     'UNITS':'m'},
+'surface_salinity' : {'TUV':'T',  'UKC4':'vosaline_top',   'PRIMEA':'mesh2d_sa1',    'UNITS':'psu'},
+'middle_salinity'  : {'TUV':'T',  'UKC4':'vosaline_mid',   'PRIMEA':'na',            'UNITS':'psu'},
+'bottom_salinity'  : {'TUV':'T',  'UKC4':'vosaline_bot',   'PRIMEA':'na',            'UNITS':'psu'},
+'surface_temp'     : {'TUV':'T',  'UKC4':'votemper_top',   'PRIMEA':'na',            'UNITS':'\u00B0C'},
+'middle_temp'      : {'TUV':'T',  'UKC4':'votemper_mid',   'PRIMEA':'na',            'UNITS':'\u00B0C'},
+'bottom_temp'      : {'TUV':'T',  'UKC4':'votemper_bot',   'PRIMEA':'na',            'UNITS':'\u00B0C'},
+'surface_Uvelocity': {'TUV':'U',  'UKC4':'vozocrtx_top',   'PRIMEA':'mesh2d_ucx',    'UNITS':'$m\,s^{-1}$'}, # the one with the major issues
+'middle_Uvelocity' : {'TUV':'U',  'UKC4':'vozocrtx_mid',   'PRIMEA':'na',            'UNITS':'$m\,s^{-1}$'},
+'bottom_Uvelocity' : {'TUV':'U',  'UKC4':'vozocrtx_bot',   'PRIMEA':'na',            'UNITS':'$m\,s^{-1}$'},
+'surface_Vvelocity': {'TUV':'V',  'UKC4':'vomecrty_top',   'PRIMEA':'mesh2d_ucy',    'UNITS':'$m\,s^{-1}$'},
+'middle_Vvelocity' : {'TUV':'V',  'UKC4':'vomecrty_mid',   'PRIMEA':'na',            'UNITS':'$m\,s^{-1}$'},
+'bottom_Vvelocity' : {'TUV':'V',  'UKC4':'vomecrty_bot',   'PRIMEA':'na',            'UNITS':'$m\,s^{-1}$'},
+'bathymetry'       : {'TUV':'T',  'UKC4':'NA',             'PRIMEA':'mesh2d_node_z', 'UNITS':'m'},
 }
 class Stats:
     def __init__(self, dataset, dataset_name):
@@ -618,7 +622,9 @@ if __name__ == '__main__':
     
     for fn in [
                 #'bathymetry_testing',
-                'oa_nawind_Orig_m0.045_Forcing'
+                'oa_nawind_Orig_m0.030_Forcing',
+                'oa_nawind_Orig_m0.035_Forcing',
+                'oa_nawind_Orig_m0.045_Forcing',
                # 'PRIMEA_riv_nawind_oa_1l_flipped',
                # 'PRIMEA_riv_nawind_oa_1l_original',
                # 'PRIMEA_riv_yawind_oa_1l_flipped',
