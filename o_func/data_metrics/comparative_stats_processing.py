@@ -616,7 +616,9 @@ class Stats:
         
 if __name__ == '__main__':
     
-    for fn in ['bathymetry_testing',
+    for fn in [
+                #'bathymetry_testing',
+                'oa_nawind_Orig_m0.045_Forcing'
                # 'PRIMEA_riv_nawind_oa_1l_flipped',
                # 'PRIMEA_riv_nawind_oa_1l_original',
                # 'PRIMEA_riv_yawind_oa_1l_flipped',
@@ -628,7 +630,7 @@ if __name__ == '__main__':
         import glob
         # main_path = os.path.join(start_path, r'modelling_DATA','kent_estuary_project',r'6.Final2')
         # fn = 'kent_1.0.0_UM_wind' # 
-        main_path = os.path.join(start_path, r'modelling_DATA','kent_estuary_project',r'7.met_office')
+        main_path = os.path.join(start_path, r'modelling_DATA','kent_estuary_project',r'8.model_calibration')
         # fn = 'kent_1.30_base_from_5.Final' # 
         # fn = 'PRIMEA_riv_nawind_oa_1l_flipped'
         
