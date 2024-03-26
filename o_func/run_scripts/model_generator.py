@@ -228,7 +228,7 @@ if __name__ == '__main__':
                     q_path = glob.glob(os.path.join(run_path,'*.q'))[0]
                     update_submission_file(q_path,
                                            job_name='m'+friction, 
-                                           time_taken='00-03:00', 
+                                           time_taken='00-04:00', 
                                            partition='htc') # dev or htc
 
                     

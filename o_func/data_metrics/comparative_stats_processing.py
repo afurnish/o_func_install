@@ -128,7 +128,7 @@ class Stats:
                 
                 data_dict['ukc4'] = rename_dict(ukc4_datasets) # This is now a dictionary of the data
                 data_dict['prim'] = rename_dict(prim_datasets)
-        self.bathymetry = self.raw_data['prim_bathymetry'][0,:,:]        
+        self.bathymetry = self.raw_data['prim_bathymetry'][0,:,:] * -1 # Must be made negative as values are positive.       
         self.data_dict = data_dict
         return self.raw_data, data_dict, matching_times
     ####            0                1          2
@@ -625,7 +625,9 @@ if __name__ == '__main__':
                 'oa_nawind_Orig_m0.020_Forcing',
                 'oa_nawind_Orig_m0.030_Forcing',
                 'oa_nawind_Orig_m0.035_Forcing',
+                'oa_nawind_Orig_m0.040_Forcing',
                 'oa_nawind_Orig_m0.045_Forcing',
+                'oa_nawind_Orig_m0.050_Forcing',
                # 'PRIMEA_riv_nawind_oa_1l_flipped',
                # 'PRIMEA_riv_nawind_oa_1l_original',
                # 'PRIMEA_riv_yawind_oa_1l_flipped',
