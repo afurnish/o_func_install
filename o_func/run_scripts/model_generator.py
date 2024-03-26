@@ -12,7 +12,7 @@ import glob
 
 from o_func import opsys; start_path = opsys()
 from o_func import DirGen
-main_path = os.path.join(start_path, r'modelling_DATA','kent_estuary_project',r'8.model_calibration')
+main_path = os.path.join(start_path, r'modelling_DATA','kent_estuary_project',r'9.friction_calibration')
 make_paths = DirGen(main_path)
 path_to_push = os.path.join(main_path, 'models/')
 #%% Wind selector
@@ -31,19 +31,88 @@ path_to_push = os.path.join(main_path, 'models/')
 #         print("rsync completed successfully.")
 #     except subprocess.CalledProcessError as e:
 #         print(f"rsync failed: {e}")
+# def run_rsync(local_path, remote_path):
+#     command = [
+#         'rsync', '-avz', '-e', 'ssh',
+#         '--include=*/',  # Include all directories to allow recursion.
+#         '--include=run*/**',  # Include "run" directories and their entire subtree.
+#         '--exclude=*',  # Exclude all other files and directories at the root level.
+#         local_path, remote_path
+#     ]
+#     try:
+#         subprocess.run(command, check=True)
+#         print("rsync completed successfully.")
+#     except subprocess.CalledProcessError as e:
+#         print(f"rsync failed: {e}")
+# def run_rsync(local_path, remote_path):
+#     # Extract the remote host and the path
+#     remote_host, remote_dir_path = remote_path.split(':', 1)
+    
+#     # Command to create the remote directory structure
+#     mkdir_command = [
+#         'ssh', remote_host,
+#         f'mkdir -p {remote_dir_path}'
+#     ]
+    
+#     # The rsync command, as before
+#     rsync_command = [
+#         'rsync', '-avz', '-e', 'ssh',
+#         '--include=*/',  # Include all directories to allow recursion.
+#         '--include=run*/**',  # Include "run" directories and their entire subtree.
+#         '--exclude=*',  # Exclude all other files and directories at the root level.
+#         local_path, remote_path
+#     ]
+    
+#     try:
+#         # First, create the directory structure on the remote side
+#         print("Creating remote directory structure...")
+#         subprocess.run(mkdir_command, check=True)
+        
+#         # Then, proceed with the rsync operation
+#         print("Starting rsync...")
+#         subprocess.run(rsync_command, check=True)
+        
+#         print("rsync completed successfully.")
+#     except subprocess.CalledProcessError as e:
+#         print(f"Operation failed: {e}")
+
+
 def run_rsync(local_path, remote_path):
-    command = [
+    # Extract the remote host and the base path from the remote_path
+    remote_host, base_remote_dir_path = remote_path.split(':', 1)
+    # Generate the duplicate directory path by replacing the initial part of the path with /scratch
+    duplicate_remote_dir_path = '/scratch' + base_remote_dir_path.split('/home', 1)[1]
+    
+    # SSH command to create the original and duplicate directory structures
+    mkdir_command = [
+        'ssh', remote_host,
+        f"mkdir -p {base_remote_dir_path} {duplicate_remote_dir_path}"
+    ]
+    
+    # The rsync command
+    rsync_command = [
         'rsync', '-avz', '-e', 'ssh',
         '--include=*/',  # Include all directories to allow recursion.
         '--include=run*/**',  # Include "run" directories and their entire subtree.
         '--exclude=*',  # Exclude all other files and directories at the root level.
-        local_path, remote_path
+        local_path, f"{remote_host}:{base_remote_dir_path}"
     ]
+    
     try:
-        subprocess.run(command, check=True)
+        # Create the directory structures on the remote side
+        print("Creating remote directory structures...")
+        subprocess.run(mkdir_command, check=True)
+        
+        # Proceed with the rsync operation
+        print("Starting rsync...")
+        subprocess.run(rsync_command, check=True)
+        
         print("rsync completed successfully.")
     except subprocess.CalledProcessError as e:
-        print(f"rsync failed: {e}")
+        print(f"Operation failed: {e}")
+
+# Example usage
+# run_rsync("local/path/", "user@remotehost:/remote/path/")
         
 def copy_contents(src_dir, dst_dir):
     """
@@ -145,16 +214,16 @@ if __name__ == '__main__':
     for model_input in ['oa']:
         for wind in ['nawind']:
             for flip in ['Orig']:
-                for friction in ['0.000', '0.010','0.015', '0.020', '0.025', '0.030', '0.035', '0.040', '0.045', '0.050']:
+                for friction in ['0.000', '0.005','0.010','0.015', '0.020', '0.025', '0.030', '0.035']:
                     sub_path, fig_path, data_stats_path = make_paths.dir_outputs(model_input + '_' + wind +'_'+ flip + '_m'+ friction +'_Forcing')
                     run_path = glob.glob(os.path.join(sub_path,'run*'))[0]
                     # copy contents from doner_model to sub_path here. 
                     copy_contents(doner_model, run_path)
                     
                     config_path = glob.glob(os.path.join(run_path,'*.mdu'))[0]
-                    update_val(config_path, 'UnifFrictCoef1D', friction) 
-                    update_val(config_path, 'UnifFrictCoef', friction)
-                    update_val(config_path, 'UnifFrictCoefLin', friction)
+                    update_val(config_path, 'UnifFrictCoef1D', friction)  # This one is for rivers and channels, any 1D components
+                    update_val(config_path, 'UnifFrictCoef', friction)    # I believe this is the main one to be concerned about. 
+                    update_val(config_path, 'UnifFrictCoefLin', '0.000') # This is one that needs to be ignored. Therefore it is now 0. 
                     
                     q_path = glob.glob(os.path.join(run_path,'*.q'))[0]
                     update_submission_file(q_path,
@@ -163,7 +232,7 @@ if __name__ == '__main__':
                                            partition='htc') # dev or htc
 
                     
-    remote_path = 'b.osu903@hawklogin.cf.ac.uk:/home/b.osu903/testpush/'
+    remote_path = 'b.osu903@hawklogin.cf.ac.uk:/home/b.osu903/kent/friction_testing'
     run_rsync(path_to_push, remote_path)
     # local_path = path_to_push
     # remote_path = 'b.osu903@hawklogin.cf.ac.uk:/home/b.osu903/testpush/'
