@@ -622,6 +622,7 @@ if __name__ == '__main__':
     
     for fn in [
                 #'bathymetry_testing',
+                'oa_nawind_Orig_m0.020_Forcing',
                 'oa_nawind_Orig_m0.030_Forcing',
                 'oa_nawind_Orig_m0.035_Forcing',
                 'oa_nawind_Orig_m0.045_Forcing',
