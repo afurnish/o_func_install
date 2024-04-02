@@ -190,8 +190,62 @@ def update_submission_file(script_path, job_name=None, time_taken=None, partitio
     with open(script_path, 'w') as file:
         file.writelines(lines)
 
+def copy_bc_files(src_dir, dst_dir, file_names):
+    """
+    Copy specific files from the source directory to the destination directory.
 
+    Parameters:
+    - src_dir: Source directory path.
+    - dst_dir: Destination directory path.
+    - file_names: A list of file names to copy.
+    """
+    # Ensure the destination directory exists
+    os.makedirs(dst_dir, exist_ok=True)
 
+    for file_name in file_names:
+        src_file_path = os.path.join(src_dir, file_name)
+        if os.path.isfile(src_file_path):  # Check if the specific file exists
+            dst_file_path = os.path.join(dst_dir, file_name)
+            shutil.copy2(src_file_path, dst_file_path)  # Use copy2 to preserve metadata
+        else:
+            print(f"File not found: {src_file_path}")
+
+def update_forcingfile(file_path, new_forcing_file):
+    # Derive the new quantity based on the forcing file name
+    new_quantity = new_forcing_file.split('.')[0].lower() + 'bnd'
+    
+    # Template for the new section to add
+    new_section_template = """
+[boundary]
+quantity={quantity}
+locationfile={locationfile}
+forcingfile={forcingfile}
+return_time=0.0000000e+000
+"""
+
+    # Check if the new forcing file already exists in the content
+    content = ''
+    with open(file_path, 'r') as file:
+        content = file.read()
+        if new_forcing_file in content:
+            print("The forcing file already exists in the file.")
+            return False
+    
+    # Attempt to extract the locationfile from the last boundary section
+    try:
+        last_location_file = content.strip().split('locationfile=')[-1].split('\n')[0].strip()
+    except IndexError:
+        print("Failed to extract the last locationfile.")
+        return False
+    
+    # Format the new section using the derived quantity, the last locationfile, and the new forcing file
+    new_section = new_section_template.format(quantity=new_quantity, locationfile=last_location_file, forcingfile=new_forcing_file)
+    
+    # Append the new section to the file
+    with open(file_path, 'a') as file:
+        file.write(new_section)
+    # print("New section added to the file.")
+    return True
 #%% Make and do the models
 # Iterates through all the possible options I want to run. 
 
@@ -210,7 +264,8 @@ if __name__ == '__main__':
     #%% Friction model generator to test friction characteristics
     
     # Doner model to be used - Input the river forcing files. 
-    doner_model = os.path.join(start_path, 'modelling_DATA','kent_estuary_project','7.met_office','models','bathymetry_testing','runSCW_bathymetry_testing')           
+    donor_model = os.path.join(start_path, 'modelling_DATA','kent_estuary_project','7.met_office','models','bathymetry_testing','runSCW_bathymetry_testing')      
+    temperature_donor = os.path.join(start_path,'modelling_DATA','kent_estuary_project','7.met_office','files_bc','UKC4oa','1')     
     for model_input in ['oa']:
         for wind in ['nawind']:
             for flip in ['Orig']:
@@ -218,7 +273,7 @@ if __name__ == '__main__':
                     sub_path, fig_path, data_stats_path = make_paths.dir_outputs(model_input + '_' + wind +'_'+ flip + '_m'+ friction +'_Forcing')
                     run_path = glob.glob(os.path.join(sub_path,'run*'))[0]
                     # copy contents from doner_model to sub_path here. 
-                    copy_contents(doner_model, run_path)
+                    copy_contents(donor_model, run_path)
                     
                     config_path = glob.glob(os.path.join(run_path,'*.mdu'))[0]
                     update_val(config_path, 'UnifFrictCoef1D', friction)  # This one is for rivers and channels, any 1D components
@@ -227,13 +282,26 @@ if __name__ == '__main__':
                     
                     q_path = glob.glob(os.path.join(run_path,'*.q'))[0]
                     update_submission_file(q_path,
-                                           job_name='m'+friction, 
+                                           job_name='nol'+friction, # NO_L NO LINEAR FRICTION can only be 8 characters
                                            time_taken='00-04:00', 
                                            partition='htc') # dev or htc
 
+                    # Add in temperature boundary condition
+                    add_files = ['Temperature.bc']
+                    copy_bc_files(temperature_donor, run_path, add_files) # Add in the temperature boundary forcing. 
+                    [update_forcingfile(glob.glob(os.path.join(run_path,'*.ext'))[0], i) for i in add_files]
                     
     remote_path = 'b.osu903@hawklogin.cf.ac.uk:/home/b.osu903/kent/friction_testing'
-    run_rsync(path_to_push, remote_path)
+    push_to_scw = input('Do you want to push to SCW? (y/n): ')
+    if push_to_scw == 'y':
+        run_rsync(path_to_push, remote_path)
+    
+    
+    
+    
+    
+    
+#%% Extra content     
     # local_path = path_to_push
     # remote_path = 'b.osu903@hawklogin.cf.ac.uk:/home/b.osu903/testpush/'
     

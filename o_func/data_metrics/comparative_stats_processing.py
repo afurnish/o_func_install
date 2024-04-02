@@ -613,27 +613,44 @@ class Stats:
 
             
         return heightprim, heightukc4, height_difference
-        
+
+def find_dir(file_path, filename='kent_regrid.nc'):
+    """
+    Find directories within the given file_path that contain the specified filename.
+    
+    :param file_path: Path to the directory to search within.
+    :param filename: Name of the file to look for in each directory.
+    :return: List of directory names containing the specified file.
+    """
+    directories_with_file = [entry for entry in os.listdir(file_path)
+                             if os.path.isdir(os.path.join(file_path, entry)) and
+                                os.path.isfile(os.path.join(file_path, entry, filename))]
+    
+    return directories_with_file        
         
         
 #%%        
         
 if __name__ == '__main__':
+  
+    multi_file_path = path = os.path.join(start_path,'modelling_DATA','kent_estuary_project','8.model_calibration','models')
+    list_of_files = find_dir(multi_file_path)
+
+    # list_of_files =[  #'bathymetry_testing',
+    #   'oa_nawind_Orig_m0.020_Forcing',
+    #   'oa_nawind_Orig_m0.030_Forcing',
+    #   'oa_nawind_Orig_m0.035_Forcing',
+    #   'oa_nawind_Orig_m0.040_Forcing',
+    #   'oa_nawind_Orig_m0.045_Forcing',
+    #   'oa_nawind_Orig_m0.050_Forcing',
+    #   ]
+   # 'PRIMEA_riv_nawind_oa_1l_flipped',
+   # 'PRIMEA_riv_nawind_oa_1l_original',
+   # 'PRIMEA_riv_yawind_oa_1l_flipped',
+   # 'PRIMEA_riv_yawind_oa_1l_original',
+   # 'kent_1.30_base_from_5.Final',
     
-    for fn in [
-                #'bathymetry_testing',
-                'oa_nawind_Orig_m0.020_Forcing',
-                'oa_nawind_Orig_m0.030_Forcing',
-                'oa_nawind_Orig_m0.035_Forcing',
-                'oa_nawind_Orig_m0.040_Forcing',
-                'oa_nawind_Orig_m0.045_Forcing',
-                'oa_nawind_Orig_m0.050_Forcing',
-               # 'PRIMEA_riv_nawind_oa_1l_flipped',
-               # 'PRIMEA_riv_nawind_oa_1l_original',
-               # 'PRIMEA_riv_yawind_oa_1l_flipped',
-               # 'PRIMEA_riv_yawind_oa_1l_original',
-               # 'kent_1.30_base_from_5.Final',
-                ]:
+    for fn in list_of_files:
     
         from o_func import DataChoice, DirGen
         import glob
