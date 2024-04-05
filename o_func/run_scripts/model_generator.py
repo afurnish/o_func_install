@@ -204,11 +204,13 @@ def copy_bc_files(src_dir, dst_dir, file_names):
 
     for file_name in file_names:
         src_file_path = os.path.join(src_dir, file_name)
-        if os.path.isfile(src_file_path):  # Check if the specific file exists
-            dst_file_path = os.path.join(dst_dir, file_name)
-            shutil.copy2(src_file_path, dst_file_path)  # Use copy2 to preserve metadata
-        else:
-            print(f"File not found: {src_file_path}")
+        
+        # There was an option to not overwrite, but I want to overwrite now. 
+        # if os.path.isfile(src_file_path):  # Check if the specific file exists
+        dst_file_path = os.path.join(dst_dir, file_name)
+        shutil.copy2(src_file_path, dst_file_path)  # Use copy2 to preserve metadata
+        # else:
+        #     print(f"File not found: {src_file_path}")
 
 def update_forcingfile(file_path, new_forcing_file):
     # Derive the new quantity based on the forcing file name
@@ -228,7 +230,7 @@ return_time=0.0000000e+000
     with open(file_path, 'r') as file:
         content = file.read()
         if new_forcing_file in content:
-            print("The forcing file already exists in the file.")
+            # print("The forcing file already exists in the file.")
             return False
     
     # Attempt to extract the locationfile from the last boundary section
@@ -269,7 +271,7 @@ if __name__ == '__main__':
     for model_input in ['oa']:
         for wind in ['nawind']:
             for flip in ['Orig']:
-                for friction in ['0.000', '0.005','0.010','0.015', '0.020', '0.025', '0.030', '0.035']:
+                for friction in ['0.005','0.010','0.015', '0.020', '0.025', '0.030', '0.035']:
                     sub_path, fig_path, data_stats_path = make_paths.dir_outputs(model_input + '_' + wind +'_'+ flip + '_m'+ friction +'_Forcing')
                     run_path = glob.glob(os.path.join(sub_path,'run*'))[0]
                     # copy contents from doner_model to sub_path here. 
@@ -283,11 +285,17 @@ if __name__ == '__main__':
                     q_path = glob.glob(os.path.join(run_path,'*.q'))[0]
                     update_submission_file(q_path,
                                            job_name='nol'+friction, # NO_L NO LINEAR FRICTION can only be 8 characters
-                                           time_taken='00-04:00', 
+                                           time_taken='00-20:00', # Made it 16 hours as current simulation will probably time out
                                            partition='htc') # dev or htc
 
                     # Add in temperature boundary condition
-                    add_files = ['Temperature.bc']
+                    add_files = ['Temperature.bc',
+                                 'Salinity.bc',
+                                 'WaterLevel.bc',
+                                 'TangentVelocity.bc',
+                                 'NormalVelocity.bc'
+                                 ]
+                    
                     copy_bc_files(temperature_donor, run_path, add_files) # Add in the temperature boundary forcing. 
                     [update_forcingfile(glob.glob(os.path.join(run_path,'*.ext'))[0], i) for i in add_files]
                     

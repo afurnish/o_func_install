@@ -108,7 +108,7 @@ def display_images(image_paths, direct_select):
 
 
 if __name__ == "__main__":
-    main_path = os.path.join(start_path, 'modelling_DATA', 'kent_estuary_project', '8.model_calibration', 'models')
+    main_path = os.path.join(start_path, 'modelling_DATA', 'kent_estuary_project', '7.met_office', 'models')
     
     subdirectories = list_subdirectories(main_path)
     selected_dirs = select_directories(subdirectories)

@@ -21,6 +21,11 @@ from o_func.utilities.near_neigh import near_neigh
 from o_func.utilities.distance import Dist
 from o_func.utilities.gauges import tide_gauge_loc
    
+
+#%% Shifted time
+shifted_time_val = 0
+
+#%% 
 #example_dataset = os.path.join(start_path, 'modelling_DATA','kent_estuary_project',r'6.Final2','models','kent_1.3.7_testing_4_days_UM_run','kent_regrid.nc')
 var_dict = {
 'surface_height'   : {'TUV':'T',  'UKC4':'sossheig',       'PRIMEA':'mesh2d_s1',     'UNITS':'m'},
@@ -364,7 +369,7 @@ class Stats:
             prix = []
             from scipy.interpolate import interp1d
 
-            data = pd.DataFrame({'Timestamp': self.time_sliced, 'Shifted_Time': self.time_sliced + pd.Timedelta(minutes=6)})
+            data = pd.DataFrame({'Timestamp': self.time_sliced, 'Shifted_Time': self.time_sliced + pd.Timedelta(minutes=shifted_time_val)})
             for kio, item in enumerate(self.primx):
                 data['Values'] = item['PRIMEA Model']
                 full_time_range = pd.date_range(start=data['Timestamp'].min(), end=data['Shifted_Time'].max(), freq='30T')
@@ -381,7 +386,7 @@ class Stats:
                 
                 original_frequency_data = result_data.iloc[::2].reset_index(drop=True)
                 prix.append({'PRIMEA Model':np.array(original_frequency_data['Interpolated_Value'])})
-            data = pd.DataFrame({'Timestamp': self.time_sliced, 'Shifted_Time': self.time_sliced + pd.Timedelta(minutes=6)})
+            data = pd.DataFrame({'Timestamp': self.time_sliced, 'Shifted_Time': self.time_sliced + pd.Timedelta(minutes=shifted_time_val)})
             ukcy = [] 
             for kio, item in enumerate(self.ukc4y):
                 # import pdb;pdb.set_trace()
@@ -633,10 +638,10 @@ def find_dir(file_path, filename='kent_regrid.nc'):
         
 if __name__ == '__main__':
   
-    multi_file_path = path = os.path.join(start_path,'modelling_DATA','kent_estuary_project','8.model_calibration','models')
+    multi_file_path = path = os.path.join(start_path,'modelling_DATA','kent_estuary_project','7.met_office','models')
     list_of_files = find_dir(multi_file_path)
 
-    # list_of_files =[  #'bathymetry_testing',
+    list_of_files =[  #'bathymetry_testing',
     #   'oa_nawind_Orig_m0.020_Forcing',
     #   'oa_nawind_Orig_m0.030_Forcing',
     #   'oa_nawind_Orig_m0.035_Forcing',
@@ -644,19 +649,19 @@ if __name__ == '__main__':
     #   'oa_nawind_Orig_m0.045_Forcing',
     #   'oa_nawind_Orig_m0.050_Forcing',
     #   ]
-   # 'PRIMEA_riv_nawind_oa_1l_flipped',
-   # 'PRIMEA_riv_nawind_oa_1l_original',
+    'PRIMEA_riv_nawind_oa_1l_flipped',
+    'PRIMEA_riv_nawind_oa_1l_original',
    # 'PRIMEA_riv_yawind_oa_1l_flipped',
    # 'PRIMEA_riv_yawind_oa_1l_original',
    # 'kent_1.30_base_from_5.Final',
-    
+    ]
     for fn in list_of_files:
     
         from o_func import DataChoice, DirGen
         import glob
         # main_path = os.path.join(start_path, r'modelling_DATA','kent_estuary_project',r'6.Final2')
         # fn = 'kent_1.0.0_UM_wind' # 
-        main_path = os.path.join(start_path, r'modelling_DATA','kent_estuary_project',r'8.model_calibration')
+        main_path = os.path.split(multi_file_path)[0]#os.path.join(start_path, r'modelling_DATA','kent_estuary_project',r'8.model_calibration')
         # fn = 'kent_1.30_base_from_5.Final' # 
         # fn = 'PRIMEA_riv_nawind_oa_1l_flipped'
         
