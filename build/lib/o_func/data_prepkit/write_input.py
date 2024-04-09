@@ -48,6 +48,8 @@ import platform
 
 # import dask
 
+flip = 'no'
+
 # Set the option to split large chunks
 
 
@@ -64,7 +66,10 @@ class InMake:
     def __init__(self, model_dir_to_put_files, bc_paths, original_data_path, p = 'n'):
         '''
         model_dir_to_put_files: Should be a function of the dir_gen part of package. 
+        
+        bc_paths are the paths to the ukc4 datasets. 
         '''
+        
         self.p = p
         self.full_path = os.path.join(original_data_path, '*')
         #model_paths
@@ -136,6 +141,7 @@ class InMake:
             'Temperature.bc': {                     
                 'script_name': 'temperaturebnd',
                 'units': 'degrees',
+                'function':'timeseries',
                 'filetype': 'T'
             }
             ,
@@ -221,7 +227,8 @@ class InMake:
         # self.dirname = '001_delft_ocean_boundary_UKC4_b' + str(self.lower) + 't' + str(self.upper) + '_length-' + str(len(self.long)) 
         self.dirname = '001_delft_ocean_boundary_UKC3_b601t688_length-' + str(len(self.long)) + '_points' # need to fix this properly
         path = os.path.join(self.input_path, self.dirname)
-        #path = os.path.join(self.pli_dir, dirname)
+        print(self.input_path)
+        #path = os.path.join(self.pli_d ir, dirname)
         f = open(path , "w")
         f.write(self.dirname)
         f.write('\n    ' + str(len(self.lati)) + '    ' + str(2))
@@ -263,6 +270,8 @@ class InMake:
     def plot_pli(self):
         '''
         Eventually this should be integrated with video plots . 
+        
+        This makes two figures which show the UKC4 grid
         '''
         #% Constants 
         fontsize = 15
@@ -351,7 +360,7 @@ class InMake:
                     # Gives you 33 67 100
                 f.write("Vertical interpolation          = linear\n")
             f.write("Quantity                        = time\n")
-            f.write("Unit                            = seconds since 2013-10-31 00:00:00\n")
+            f.write("Unit                            = seconds since " + self.formatted_str + "\n")
             if self.layer == 'n':
                 num_range = 1
             else:
@@ -415,6 +424,13 @@ class InMake:
             if os.path.split(names)[-1] == 'WaterLevel.bc':
                 dataset2 = []
                 dataset2.append(np.array(data.sossheig[:,self.ls,self.new_rs]))
+                
+                time0 = data.sossheig[0,:,:]
+                fig40, ax40 = plt.subplots()
+                plt.pcolor(time0)
+                plt.plot(([self.new_rs]* len(self.ls)), self.ls)
+                plt.text(self.new_rs, self.ls[0], 'First point 0', c = 'r')
+                plt.text(self.new_rs, self.ls[-1], 'Last point '+ str(len(self.ls)), c = 'r')
                 dataset2.append('')
                 dataset2.append('')
                 raw_data.append(dataset2)
@@ -483,7 +499,10 @@ class InMake:
             #print('comp_name')
             for j, n in enumerate(self.name):
                 # print(j)
-                newj = j # (j+1)*-1 #This code flips the plotting upside down
+                if flip == 'y':
+                    newj = (j+1)*-1 # or regular j This code flips the plotting upside down
+                else:
+                    newj = j
                 # print((j+1)*-1)
                 #print('csv ', self.csv_path)
                 filename = os.path.join(self.csv_path, n + f'_{os.path.split(comp_name[:-3])[-1]}_' +'.csv')
@@ -528,8 +547,10 @@ class InMake:
                 data = xr.open_dataset(file, engine ='netcdf4')
                 print('DATASET works here ...\n') # why on earth did I put this in as a conditional statement
             else:
-                data = xr.open_dataset(file, engine ='netcdf4')   
-            time = self.convert_to_seconds_since_date(data.time_counter,r'2013-10-31 00:00:00')
+                data = xr.open_dataset(file, engine ='netcdf4')   # possibly here ukc4 data is extracted
+            formatted_str = data.time_counter[0].dt.strftime('%Y-%m-%d %H:%M:%S').item()
+            self.formatted_str = formatted_str
+            time = self.convert_to_seconds_since_date(data.time_counter,formatted_str)
             df = pd.DataFrame()
             df['time'] = [re.sub(r'[^0-9-]', '', str(i)) for i in time]
 
@@ -541,16 +562,22 @@ class InMake:
     def para_file_rip(self,dataset):
         '''
         Only works with smaller datasets otherwise dask throws a fit. 
+        
+        So this is the one that the program runs on,
+        data becomes a collection of all time ukc4 datasets, 
         '''
-        data = xr.open_mfdataset(dataset, parallel=True)#, chunks =  {'time_counter':100})
+        data = xr.open_mfdataset(dataset, parallel=True, engine='netcdf4')#, chunks =  {'time_counter':100})
+        
         # for i,file in enumerate(dataset):
         #     print('ripin ', i)
         #     if len(dataset) == 2:
         #         data = xr.open_dataset(file, engine ='netcdf4')
         #         print('DATASET works here ...\n') # why on earth did I put this in as a conditional statement
         #     else:
-        #         data = xr.open_dataset(file, engine ='netcdf4')   
-        time = self.convert_to_seconds_since_date(data.time_counter,r'2013-10-30 00:00:00')
+        #         data = xr.open_dataset(file, engine ='netcdf4')  
+        formatted_str = data.time_counter[0].dt.strftime('%Y-%m-%d %H:%M:%S').item()
+        self.formatted_str = formatted_str
+        time = self.convert_to_seconds_since_date(data.time_counter,self.formatted_str) # why is this start time so rigid. 
         df = pd.DataFrame()
         df['time'] = [re.sub(r'[^0-9-]', '', str(i)) for i in time]
         raw_data = self.data_extract(data)
@@ -623,6 +650,8 @@ class InMake:
             nn.append(nearest_neigh)
         
         self.ls = [item[0] for item in nn]
+        
+        print('self.ls = ', self.ls)
         rs = [item[1] for item in nn]
         self.new_rs = int(np.mean(rs))
            
@@ -735,8 +764,12 @@ class InMake:
     
         if isinstance(self.layer, int):
             self.layer_path = util.md([self.bc_paths, str(self.layer)])
+            '''
+            Here a directory is made for the new dataset if it doesnt exist already, 
+            '''
             print(self.layer_path)
         self.csv_path = util.md([self.layer_path,'dump_CSV'])
+        
         make_files.ocean_timeseries()
         #component = 'velocity_normal'
 
@@ -754,12 +787,23 @@ if __name__ == '__main__':
     ### Finishing directory paths
 
     dc = DataChoice(os.path.join(main_path,'models'))
-    fn = dc.dir_select()
+    fn = dc.dir_select() # So this is the path you choose at the beginning. 
     
     # To work this needs to have all of the datasets in it. 
     # full_path = os.path.join(start_path, 'Original_Data' ,'UKC3','owa','shelftmb')
-    full_path = os.path.join(start_path, 'Original_Data' ,'UKC3','sliced','oa','shelftmb_cut_to_domain')
-    make_files = InMake(fn, bc_paths[1][1], full_path, p = 'y') #  Pass model path folder into make file folder. 
+    # og oa oaw ow
+    # for k, model_data in enumerate(['og', 'oa', 'owa', 'ow']):
+    model_data = 'oa'
+    full_path = os.path.join(start_path, 'Original_Data' ,'UKC3','sliced',model_data,'shelftmb_cut_to_domain')
+    
+    model_data_dict = {'oa' :bc_paths[1][1],
+                       'owa':bc_paths[1][2],
+                       'ow' :bc_paths[1][3],
+                       'og' :bc_paths[1][0],
+                            }
+    
+    
+    make_files = InMake(fn, model_data_dict[model_data], full_path, p = 'y') #  Pass model path folder into make file folder. 
     
     make_files.write_pli()
     
@@ -772,12 +816,10 @@ if __name__ == '__main__':
     ,NormalVelocity 'TangentVelocity', 'WaterLevel', 'Salinity']
     '''
     # This line definately works as of 2023-09-18 10:56
-    make_files.write_boundary_file(layer = 1, component = ['WaterLevel.bc', 'Salinity.bc','Temperature.bc', 'NormalVelocity.bc','TangentVelocity.bc'])
+    make_files.write_boundary_file(layer = 1, component = ['WaterLevel.bc'])#, 'Salinity.bc','Temperature.bc', 'NormalVelocity.bc','TangentVelocity.bc'])
     # make_files.write_boundary_file(layer = 3, component = ['Velocity.bc'])
     
     #First step is to make the .pli files to which the boundary conditions are made. 
     
-    
-    
-    
-    
+        
+        

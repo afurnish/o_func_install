@@ -348,8 +348,12 @@ class Stats:
                     fourday = 2*24*4
                     week = 2 * 24 * 7
                     
-
-                    ax.set_xlim([self.time_sliced[start_at], self.time_sliced[start_at + fourday]])
+                    if len(self.time_sliced) < 242:
+                        time_indexed= start_at + 42
+                    else:
+                        time_indexed= start_at + fourday
+                        
+                    ax.set_xlim([self.time_sliced[start_at], self.time_sliced[time_indexed]])
                     tide_gauge_name = [j for j in self.tide_loc_dict.keys()][i]
                     # import pdb; pdb.set_trace()
                     ax.legend(loc = 'lower right', frameon=False)
@@ -638,25 +642,28 @@ def find_dir(file_path, filename='kent_regrid.nc'):
         
 if __name__ == '__main__':
   
-    multi_file_path = path = os.path.join(start_path,'modelling_DATA','kent_estuary_project','7.met_office','models')
+    # multi_file_path = path = os.path.join(start_path,'modelling_DATA','kent_estuary_project','7.met_office','models')
+    multi_file_path = path = os.path.join(start_path,'modelling_DATA','kent_estuary_project','9.friction_calibration','models')
+
     list_of_files = find_dir(multi_file_path)
 
-    list_of_files =[  #'bathymetry_testing',
-    #   'oa_nawind_Orig_m0.020_Forcing',
-    #   'oa_nawind_Orig_m0.030_Forcing',
-    #   'oa_nawind_Orig_m0.035_Forcing',
-    #   'oa_nawind_Orig_m0.040_Forcing',
-    #   'oa_nawind_Orig_m0.045_Forcing',
-    #   'oa_nawind_Orig_m0.050_Forcing',
-    #   ]
-    'PRIMEA_riv_nawind_oa_1l_flipped',
-    'PRIMEA_riv_nawind_oa_1l_original',
-   # 'PRIMEA_riv_yawind_oa_1l_flipped',
-   # 'PRIMEA_riv_yawind_oa_1l_original',
-   # 'kent_1.30_base_from_5.Final',
-    ]
+    list_of_files = [  
+         #'bathymetry_testing',
+        'oa_nawind_Orig_m0.015_Forcing',
+     #   'oa_nawind_Orig_m0.030_Forcing',
+     #   'oa_nawind_Orig_m0.035_Forcing',
+     #   'oa_nawind_Orig_m0.040_Forcing',
+     #   'oa_nawind_Orig_m0.045_Forcing',
+     #   'oa_nawind_Orig_m0.050_Forcing',
+     ]
+   #  'PRIMEA_riv_nawind_oa_1l_flipped',
+   #  'PRIMEA_riv_nawind_oa_1l_original',
+   # # 'PRIMEA_riv_yawind_oa_1l_flipped',
+   # # 'PRIMEA_riv_yawind_oa_1l_original',
+   # # 'kent_1.30_base_from_5.Final',
+   #  ]
     for fn in list_of_files:
-    
+        print(fn)
         from o_func import DataChoice, DirGen
         import glob
         # main_path = os.path.join(start_path, r'modelling_DATA','kent_estuary_project',r'6.Final2')

@@ -171,8 +171,9 @@ if __name__ == '__main__':
     
     #from o_func.data_prepkit import DirGen
     # main_path = os.path.join(start_path, r'modelling_DATA','kent_estuary_project',r'6.Final2')
-    main_path = os.path.join(start_path, r'modelling_DATA','kent_estuary_project',r'8.model_calibration')
+    main_path = os.path.join(start_path, r'modelling_DATA','kent_estuary_project',r'7.met_office')
     make_paths = DirGen(main_path)
+    sub_path, fig_path, data_stats_path = make_paths.dir_outputs('bathymetry_testing')
     
     for model_input in ['oa', 'og', 'owa', 'ow']:
         for wind in ['yawind', 'nawind']:

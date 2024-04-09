@@ -21,18 +21,27 @@ from o_func.utilities.near_neigh import near_neigh
 from o_func.utilities.distance import Dist
 from o_func.utilities.gauges import tide_gauge_loc
    
+
+#%% Shifted time
+shifted_time_val = 0
+
+#%% 
 #example_dataset = os.path.join(start_path, 'modelling_DATA','kent_estuary_project',r'6.Final2','models','kent_1.3.7_testing_4_days_UM_run','kent_regrid.nc')
 var_dict = {
-'surface_height'   : {'TUV':'T',  'UKC4':'sossheig',       'PRIMEA':'mesh2d_s1',  'UNITS':'m'  },
-'surface_salinity' : {'TUV':'T',  'UKC4':'vosaline_top',   'PRIMEA':'mesh2d_sa1', 'UNITS':'psu' },
-'middle_salinity'  : {'TUV':'T',  'UKC4':'',               'PRIMEA':'na',         'UNITS':'na' },
-'bottom_salinity'  : {'TUV':'T',  'UKC4':'',               'PRIMEA':'na',         'UNITS':'na' },
-'surface_Uvelocity': {'TUV':'U',  'UKC4':'',               'PRIMEA':'na',         'UNITS':'na' },
-'middle_Uvelocity' : {'TUV':'U',  'UKC4':'',               'PRIMEA':'na',         'UNITS':'na' },
-'bottom_Uvelocity' : {'TUV':'U',  'UKC4':'',               'PRIMEA':'na',         'UNITS':'na' },
-'surface_Vvelocity': {'TUV':'V',  'UKC4':'',               'PRIMEA':'na',         'UNITS':'na' },
-'middle_Vvelocity' : {'TUV':'V',  'UKC4':'',               'PRIMEA':'na',         'UNITS':'na' },
-'bottom_Vvelocity' : {'TUV':'V',  'UKC4':'',               'PRIMEA':'na',         'UNITS':'na' },
+'surface_height'   : {'TUV':'T',  'UKC4':'sossheig',       'PRIMEA':'mesh2d_s1',     'UNITS':'m'},
+'surface_salinity' : {'TUV':'T',  'UKC4':'vosaline_top',   'PRIMEA':'mesh2d_sa1',    'UNITS':'psu'},
+'middle_salinity'  : {'TUV':'T',  'UKC4':'vosaline_mid',   'PRIMEA':'na',            'UNITS':'psu'},
+'bottom_salinity'  : {'TUV':'T',  'UKC4':'vosaline_bot',   'PRIMEA':'na',            'UNITS':'psu'},
+'surface_temp'     : {'TUV':'T',  'UKC4':'votemper_top',   'PRIMEA':'na',            'UNITS':'\u00B0C'},
+'middle_temp'      : {'TUV':'T',  'UKC4':'votemper_mid',   'PRIMEA':'na',            'UNITS':'\u00B0C'},
+'bottom_temp'      : {'TUV':'T',  'UKC4':'votemper_bot',   'PRIMEA':'na',            'UNITS':'\u00B0C'},
+'surface_Uvelocity': {'TUV':'U',  'UKC4':'vozocrtx_top',   'PRIMEA':'mesh2d_ucx',    'UNITS':'$m\,s^{-1}$'}, # the one with the major issues
+'middle_Uvelocity' : {'TUV':'U',  'UKC4':'vozocrtx_mid',   'PRIMEA':'na',            'UNITS':'$m\,s^{-1}$'},
+'bottom_Uvelocity' : {'TUV':'U',  'UKC4':'vozocrtx_bot',   'PRIMEA':'na',            'UNITS':'$m\,s^{-1}$'},
+'surface_Vvelocity': {'TUV':'V',  'UKC4':'vomecrty_top',   'PRIMEA':'mesh2d_ucy',    'UNITS':'$m\,s^{-1}$'},
+'middle_Vvelocity' : {'TUV':'V',  'UKC4':'vomecrty_mid',   'PRIMEA':'na',            'UNITS':'$m\,s^{-1}$'},
+'bottom_Vvelocity' : {'TUV':'V',  'UKC4':'vomecrty_bot',   'PRIMEA':'na',            'UNITS':'$m\,s^{-1}$'},
+'bathymetry'       : {'TUV':'T',  'UKC4':'NA',             'PRIMEA':'mesh2d_node_z', 'UNITS':'m'},
 }
 class Stats:
     def __init__(self, dataset, dataset_name):
@@ -124,17 +133,22 @@ class Stats:
                 
                 data_dict['ukc4'] = rename_dict(ukc4_datasets) # This is now a dictionary of the data
                 data_dict['prim'] = rename_dict(prim_datasets)
-        self.bathymetry = self.raw_data['prim_bathymetry'][0,:,:]        
+        self.bathymetry = self.raw_data['prim_bathymetry'][0,:,:] * -1 # Must be made negative as values are positive.       
         self.data_dict = data_dict
         return self.raw_data, data_dict, matching_times
     ####            0                1          2
     
     def load_tide_gauge(self):   
-        # self.tide_loc_dict = {'Heysham'  :{'x':-2.9311759, 'y':54.0345516},
-        #                       'Liverpool':{'x':-3.0168250, 'y':53.4307320},
-        #                       }
+        self.tide_loc_dict = {
+                               'Heysham'  :{'x':-2.9594670, 'y':54.0328370},
+                               # 'Heysham'  :{'x':-2.9574780, 'y':54.0333366},
+                               # 'Liverpool':{'x':-3.1554490, 'y':53.4930250}, # Looks good but too deep on liverpool 
+                               # 'Liverpool':{'x':-3.1391550, 'y':53.4622030}, 
+                               # 'Liverpool':{'x':-3.1988680, 'y':53.4797420}, 
+                                 'Liverpool':{'x':-3.0741720, 'y':53.4634140}, 
+                              }
         
-        self.tide_loc_dict = tide_gauge_loc()
+        # self.tide_loc_dict = tide_gauge_loc()
         df_tide_loc = pd.DataFrame(self.tide_loc_dict).T.reset_index()
         df_tide_loc = df_tide_loc.drop(df_tide_loc.columns[0], axis=1)
         df_search_points = pd.DataFrame({'x': self.lon.data.ravel(), 'y': self.lat.data.ravel()})
@@ -342,7 +356,6 @@ class Stats:
                     ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))  # Format dates
                     ax.xaxis.set_major_locator(mdates.AutoDateLocator())  # Automatically set tick locations
                     fig.autofmt_xdate()
-                    
                     ax.set_ylabel('SSH (m)')
                     # ax.set_xlabel('Time')
                     plt.tight_layout()  
@@ -356,7 +369,7 @@ class Stats:
             prix = []
             from scipy.interpolate import interp1d
 
-            data = pd.DataFrame({'Timestamp': self.time_sliced, 'Shifted_Time': self.time_sliced + pd.Timedelta(minutes=6)})
+            data = pd.DataFrame({'Timestamp': self.time_sliced, 'Shifted_Time': self.time_sliced + pd.Timedelta(minutes=shifted_time_val)})
             for kio, item in enumerate(self.primx):
                 data['Values'] = item['PRIMEA Model']
                 full_time_range = pd.date_range(start=data['Timestamp'].min(), end=data['Shifted_Time'].max(), freq='30T')
@@ -373,7 +386,7 @@ class Stats:
                 
                 original_frequency_data = result_data.iloc[::2].reset_index(drop=True)
                 prix.append({'PRIMEA Model':np.array(original_frequency_data['Interpolated_Value'])})
-            data = pd.DataFrame({'Timestamp': self.time_sliced, 'Shifted_Time': self.time_sliced + pd.Timedelta(minutes=6)})
+            data = pd.DataFrame({'Timestamp': self.time_sliced, 'Shifted_Time': self.time_sliced + pd.Timedelta(minutes=shifted_time_val)})
             ukcy = [] 
             for kio, item in enumerate(self.ukc4y):
                 # import pdb;pdb.set_trace()
@@ -605,25 +618,50 @@ class Stats:
 
             
         return heightprim, heightukc4, height_difference
-        
+
+def find_dir(file_path, filename='kent_regrid.nc'):
+    """
+    Find directories within the given file_path that contain the specified filename.
+    
+    :param file_path: Path to the directory to search within.
+    :param filename: Name of the file to look for in each directory.
+    :return: List of directory names containing the specified file.
+    """
+    directories_with_file = [entry for entry in os.listdir(file_path)
+                             if os.path.isdir(os.path.join(file_path, entry)) and
+                                os.path.isfile(os.path.join(file_path, entry, filename))]
+    
+    return directories_with_file        
         
         
 #%%        
         
 if __name__ == '__main__':
-    
-    for fn in ['PRIMEA_riv_nawind_oa_1l_flipped',
-               'PRIMEA_riv_nawind_oa_1l_original',
-               'PRIMEA_riv_yawind_oa_1l_flipped',
-               # 'PRIMEA_riv_yawind_oa_1l_original',
-               'kent_1.30_base_from_5.Final',
-                ]:
+  
+    multi_file_path = path = os.path.join(start_path,'modelling_DATA','kent_estuary_project','7.met_office','models')
+    list_of_files = find_dir(multi_file_path)
+
+    list_of_files =[  #'bathymetry_testing',
+    #   'oa_nawind_Orig_m0.020_Forcing',
+    #   'oa_nawind_Orig_m0.030_Forcing',
+    #   'oa_nawind_Orig_m0.035_Forcing',
+    #   'oa_nawind_Orig_m0.040_Forcing',
+    #   'oa_nawind_Orig_m0.045_Forcing',
+    #   'oa_nawind_Orig_m0.050_Forcing',
+    #   ]
+    'PRIMEA_riv_nawind_oa_1l_flipped',
+    'PRIMEA_riv_nawind_oa_1l_original',
+   # 'PRIMEA_riv_yawind_oa_1l_flipped',
+   # 'PRIMEA_riv_yawind_oa_1l_original',
+   # 'kent_1.30_base_from_5.Final',
+    ]
+    for fn in list_of_files:
     
         from o_func import DataChoice, DirGen
         import glob
         # main_path = os.path.join(start_path, r'modelling_DATA','kent_estuary_project',r'6.Final2')
         # fn = 'kent_1.0.0_UM_wind' # 
-        main_path = os.path.join(start_path, r'modelling_DATA','kent_estuary_project',r'7.met_office')
+        main_path = os.path.split(multi_file_path)[0]#os.path.join(start_path, r'modelling_DATA','kent_estuary_project',r'8.model_calibration')
         # fn = 'kent_1.30_base_from_5.Final' # 
         # fn = 'PRIMEA_riv_nawind_oa_1l_flipped'
         

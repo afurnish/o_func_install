@@ -299,7 +299,7 @@ if __name__ == '__main__':
                     copy_bc_files(temperature_donor, run_path, add_files) # Add in the temperature boundary forcing. 
                     [update_forcingfile(glob.glob(os.path.join(run_path,'*.ext'))[0], i) for i in add_files]
                     
-    remote_path = 'b.osu903@hawklogin.cf.ac.uk:/home/b.osu903/kent/friction_testing'
+    remote_path = 'hawk:/home/b.osu903/kent/friction_testing'
     push_to_scw = input('Do you want to push to SCW? (y/n): ')
     if push_to_scw == 'y':
         run_rsync(path_to_push, remote_path)

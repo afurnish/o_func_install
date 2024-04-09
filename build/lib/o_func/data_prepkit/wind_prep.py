@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """ Generation of boundary conditions
 
 A user manual for some of this stuff
@@ -20,6 +19,7 @@ import glob
 import iris 
 import iris.coord_categorisation
 
+import o_func.utilities as util
 
 #%% Custom packages
 
@@ -277,7 +277,7 @@ class WindWrite():
                 #sys.exit()
                 
                 #single_t_vel = (vel[i]) # possible option for other data
-            with open(output_path + file_path, 'a') as file:
+            with open(os.path.join(output_path, file_path), 'a') as file:
             # Iterate over each row
                 for row_index in range(num_rows):
                     if row_index == 0:
@@ -434,11 +434,11 @@ class WindWrite():
                 self.met_body(file,vel,start, interval,data_source, output_path)
         
     
-    def UM_write(self, wind_files, time, output_path):
+    def UM_write(self, wind_files, time, output_path, wind_model):
         '''
         Wind_files should be directory to wind files location for UM grid. 
         '''
-        nc_path = os.path.join(wind_files,'*.nc')
+        nc_path = os.path.join(wind_files,wind_model,'*.nc')
         
         files = []
         for file in sorted(glob.glob(nc_path)):
@@ -546,10 +546,10 @@ class WindWrite():
         for file in met_files2:
             self.file = file
             
-            
+            output_file = os.path.join(output_path, file)
             
             if file.endswith('.amu'):
-                with open(output_path + file,'w') as f: # overwrites main file
+                with open(output_file,'w') as f: # overwrites main file
                     f.write("")
                 f.close()
                 print(file)
@@ -564,7 +564,7 @@ class WindWrite():
                 self.met_body(file,vel,start, interval,data_source, output_path)
                 print('shape vel ', vel.shape)
             elif file.endswith('.amv'):
-                with open(output_path + file,'w') as f: # overwrites main file
+                with open(output_file,'w') as f: # overwrites main file
                     f.write("")
                 f.close()
                 print(file)
@@ -591,7 +591,7 @@ class WindWrite():
                 
                 
                 
-                with open(output_path + file,'w') as f: # overwrites main file
+                with open(output_file,'w') as f: # overwrites main file
                     f.write("")
                 f.close()
                 print(file)
@@ -620,7 +620,7 @@ if __name__ == '__main__':
     starttime = '2013-10-31 00:00'
     wind_file = start_path + r'modelling_DATA/kent_estuary_project/wind_input/wind_data_uk_era5_2013_2014.nc'
     time = ['2013-10-15','2014-04-01']
-    output_path = start_path + r'modelling_DATA/kent_estuary_project/wind_input/wind_test_forcing/'
+    output_path = start_path + r'modelling_DATA/kent_estuary_project/wind_input'
     
     # ww = WindWrite() # begin class of windwriter
 
@@ -628,11 +628,16 @@ if __name__ == '__main__':
     # ww.era5_write(wind_file, time, output_path)
 
     #%% UM 
+    
+    #path choice
+    wind_model = ['oa', 'og', 'owa', 'ow']
+    wind_model = 'oa'
     ww = WindWrite() # begin class of windwriter
     time = ['2013-10-31 01:00:00','2014-03-01 00:00:00']
+    write_to_path = os.path.join(output_path, wind_model)
     wind_files = os.path.join(start_path, 'Original_Data','UKC3','wind')
-    
-    ww.UM_write(wind_files, time, output_path)
+    util.md([write_to_path])
+    ww.UM_write(wind_files, time, write_to_path, wind_model)
     
     
     # using the um grid dataset. 

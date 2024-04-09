@@ -9,6 +9,9 @@ Created on Mon Mar  4 12:10:51 2024
 import os
 import matplotlib.pyplot as plt
 from matplotlib.image import imread
+import matplotlib as mat 
+plt.close('all')
+mat.use('TkAgg')
 
 from o_func import opsys; start_path = opsys()
 

@@ -26,6 +26,7 @@ import pandas as pd
 import ttide as tt
 import matplotlib.dates as mdates
 
+[plt.close() for i in range(30)]
 '''
 SANINITY CHECK TO SELF
 
@@ -69,7 +70,7 @@ class est_tide:
 
     def read_pli(self,points_file):
         '''
-
+        Reads a pli file and returns it as a data array. 
         Parameters
         ----------
         points_file : .pli style file
@@ -126,11 +127,17 @@ class est_tide:
         
         files = []
         [files.append(file) for file in (sorted(glob.glob(join(data_path, '*'))))]
+        '''
+        files is now a list of tidal constituent nc data files. 
+        '''
+        
         
         #tc_names = [path.split('/')[-1].split('.')[0].upper().rjust(4) for path in files]
         import os
 
         tc_names = [os.path.splitext(os.path.split(path)[1])[0].upper().rjust(4) for path in files]
+        
+
 
         for k, file in enumerate(files):
             print(tc_names[k])
@@ -142,6 +149,10 @@ class est_tide:
             lon, lat = test_data.lon, test_data.lat
             lons, lats = np.meshgrid(lon, lat)
             if k == 0:
+                '''
+                This figure as of present config just plots the coastline with the UKC4 dataset overlaid 
+                ontop of it. 
+                '''
                 fig, ax = plt.subplots(subplot_kw={'projection': ccrs.PlateCarree()})
                 c = ax.pcolormesh(lon, lat, test_data.phase, cmap='viridis')
                 ax.coastlines(linewidth=1, edgecolor='black')
@@ -150,41 +161,50 @@ class est_tide:
                 plt.colorbar(c, ax=ax, label='Data Values')
                 plt.show
             
-            lon_2d, lat_2d = np.meshgrid(lon, lat)
-            lon_lat_array = np.column_stack((lon_2d.ravel(), lat_2d.ravel()))
-            lon_lat_array[:, 0] = (lon_lat_array[:, 0] + 180) % 360 - 180
-    
+            def map_to_fes():
+                lon_2d, lat_2d = np.meshgrid(lon, lat)
+                lon_lat_array = np.column_stack((lon_2d.ravel(), lat_2d.ravel()))
+                lon_lat_array[:, 0] = (lon_lat_array[:, 0] + 180) % 360 - 180
+        
+                
+                # lon_lat_array = np.column_stack((lon.values, lat.values))
+                # print(lon_lat_array)
+                lon_lat_array_rad = np.radians(lon_lat_array)
+        
+                ball_tree = BallTree(lon_lat_array_rad, metric='haversine')
+                points_rad = np.radians(points)
+        
+                distances, indices = ball_tree.query(points_rad, k=1)
+                # print(indices)
+                
+                lat_indicies, lon_indicies = np.unravel_index(indices, test_data.phase.shape)
+                lon_ind, lat_ind = [], []
+                [lon_ind.append( ((lon[i].values) + 180) % 360 - 180) for i in lon_indicies[:,0]]
+                [lat_ind.append(lat[i].values) for i in lat_indicies[:,0]]
+                 
+                return lat_indicies, lon_indicies, lat_ind, lon_ind 
             
-            # lon_lat_array = np.column_stack((lon.values, lat.values))
-            # print(lon_lat_array)
-            lon_lat_array_rad = np.radians(lon_lat_array)
-    
-            ball_tree = BallTree(lon_lat_array_rad, metric='haversine')
-            points_rad = np.radians(points)
-    
-            distances, indices = ball_tree.query(points_rad, k=1)
-            # print(indices)
+            fes_lat_indicies, fes_lon_indicies, fes_lat_ind, fes_lon_ind = map_to_fes()
+            # At this point index 0 is still south. 
+            plt.plot(fes_lon_ind,fes_lat_ind, '*r')
+            plt.title('Pli points mapped out onto the FES grid')
             
-            lat_indicies, lon_indicies = np.unravel_index(indices, test_data.phase.shape)
-            lon_ind, lat_ind = [], []
-            [lon_ind.append( ((lon[i].values) + 180) % 360 - 180) for i in lon_indicies[:,0]]
-            [lat_ind.append(lat[i].values) for i in lat_indicies[:,0]]
-                    
-            plt.plot(lon_ind,lat_ind, '*r')
+            def map_to_ukc4():
+                pass
             '''
             These are now the points that can be used in tidal generation with FES data 
             '''
             # print(type(lon_ind))
             # Convert x and y indices to NumPy arrays
-            x_indices = np.array(lon_ind)
-            y_indices = np.array(lat_ind)
+            x_indices = np.array(fes_lon_ind)
+            y_indices = np.array(fes_lat_ind)
         
             amp = np.array([])
             pha = np.array([])
     
-            for i, l in enumerate(lat_indicies): 
-                pha = np.append(pha,test_data.phase[l[0], lon_indicies[i]].values)
-                amp = np.append(amp,test_data.amplitude[l[0], lon_indicies[i]].values)
+            for i, l in enumerate(fes_lat_indicies): 
+                pha = np.append(pha,test_data.phase[l[0], fes_lon_indicies[i]].values)
+                amp = np.append(amp,test_data.amplitude[l[0], fes_lon_indicies[i]].values)
             # print(pha)
             # print(amp)
             
@@ -231,13 +251,13 @@ class est_tide:
         return t
 
 
-    def est_predic(self, t, df_amp, df_pha, tc_names):
+    def est_predic(self, t, df_amp, df_pha, tc_names, point_number_index = 0):
         amp_phase = []
         
-        point_number = 0 # from 0 to 86
+        point_number = point_number_index # from 0 to 86
         # [amp_phase.append(([df_amp[i][point_number],0, df_pha[i][point_number],0])) for i in tc_names]
 
-        [amp_phase.append(([df_pha[i][point_number],0, df_amp[i][point_number],0])) for i in tc_names]
+        [amp_phase.append(([df_pha[i].iloc[point_number],0, df_amp[i].iloc[point_number],0])) for i in tc_names]
             # eta = tt.t_predic(np.array(t), cons2, FREQ, tidecons2)
         print(amp_phase)
         return amp_phase
@@ -247,6 +267,7 @@ class est_tide:
 
 if __name__ == '__main__':
     et = est_tide()
+    # data = et.read_pli(points_file) # produces table 
     # For this its generating the points at the ocean boundary for the locations. 
     df_amp, df_pha, tc_names = et.est_amp_and_phase_extractor(points_file, h_or_v = 'height')
     df_amp = df_amp/100
@@ -295,17 +316,67 @@ if __name__ == '__main__':
     
     eta = tt.t_predic(np.array(t), np.array(CONS2), FREQ, np.array(updatedList).astype(float))
     
+    
+    
+    ''' FREQ stays the same, 
+        TIME stays the same
+        CONS2 stays the same as its just a list of the names of the constituents. 
+        the updated list is a list of phases and amplitudes. 
+    '''
+    amp_phase = et.est_predic(t, df_pha, df_amp, tc_names, point_number_index = -1) # gets new amps and phases based off location. 
+    updatedList = [value for i, value in enumerate(amp_phase) if i not in unmatched_index] # removes unwanted tidal cons
+    northeta = tt.t_predic(np.array(t), np.array(CONS2), FREQ, np.array(updatedList).astype(float))
 
 #%% PLOT the lines
+    def average_and_report_half_hour(timestamps, data):
+        """
+        Averages data sampled at irregular intervals to hourly averages and reports these at the half-hour mark.
+    
+        Parameters:
+        - timestamps (list of datetime.datetime): Timestamps for each data point.
+        - data (list or np.array): Array of data points corresponding to each timestamp.
+    
+        Returns:
+        - new_times (pd.DatetimeIndex): New timestamps at the half-hour marks after each hour of averaged data.
+        - new_data (np.array): Hourly averaged data reported at these half-hour marks.
+        """
+        # Ensure timestamps is a pandas datetime series for consistent manipulation
+        timestamps = pd.to_datetime(timestamps)
+        
+        # Create a DataFrame from the timestamps and data
+        df = pd.DataFrame({
+            'Timestamp': timestamps,
+            'Data': data
+        }).set_index('Timestamp')
+        
+        # Resample to hourly averages. 'H' stands for hourly.
+        df_hourly = df.resample('H').mean()
+        
+        # Shift the resampled data's index by +30 minutes to align the reporting with the half-hour mark
+        df_hourly.index = df_hourly.index + pd.Timedelta(minutes=30)
+        
+        # Extract the new timestamps and their corresponding averaged data
+        return df_hourly.index, df_hourly['Data'].values
+
+    newt, neweta = average_and_report_half_hour(t, eta)
+    newt, newnortheta = average_and_report_half_hour(t, northeta)
     # Set ticks for every week
     fig = plt.subplots(figsize=(20,7))
-    plt.plot(t,eta, label = 'FES_predicted southerly boundary point')
+    
+    '''
+    To perform an accurate comparrison as an investigation into the phase relationship
+    of the datasets the same temporal analysis must be carried out. UKC4 data is 
+    averaged on the hour and then reported on the half hour so any anlysis of this 
+    must follow the same protocol. 
+    '''
+    plt.plot(t,eta, label = 'FES_predicted southerly boundary point (0)')
+    plt.plot(t, northeta, label = 'FES_predicted northerly boundary point (86)')
     
     plt.tight_layout()
     plt.xticks(rotation=45, ha='right')  # Adjust rotation and alignment as needed
 
-    bot = np.loadtxt('gauge_bottom.txt')
-    top = np.loadtxt('gauge_top.txt')
+    bot = np.loadtxt('gauge_south.txt')
+    top = np.loadtxt('gauge_north.txt')
     # Extract the columns
     botseconds_since_start = bot[:, 0]
     botvalues = bot[:, 1]
@@ -313,7 +384,7 @@ if __name__ == '__main__':
     topseconds_since_start = top[:, 0]
     topvalues = top[:, 1]
     
-    start_date = datetime(2013, 10, 30, 0, 0, 0)
+    start_date = datetime(2013, 10, 30, 0, 30, 0) # NEEDS TO BE SET FROM WHATEVER DATSET IT CAME FROM, I have set it to OA
     date_column = [start_date + timedelta(seconds=int(seconds)) for seconds in botseconds_since_start]
     
     # Create a Pandas DataFrame
