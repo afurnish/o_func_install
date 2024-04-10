@@ -21,6 +21,7 @@ import cartopy.mpl.ticker as cticker
 from  os.path import join 
 from o_func import opsys; start_path = opsys()
 import pandas as pd
+import geopandas as gpd
 # import matplotlib
 # matplotlib.use('TkAgg')
 
@@ -89,10 +90,14 @@ additional_coords = {
     'Wyre': (-2.955520867395822, 53.85663354235163)
 }
 
-fig = plt.figure(figsize=(10, 8), dpi = 150)
+shapefile_path = "/Volumes/PN/modelling_DATA/kent_estuary_project/land_boundary/QGIS_Shapefiles/UK_WEST_KENT_EPSG_4326_clipped_med_domain.shp"
+gdf = gpd.read_file(shapefile_path)
+
+fig = plt.figure(figsize=(10, 12), dpi = 150)
 ax = plt.axes(projection=ccrs.PlateCarree())
-ax.add_feature(cfeature.COASTLINE, linewidth=1.0, edgecolor='red')
-ax.add_feature(cfeature.BORDERS, linewidth=0.5, linestyle='dotted', edgecolor='black')
+# ax.add_feature(cfeature.COASTLINE, linewidth=1.0, edgecolor='red')
+# ax.add_feature(cfeature.BORDERS, linewidth=0.5, linestyle='dotted', edgecolor='black')
+gdf.plot(ax = ax, color = 'black', linewidth=0.5)
 ax.scatter(lons, lats, marker='o', color='blue', label='AMM15 river climatology discharge')
 ax.set_xlabel('Longitude')
 ax.set_ylabel('Latitude')
@@ -105,7 +110,7 @@ ax.set_yticks(uk_extent_lat, crs=ccrs.PlateCarree())
 # Label each point with a number from 1 to n and the corresponding river name
 for i, (lon, lat) in enumerate(zip(lons, lats), start=1):
     if i in riv_dict:
-        ax.text(lon - 0.04, lat + 0.02, f'{riv_dict[i]}', ha='center', va='bottom', fontsize=10, color='blue')
+        ax.text(lon - 0.02, lat + 0.01, f'{riv_dict[i]}', ha='center', va='bottom', fontsize=10, color='blue')
         # ax.text(lon + 0.02, lat - 0.05, f'{i}\n{riv_dict[i]}', ha='center', va='bottom', fontsize=10, color='green')
     
     # else:
@@ -118,18 +123,24 @@ for river, (lon, lat) in additional_coords.items():
         first_river_plotted = True
     else:
         ax.scatter(lon, lat, marker='^', color='red')
-    ax.text(lon + 0.04, lat + 0.02, river, ha='center', va='bottom', fontsize=10, color='red')
+    ax.text(lon + 0.02, lat + 0.01, river, ha='center', va='bottom', fontsize=10, color='red')
+
+#% DO you want to add transects onto this figure ?
+transect_paths = start_path + r'modelling_DATA/kent_estuary_project/land_boundary/analysis/QGIS_shapefiles/points_along_estuary_1km_spacing.csv'
+transect_data = pd.read_csv(transect_paths)
+
+ax.scatter(transect_data.X, transect_data.Y, c = 'green', marker = '+', s = 1, label = 'Estuarine Transect')
 
 
-ax.set_extent([uk_lon_min, uk_lon_max, uk_lat_min, uk_lat_max])
-
+ax.set_extent([uk_lon_min, uk_lon_max + 0.25, uk_lat_min, uk_lat_max])
+ax.set_aspect(aspect=0.75) 
 # gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True, linewidth=1, color='gray', alpha=0.5, linestyle='--')
 # gl.top_labels = gl.right_labels = False  # Updated attributes again for the second plot
 # gl.xformatter = cticker.LongitudeFormatter()
 # gl.yformatter = cticker.LatitudeFormatter()
 # gl.xlabel_style = {'size': 12, 'color': 'black'}
 # gl.ylabel_style = {'size': 12, 'color': 'black'}
-
+plt.tight_layout()
 plt.legend()
 plt.show()
 
