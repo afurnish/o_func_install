@@ -14,6 +14,8 @@ import sys
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import cmocean
+from matplotlib.colors import ListedColormap
+
 
 
 from o_func import opsys; start_path = opsys()
@@ -352,7 +354,8 @@ class Stats:
 
                         ax.plot(tt,surface_height_plot, label = mod_key_new[kil], linewidth = lw[kil], linestyle = linetypes[kil], color = col[kil]) 
                         high_tide_num = 174 + 13 + 12
-                        ax.scatter(tt[high_tide_num], surface_height_plot[high_tide_num], s = 4) # plot what time of tide the transect comes from
+                        ax.scatter(tt[high_tide_num], surface_height_plot[high_tide_num], s = 4)
+                        # plot what time of tide the transect comes from
                         # import pdb; pdb.set_trace()    
                     spring_neap = 24*14
                     start_at = 48 + 48 + 36 + 36#spring_neap*3
@@ -617,11 +620,42 @@ class Stats:
                     # heightukc4 = ukc4.max(dim='time_primea')
                     heightprim = calculate_rolling_max(prim).mean(dim='time_primea')
                     heightukc4 = calculate_rolling_max(ukc4).mean(dim='time_primea')
+                   
+                # Creating exonetial colour map 
+                def exp_scale(data, exponent=3):
+                    sign_data = np.sign(data)  # Preserve the sign for diverging scale
+                    scaled_data = sign_data * (np.abs(data) ** exponent)
+                    return scaled_data
+                
+                def adjust_colormap(cmap, exponent=1.5):
+                    # Sample the colormap
+                    cmap_vals = cmap(np.linspace(0, 1, 256))
+                
+                    # Ensure cmap_vals is correctly shaped (256, 4) for RGBA
+                    if cmap_vals.shape[1] != 4:
+                        raise ValueError("Colormap values should be in RGBA format")
+                
+                    # Create new indices for exponential adjustment
+                    new_indices = np.linspace(0, 1, 256) ** (1 / exponent)  # Adjust exponent here
+                
+                    # Interpolate new colormap using adjusted indices
+                    new_cmap_vals = np.empty_like(cmap_vals)
+                    for i in range(4):  # Interpolate for each color channel (RGBA)
+                        new_cmap_vals[:, i] = np.interp(new_indices, np.linspace(0, 1, 256), cmap_vals[:, i])
+                    
+                    return ListedColormap(new_cmap_vals)
+
+                
+                # adjusted_cmap = adjust_colormap(cmocean.cm.balance)
+
+                
                 height_difference = heightprim - heightukc4
                 fig, ax = plt.subplots()
                 fig.set_figheight(7)
                 fig.set_figwidth(5)
                 cmap = cmocean.cm.balance
+                # pcm = ax.pcolor(self.lon, self.lat, exp_scale(height_difference, 10), cmap=adjusted_cmap, shading='auto')  # Ensure shading='auto' for better color interpolation
+
                 pcm = ax.pcolor(self.lon, self.lat, height_difference, cmap = cmap)
                 
                 def sanity_plot(var, saveas):
@@ -650,7 +684,7 @@ class Stats:
                 #pcm.set_clim(-1, 1)
                 cbar = plt.colorbar(pcm)
                 #cbar.set_ticks(np.linspace(-1,1,11))
-                cbar.set_label(j + ' Diff between $\mathrm{UKC4}_{\mathrm{PRIMEA}}$ and $\mathrm{UKC4}_{\mathrm{ao}}$ (m)')
+                cbar.set_label(j + ' Diff between $\mathrm{UKC4}_{\mathrm{PRIMEA}}$ and $\mathrm{UKC4}_{\mathrm{ao}}$ (' + var_dict[i]['UNITS'] + ')')
                 plt.xlabel('Longitude')
                 plt.ylabel('Latitude')
                 # plt.title(self.dataset_name)
@@ -693,7 +727,7 @@ if __name__ == '__main__':
     # list_of_files = list_of_files[-1] # only change the last one for the conference. 
     list_of_files = [  
           #'bathymetry_testing',
-         'oa_nawind_Orig_m0.035_Forcing',
+         'oa_nawind_Orig_m0.035_Forcing_4_months',
       #   'oa_nawind_Orig_m0.030_Forcing',
       #   'oa_nawind_Orig_m0.035_Forcing',
       #   'oa_nawind_Orig_m0.040_Forcing',

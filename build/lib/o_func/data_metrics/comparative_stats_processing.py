@@ -14,6 +14,8 @@ import sys
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import cmocean
+from matplotlib.colors import ListedColormap
+
 
 
 from o_func import opsys; start_path = opsys()
@@ -140,13 +142,15 @@ class Stats:
     
     def load_tide_gauge(self):   
         self.tide_loc_dict = {
-                               'Heysham'  :{'x':-2.9594670, 'y':54.0328370},
-                               # 'Heysham'  :{'x':-2.9574780, 'y':54.0333366},
-                               # 'Liverpool':{'x':-3.1554490, 'y':53.4930250}, # Looks good but too deep on liverpool 
-                               # 'Liverpool':{'x':-3.1391550, 'y':53.4622030}, 
-                               # 'Liverpool':{'x':-3.1988680, 'y':53.4797420}, 
-                                 'Liverpool':{'x':-3.0741720, 'y':53.4634140}, 
+                                'Heysham'  :{'x':-2.9594670, 'y':54.0328370},
+                                # 'Heysham'  :{'x':-2.9574780, 'y':54.0333366},
+                                # 'Liverpool':{'x':-3.1554490, 'y':53.4930250}, # Looks good but too deep on liverpool 
+                                # 'Liverpool':{'x':-3.1391550, 'y':53.4622030}, 
+                                # 'Liverpool':{'x':-3.1988680, 'y':53.4797420}, 
+                                  'Liverpool':{'x':-3.0741720, 'y':53.4634140}, 
                               }
+        
+        # self.tide_loc_dict = tide_gauge_loc()
         
         # self.tide_loc_dict = tide_gauge_loc()
         df_tide_loc = pd.DataFrame(self.tide_loc_dict).T.reset_index()
@@ -178,6 +182,8 @@ class Stats:
         # ocean_bnd = 
     
     def linear_regression(self, figpath, data_stats_path):
+        
+        
         ''' Uses one point in the dataset, like a tide gauge and samples points through time
         
             This will also plot out the tidal data
@@ -322,6 +328,13 @@ class Stats:
                     # key list
                     model_keys = [] # length of 3 
                     linetypes = ['-', '--', '--']
+                    if variable_name != 'surface_height':
+                        list_of_data = list_of_data[1:] # remove the tide gauge
+                        col = ['blue', 'red']
+                        mod_key_new = [r'UKC4$_{\mathrm{PRIMEA}}$', r'UKC4$_{\mathrm{ao}}$']
+                    else:
+                        mod_key_new = ['Tide Gauge', r'UKC4$_{\mathrm{PRIMEA}}$', r'UKC4$_{\mathrm{ao}}$']
+                        col = ['grey', 'blue', 'red']
                     for kil, model in enumerate(list_of_data):
                         tt= self.time_sliced
                         # if kil == 2: # ukc4 timeshift
@@ -334,29 +347,36 @@ class Stats:
                         model_keys.append(mk) # should be like PRIMEA Model key etc., 
                         # 
                         surface_height_plot = model[i][mk]
-                        lw = [1.5,1,1]
-                        col = ['grey', 'blue', 'red']
+                        lw = [2,1,1]
+                        
                         # if kil == 0:
                         #     surface_height_plot = surface_height_plot - 0.5
-                        mod_key_new = ['Tide Gauge', r'UKC4$_{\mathrm{PRIMEA}}$', r'UKC4$_{\mathrm{ao}}$']
-                        ax.plot(tt,surface_height_plot, label = mod_key_new[kil], linewidth = lw[kil], linestyle = linetypes[kil], color = col[kil]) 
-                        
-                        # import pdb; pdb.set_trace()    
-                    spring_neap = 2*24*14
-                    start_at = 50#spring_neap*3
-                    day = 2*24
-                    fourday = 2*24*4
-                    week = 2 * 24 * 7
-                    
 
-                    ax.set_xlim([self.time_sliced[start_at], self.time_sliced[start_at + fourday]])
+                        ax.plot(tt,surface_height_plot, label = mod_key_new[kil], linewidth = lw[kil], linestyle = linetypes[kil], color = col[kil]) 
+                        high_tide_num = 174 + 13 + 12
+                        ax.scatter(tt[high_tide_num], surface_height_plot[high_tide_num], s = 4)
+                        # plot what time of tide the transect comes from
+                        # import pdb; pdb.set_trace()    
+                    spring_neap = 24*14
+                    start_at = 48 + 48 + 36 + 36#spring_neap*3
+                    day = 24
+                    fourday = 24*4
+                    week = 24 * 7
+                    
+                    if len(self.time_sliced) < 242:
+                        time_indexed= start_at + 42
+                    else:
+                        time_indexed= start_at + spring_neap
+                        
+                    ax.set_xlim([self.time_sliced[start_at], self.time_sliced[time_indexed]])
                     tide_gauge_name = [j for j in self.tide_loc_dict.keys()][i]
                     # import pdb; pdb.set_trace()
-                    ax.legend(loc = 'lower right', frameon=False)
+                    ax.legend(loc = 'upper left', frameon=False)
                     ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))  # Format dates
                     ax.xaxis.set_major_locator(mdates.AutoDateLocator())  # Automatically set tick locations
                     fig.autofmt_xdate()
-                    ax.set_ylabel('SSH (m)')
+                    
+                    ax.set_ylabel( variable_name + ' (' + var_dict[variable_name]['UNITS'] + ')') 
                     # ax.set_xlabel('Time')
                     plt.tight_layout()  
                     # plt.title(self.dataset_name)
@@ -501,7 +521,7 @@ class Stats:
         def plotter(minmax):
             fig, ax = plt.subplots(unique_estuaries.shape[0])
             fig.set_figheight(15)
-            fig.set_figwidth(10)
+            fig.set_figwidth(15)
             
             for i in unique_estuaries:
                 sub_frame = transect_data.loc[transect_data['id'] == i]
@@ -550,6 +570,8 @@ class Stats:
                 #print(self.prim_sh)
         sub_frame_primea = plotter(106)
         sub_frame_primea = plotter(100)
+        sub_frame_primea = plotter(174)
+        sub_frame_primea = plotter(174+13+13)# should be a high tide scenario. 
         return sub_frame_primea
 
     def max_compare(self, fig_path):
@@ -561,19 +583,79 @@ class Stats:
             prim = prim_dict[i][50:,:,:]
             ukc4 = ukc4_dict[i][50:,:,:]
             
+            ''' This method is flawed, you are better off having a rolling 3 hour window in which a max and min can be calculated. 
+            '''
+            def calculate_rolling_max(data_array, window_size=3):
+                """
+                Calculate the rolling maximum for a given xarray DataArray over a specified window size.
+                
+                Parameters:
+                - data_array: xarray.DataArray, the data array to process.
+                - window_size: int, the size of the rolling window in time steps.
+                
+                Returns:
+                - xarray.DataArray: The rolling maximum values with the same dimensions as the input.
+                """
+                # Apply rolling window and calculate the max
+                # 'min_periods=1' ensures that we get values even if the window is not fully populated (e.g., at edges)
+                rolling_max = data_array.rolling(time_primea=window_size, center=True, min_periods=1).max()
+                
+                return rolling_max
+            
+            def calculate_rolling_min(data_array, window_size=3):
+                
+                rolling_min = data_array.rolling(time_primea=window_size, center=True, min_periods=1).min()
+                
+                return rolling_min
+            
             for j in ['min', 'max']:
                 if j == 'min':
-                    heightprim = prim.min(dim='time_primea')
-                    heightukc4 = ukc4.min(dim='time_primea')
+                    # heightprim = prim.min(dim='time_primea')
+                    # heightukc4 = ukc4.min(dim='time_primea')
+                    heightprim = calculate_rolling_min(prim).mean(dim='time_primea')
+                    heightukc4 = calculate_rolling_min(ukc4).mean(dim='time_primea')
+                    
                 else:
-                    heightprim = prim.max(dim='time_primea')
-                    heightukc4 = ukc4.max(dim='time_primea')
-            
+                    # heightprim = prim.max(dim='time_primea')
+                    # heightukc4 = ukc4.max(dim='time_primea')
+                    heightprim = calculate_rolling_max(prim).mean(dim='time_primea')
+                    heightukc4 = calculate_rolling_max(ukc4).mean(dim='time_primea')
+                   
+                # Creating exonetial colour map 
+                def exp_scale(data, exponent=3):
+                    sign_data = np.sign(data)  # Preserve the sign for diverging scale
+                    scaled_data = sign_data * (np.abs(data) ** exponent)
+                    return scaled_data
+                
+                def adjust_colormap(cmap, exponent=1.5):
+                    # Sample the colormap
+                    cmap_vals = cmap(np.linspace(0, 1, 256))
+                
+                    # Ensure cmap_vals is correctly shaped (256, 4) for RGBA
+                    if cmap_vals.shape[1] != 4:
+                        raise ValueError("Colormap values should be in RGBA format")
+                
+                    # Create new indices for exponential adjustment
+                    new_indices = np.linspace(0, 1, 256) ** (1 / exponent)  # Adjust exponent here
+                
+                    # Interpolate new colormap using adjusted indices
+                    new_cmap_vals = np.empty_like(cmap_vals)
+                    for i in range(4):  # Interpolate for each color channel (RGBA)
+                        new_cmap_vals[:, i] = np.interp(new_indices, np.linspace(0, 1, 256), cmap_vals[:, i])
+                    
+                    return ListedColormap(new_cmap_vals)
+
+                
+                # adjusted_cmap = adjust_colormap(cmocean.cm.balance)
+
+                
                 height_difference = heightprim - heightukc4
                 fig, ax = plt.subplots()
                 fig.set_figheight(7)
                 fig.set_figwidth(5)
                 cmap = cmocean.cm.balance
+                # pcm = ax.pcolor(self.lon, self.lat, exp_scale(height_difference, 10), cmap=adjusted_cmap, shading='auto')  # Ensure shading='auto' for better color interpolation
+
                 pcm = ax.pcolor(self.lon, self.lat, height_difference, cmap = cmap)
                 
                 def sanity_plot(var, saveas):
@@ -602,7 +684,7 @@ class Stats:
                 #pcm.set_clim(-1, 1)
                 cbar = plt.colorbar(pcm)
                 #cbar.set_ticks(np.linspace(-1,1,11))
-                cbar.set_label(j + ' Diff between $\mathrm{UKC4}_{\mathrm{PRIMEA}}$ and $\mathrm{UKC4}_{\mathrm{ao}}$ (m)')
+                cbar.set_label(j + ' Diff between $\mathrm{UKC4}_{\mathrm{PRIMEA}}$ and $\mathrm{UKC4}_{\mathrm{ao}}$ (' + var_dict[i]['UNITS'] + ')')
                 plt.xlabel('Longitude')
                 plt.ylabel('Latitude')
                 # plt.title(self.dataset_name)
@@ -638,25 +720,28 @@ def find_dir(file_path, filename='kent_regrid.nc'):
         
 if __name__ == '__main__':
   
-    multi_file_path = path = os.path.join(start_path,'modelling_DATA','kent_estuary_project','7.met_office','models')
-    list_of_files = find_dir(multi_file_path)
+    # multi_file_path = path = os.path.join(start_path,'modelling_DATA','kent_estuary_project','7.met_office','models')
+    multi_file_path = path = os.path.join(start_path,'modelling_DATA','kent_estuary_project','9.friction_calibration','models')
 
-    list_of_files =[  #'bathymetry_testing',
-    #   'oa_nawind_Orig_m0.020_Forcing',
-    #   'oa_nawind_Orig_m0.030_Forcing',
-    #   'oa_nawind_Orig_m0.035_Forcing',
-    #   'oa_nawind_Orig_m0.040_Forcing',
-    #   'oa_nawind_Orig_m0.045_Forcing',
-    #   'oa_nawind_Orig_m0.050_Forcing',
-    #   ]
-    'PRIMEA_riv_nawind_oa_1l_flipped',
-    'PRIMEA_riv_nawind_oa_1l_original',
-   # 'PRIMEA_riv_yawind_oa_1l_flipped',
-   # 'PRIMEA_riv_yawind_oa_1l_original',
-   # 'kent_1.30_base_from_5.Final',
-    ]
+    list_of_files = find_dir(multi_file_path)
+    # list_of_files = list_of_files[-1] # only change the last one for the conference. 
+    list_of_files = [  
+          #'bathymetry_testing',
+         'oa_nawind_Orig_m0.035_Forcing_4_months',
+      #   'oa_nawind_Orig_m0.030_Forcing',
+      #   'oa_nawind_Orig_m0.035_Forcing',
+      #   'oa_nawind_Orig_m0.040_Forcing',
+      #   'oa_nawind_Orig_m0.045_Forcing',
+      #   'oa_nawind_Orig_m0.050_Forcing',
+      ]
+    #  'PRIMEA_riv_nawind_oa_1l_flipped',
+    #  'PRIMEA_riv_nawind_oa_1l_original',
+    # # 'PRIMEA_riv_yawind_oa_1l_flipped',
+    # # 'PRIMEA_riv_yawind_oa_1l_original',
+    # # 'kent_1.30_base_from_5.Final',
+    #  ]
     for fn in list_of_files:
-    
+        print(fn)
         from o_func import DataChoice, DirGen
         import glob
         # main_path = os.path.join(start_path, r'modelling_DATA','kent_estuary_project',r'6.Final2')

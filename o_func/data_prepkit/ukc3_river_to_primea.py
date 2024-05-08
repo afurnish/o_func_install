@@ -19,11 +19,16 @@ import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 import cartopy.mpl.ticker as cticker
 from  os.path import join 
-from o_func import opsys; start_path = opsys()
+from o_func import opsys, DirGen; start_path = opsys()
 import pandas as pd
 import geopandas as gpd
-# import matplotlib
-# matplotlib.use('TkAgg')
+import o_func.utilities as util
+import subprocess
+import pkg_resources
+import platform
+
+
+#b20_mean_discharge = means[:51]
 
 data = xr.open_dataset(join(start_path, 'Original_Data','UKC3','river_climatology','rivers','AMM15_River_Climatology.nc'))
 
@@ -55,12 +60,6 @@ uk_extent_lat = np.linspace(48, 62, 15)
 
 ax.set_xticks(uk_extent_lon, crs=ccrs.PlateCarree())
 ax.set_yticks(uk_extent_lat, crs=ccrs.PlateCarree())
-# gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True, linewidth=1, color='gray', alpha=0.5, linestyle='--')
-# gl.top_labels = gl.right_labels = False  # Updated attributes
-# gl.xformatter = cticker.LongitudeFormatter()
-# gl.yformatter = cticker.LatitudeFormatter()
-# gl.xlabel_style = {'size': 12, 'color': 'black'}
-# gl.ylabel_style = {'size': 12, 'color': 'black'}
 
 plt.legend()
 
@@ -68,7 +67,7 @@ plt.legend()
 uk_lon_min, uk_lon_max = -3.65, -2.75
 uk_lat_min, uk_lat_max = 53.20, 54.52
 
-riv_dict = {129: 'Est',
+riv_dict = {129: 'Esk',
             124: 'Leven',
             125: 'Kent',
             120: 'Lune',
@@ -90,7 +89,7 @@ additional_coords = {
     'Wyre': (-2.955520867395822, 53.85663354235163)
 }
 
-shapefile_path = "/Volumes/PN/modelling_DATA/kent_estuary_project/land_boundary/QGIS_Shapefiles/UK_WEST_KENT_EPSG_4326_clipped_med_domain.shp"
+shapefile_path = start_path + "modelling_DATA/kent_estuary_project/land_boundary/QGIS_Shapefiles/UK_WEST_KENT_EPSG_4326_clipped_med_domain.shp"
 gdf = gpd.read_file(shapefile_path)
 
 fig = plt.figure(figsize=(10, 12), dpi = 150)
@@ -134,53 +133,13 @@ ax.scatter(transect_data.X, transect_data.Y, c = 'green', marker = '+', s = 1, l
 
 ax.set_extent([uk_lon_min, uk_lon_max + 0.25, uk_lat_min, uk_lat_max])
 ax.set_aspect(aspect=0.75) 
-# gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True, linewidth=1, color='gray', alpha=0.5, linestyle='--')
-# gl.top_labels = gl.right_labels = False  # Updated attributes again for the second plot
-# gl.xformatter = cticker.LongitudeFormatter()
-# gl.yformatter = cticker.LatitudeFormatter()
-# gl.xlabel_style = {'size': 12, 'color': 'black'}
-# gl.ylabel_style = {'size': 12, 'color': 'black'}
+
 plt.tight_layout()
 plt.legend()
 plt.show()
 
 
 
-# #%% calculate mean discharges 
-# means = np.nanmean(data.rorunoff, axis=(1,2))                                  
-# sums = np.nansum(data.rorunoff, axis=(1,2))
-# #plt.plot(data.time_counter, means)
-# #plt.plot(range(len(data.time_counter)), means)
-
-# #rearannging data 
-# jan_feb20_mean_discharge = means[:51]
-# nov11_dec_mean_discharge = means[305:]
-# jan_feb20_sum_discharge = sums[:51]
-# nov11_dec_sum_discharge = sums[305:]
-
-# nov11_dec_range = np.linspace(305,365,365-(305-1))
-# jan_feb20_range = np.linspace(1,51,51)
-# new_range = np.concatenate((nov11_dec_range,jan_feb20_range))
-
-# new_data_mean_discharge = np.concatenate((nov11_dec_mean_discharge,jan_feb20_mean_discharge))
-# new_data_sum_discharge = np.concatenate((nov11_dec_sum_discharge,jan_feb20_sum_discharge))
-
-# plt.plot(new_data_sum_discharge)
-# plt.ylim([0,25])
-
-# ### Cartopy plotting 
-# #%% Create a Cartopy plot
-# fig = plt.figure(figsize=(10, 8))
-# ax = plt.axes(projection=ccrs.PlateCarree())
-
-# # Plot the valid locations using scatter plot
-# plt.scatter(valid_longitudes, valid_latitudes, s=5, color='blue', label='Valid Data')
-
-# # You can add more customization to your plot here, like adding coastlines, gridlines, etc.
-
-# plt.title('Valid Data Locations')
-# plt.legend()
-# plt.show()
 
 #%% Make a dataframe of the new river climatology data 
 # Initialize a DataFrame to store river names and their time series data
@@ -259,3 +218,261 @@ for river_name in time_series_df.columns:
     
     # If you prefer to save it in a different format or with specific formatting,
     # you may need to adjust the saving method accordingly.
+    
+    
+def convert_clim_to_discharge_units(array):
+    length = 1500
+    width = 1500
+    density = 1000
+    area = length * width    
+    flow_rate = (array * area) / density
+    return flow_rate
+
+
+def adjust_dates_around_cutoff(dataframe, cutoff_day, target_year):
+    """
+    Adjusts the dates in the DataFrame by reordering dates around a cutoff day and assigning
+    years such that all dates from cutoff_day onwards are in target_year and before are in the next year.
+    Handles removal of February 29 appropriately.
+
+    Parameters:
+        dataframe (pd.DataFrame): DataFrame with a 'month_day' index as strings 'MM-DD'.
+        cutoff_day (str): 'MM-DD' format, pivot for splitting the year.
+        target_year (int): Year to assign to dates on or after cutoff_day.
+
+    Returns:
+        pd.DataFrame: DataFrame with adjusted datetime index.
+    """
+    # Check for leap year based on the presence of '02-29'
+    is_current_leap = '02-29' in dataframe.index
+
+    # Determine next year based on target year leap status
+    target_year_is_leap = (target_year % 4 == 0 and (target_year % 100 != 0 or target_year % 400 == 0))
+    next_year = target_year + 1 if target_year_is_leap else target_year
+
+    # Remove '02-29' if present and target year is not a leap year
+    if is_current_leap and not target_year_is_leap:
+        dataframe = dataframe.drop('02-29')
+    
+    # Reindex to ensure a sequential day numbering from 1 to 365 (or 366 in a leap year)
+    reindexed_df = dataframe.reset_index(drop=True)
+    if '02-29' in dataframe.index:  # Adjust the index day number accordingly
+        reindexed_df.index = reindexed_df.index.where(reindexed_df.index < dataframe.index.get_loc('02-29'), reindexed_df.index - 1)
+
+    # Split the data around the cutoff day
+    cutoff_day_index = pd.to_datetime(cutoff_day, format='%m-%d').dayofyear
+    after_cutoff = reindexed_df.loc[cutoff_day_index:]
+    before_cutoff = reindexed_df.loc[:cutoff_day_index - 1]
+
+    # Concatenate and sort by index
+    new_dataframe = pd.concat([after_cutoff, before_cutoff])
+    new_dataframe.index = pd.date_range(f'{cutoff_day}-{target_year}', periods=len(new_dataframe), freq='D')
+    
+    return new_dataframe
+
+def generate_bc_files(dataframe, start_date, path):
+    """
+    Generate .bc files for discharge and salinity based on the DataFrame.
+
+    Parameters:
+        dataframe (pd.DataFrame): DataFrame containing the data.
+        start_date (str): Start date in 'YYYY-MM-DD' format.
+
+    Returns:
+        None
+    """
+    # Iterate over each column (estuary) in the DataFrame
+    for column in dataframe.columns:
+        # Create file names with estuary name
+        for each_side in ['0001', '0002']:
+            
+            discharge_file = os.path.join(path , f"{column}_Discharge.bc")
+            salinity_file = os.path.join(path ,f"{column}_{each_side}_Salinity.bc")
+    
+            
+            # Open files for writing
+            with open(discharge_file, 'w') as discharge, open(salinity_file, 'w') as salinity:
+                # Write headers for discharge file
+                discharge.write("[forcing]\n")
+                discharge.write(f"Name                            = {column}_0001\n")
+                discharge.write("Function                        = timeseries\n")
+                discharge.write("Time-interpolation              = linear\n")
+                discharge.write("Quantity                        = time\n")
+                discharge.write(f"Unit                            = seconds since {start_date} 00:00:00\n")
+                discharge.write("Quantity                        = dischargebnd\n")
+                discharge.write("Unit                            = m³/s\n")
+                
+                # Write headers for salinity file
+                salinity.write("[forcing]\n")
+                salinity.write(f"Name                            = {column}_{each_side}\n")
+                salinity.write("Function                        = timeseries\n")
+                salinity.write("Time-interpolation              = linear\n")
+                salinity.write("Vertical position type          = single\n")
+                salinity.write("Vertical interpolation          = linear\n")
+                salinity.write("Quantity                        = time\n")
+                salinity.write(f"Unit                            = seconds since {start_date} 00:00:00\n")
+                salinity.write("Quantity                        = salinitybnd\n")
+                salinity.write("Unit                            = ppt\n")
+                salinity.write("Vertical position               = 1\n")
+    
+                # Iterate over data for the current estuary
+                for idx, value in dataframe[column].items():
+                    # Convert date to seconds since start_date
+                    date_seconds = (pd.to_datetime(idx) - pd.to_datetime(start_date)).total_seconds()
+                    # Write discharge data
+                    discharge.write(f"{date_seconds}   {value}\n")
+                    # Write salinity data (all zeros)
+                    salinity.write(f"{date_seconds}   0\n")
+
+def file_stitcher(input_file_path, output_file_path):
+    for names in ['Discharge.bc', 'Salinity.bc']:
+        
+
+        data_paths = sorted(glob.glob(os.path.join(input_file_path, f"*{names}" )))
+        # print(os.path.join(user_dict['csv_path'],f'*_{comps[:-3]}_*.csv'))
+        # print('dp',data_paths)
+        
+        bash_script_path = pkg_resources.resource_filename('o_func', 'data/bash/merge_csv.sh')
+        output_filedir = os.path.join(output_file_path, names)
+        with open( output_filedir , 'w') as f:
+            f.write('')
+        if platform.system() == "Windows":
+            subprocess.call([r"C:/Program Files/Git/bin/bash.exe", bash_script_path, output_filedir] + data_paths)
+        else: # for mac or linux
+            subprocess.call([r"bash", bash_script_path, output_filedir] + data_paths)
+    for filename in os.listdir(input_file_path):
+        # Check if the file has a .csv extension
+        if filename.endswith(".bc"):
+            # Construct the full file path
+            file_path = os.path.join(input_file_path, filename)
+            # Delete the file
+            os.remove(file_path)
+
+
+def add_river_data(bc_paths):
+    discharge_rivers_df = time_series_df.apply(convert_clim_to_discharge_units)
+    discharge_rivers_df_year = adjust_dates_around_cutoff(discharge_rivers_df, '06-06', 2013)
+    exclude= ['Esk', 'Alt', 'Clywd']
+    prim_dataframe = discharge_rivers_df_year.drop(columns=exclude, errors='ignore')
+    prim_dataframe = prim_dataframe.reindex(sorted(prim_dataframe.columns), axis=1)
+    discharge_rivers_df_year = discharge_rivers_df_year.reindex(sorted(discharge_rivers_df_year.columns), axis=1) # all rivers
+    #plt.figure();plt.plot(discharge_rivers_df_year['Esk'])
+    for filepath in bc_paths[1]:
+        print(filepath) # inside each filepath, all estuary forcings will be placed.
+        riv_in_primea_path = util.md([filepath, 'rivers_in_primea'])
+        all_riv_path = util.md([filepath, 'rivers_all'])
+        riv_dump_csv = util.md([filepath, 'rivers_dump_csv'])
+        
+        #all rivers
+        generate_bc_files(discharge_rivers_df_year, "2013-10-30", riv_dump_csv)
+        file_stitcher(riv_dump_csv, all_riv_path)
+
+        #prim_rivers
+        generate_bc_files(prim_dataframe, "2013-10-30", riv_dump_csv)
+        file_stitcher(riv_dump_csv, riv_in_primea_path)
+if __name__ == '__main__':
+    import glob
+    # We are adding in a function here to save the data to a modelling file path. 
+    main_path = join(start_path, r'modelling_DATA','kent_estuary_project',r'7.met_office')
+    make_paths = DirGen(main_path)
+    fn = glob.glob(join(main_path,'models','*'))[0]
+    sub_path = make_paths.dir_outputs(os.path.split(fn)[1]) # Dealing with this model run. 
+    bc_paths = make_paths.bc_outputs()
+    
+    add_river_data(bc_paths)
+    
+    
+    
+    
+    
+#%% Possibly usefull old junk code
+# nov11_dec_mean_discharge = means[305:]
+# jan_feb20_sum_discharge = sums[:51]
+# nov11_dec_sum_discharge = sums[305:]
+
+# nov11_dec_range = np.linspace(305,365,365-(305-1))
+# jan_feb20_range = np.linspace(1,51,51)
+# new_range = np.concatenate((nov11_dec_range,jan_feb20_range))
+
+# new_data_mean_discharge = np.concatenate((nov11_dec_mean_discharge,jan_feb20_mean_discharge))
+# new_data_sum_discharge = np.concatenate((nov11_dec_sum_discharge,jan_feb20_sum_discharge))
+
+# plt.plot(new_data_sum_discharge)
+# plt.ylim([0,25])
+
+# ### Cartopy plotting 
+# #%% Create a Cartopy plot
+# fig = plt.figure(figsize=(10, 8))
+# ax = plt.axes(projection=ccrs.PlateCarree())
+
+# # Plot the valid locations using scatter plot
+# plt.scatter(valid_longitudes, valid_latitudes, s=5, color='blue', label='Valid Data')
+
+# # You can add more customization to your plot here, like adding coastlines, gridlines, etc.
+
+# plt.title('Valid Data Locations')
+# plt.legend()
+# plt.show()das as gpd
+# import matplotlib
+# matplotlib.use('TkAgg')
+
+
+
+
+
+
+# #%% calculate mean discharges 
+# means = np.nanmean(data.rorunoff, axis=(1,2))                                  
+# sums = np.nansum(data.rorunoff, axis=(1,2))
+# #plt.plot(data.time_counter, means)
+# #plt.plot(range(len(data.time_counter)), means)
+
+# #rearannging data 
+# jan_feb20_mean_discharge = means[:51]
+# nov11_dec_mean_discharge = means[305:]
+# jan_feb20_sum_discharge = sums[:51]
+# nov11_dec_sum_discharge = sums[305:]
+
+# nov11_dec_range = np.linspace(305,365,365-(305-1))
+# jan_feb20_range = np.linspace(1,51,51)
+# new_range = np.concatenate((nov11_dec_range,jan_feb20_range))
+
+# new_data_mean_discharge = np.concatenate((nov11_dec_mean_discharge,jan_feb20_mean_discharge))
+# new_data_sum_discharge = np.concatenate((nov11_dec_sum_discharge,jan_feb20_sum_discharge))
+
+# plt.plot(new_data_sum_discharge)
+# plt.ylim([0,25])
+
+# ### Cartopy plotting 
+# #%% Create a Cartopy plot
+# fig = plt.figure(figsize=(10, 8))
+# ax = plt.axes(projection=ccrs.PlateCarree())
+
+# # Plot the valid locations using scatter plot
+# plt.scatter(valid_longitudes, valid_latitudes, s=5, color='blue', label='Valid Data')
+
+# # You can add more customization to your plot here, like adding coastlines, gridlines, etc.
+
+# plt.title('Valid Data Locations')
+# plt.legend()
+# plt.show()
+
+
+
+
+# gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True, linewidth=1, color='gray', alpha=0.5, linestyle='--')
+# gl.top_labels = gl.right_labels = False  # Updated attributes again for the second plot
+# gl.xformatter = cticker.LongitudeFormatter()
+# gl.yformatter = cticker.LatitudeFormatter()
+# gl.xlabel_style = {'size': 12, 'color': 'black'}
+# gl.ylabel_style = {'size': 12, 'color': 'black'}
+
+
+
+
+# gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True, linewidth=1, color='gray', alpha=0.5, linestyle='--')
+# gl.top_labels = gl.right_labels = False  # Updated attributes
+# gl.xformatter = cticker.LongitudeFormatter()
+# gl.yformatter = cticker.LatitudeFormatter()
+# gl.xlabel_style = {'size': 12, 'color': 'black'}
+# gl.ylabel_style = {'size': 12, 'color': 'black'}

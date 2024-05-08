@@ -173,11 +173,12 @@ if __name__ == '__main__':
     # main_path = os.path.join(start_path, r'modelling_DATA','kent_estuary_project',r'6.Final2')
     main_path = os.path.join(start_path, r'modelling_DATA','kent_estuary_project',r'7.met_office')
     make_paths = DirGen(main_path)
-    sub_path, fig_path, data_stats_path = make_paths.dir_outputs('bathymetry_testing')
+    sub_path, fig_path, data_stats_path = make_paths.dir_outputs('bathymetry_testing_met_office_rivers_3_days_local')
     
-    for model_input in ['oa', 'og', 'owa', 'ow']:
-        for wind in ['yawind', 'nawind']:
-            for flip in ['Flip', 'Orig']:
-                sub_path, fig_path, data_stats_path = make_paths.dir_outputs(model_input + '_' + wind +'_'+ flip +'Forcing')
+    # for model_input in ['oa', 'og', 'owa', 'ow']:
+    #     for wind in ['yawind', 'nawind']:
+    #         for flip in ['Flip', 'Orig']:
+    #             sub_path, fig_path, data_stats_path = make_paths.dir_outputs(model_input + '_' + wind +'_'+ flip +'Forcing')
     
+    # 
     #/media/af/PD/modelling_DATA/kent_estuary_project/6.Final2/models/kent_1.3.7_testing_4_days_UM_run

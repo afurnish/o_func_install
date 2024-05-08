@@ -27,6 +27,7 @@ o_func/data/SCW_files/submit.q
 o_func/data/SCW_files/unstruc.dia
 o_func/data/bash/@
 o_func/data/bash/FES2014_slicer.sh
+o_func/data/bash/cut_salinity.sh
 o_func/data/bash/merge_csv.sh
 o_func/data_metrics/__init__.py
 o_func/data_metrics/comparative_stats_processing.py

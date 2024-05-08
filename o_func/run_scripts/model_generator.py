@@ -9,6 +9,8 @@ import os
 import subprocess
 import shutil
 import glob
+import pkg_resources
+import platform
 
 from o_func import opsys; start_path = opsys()
 from o_func import DirGen
@@ -114,6 +116,24 @@ def run_rsync(local_path, remote_path):
 # Example usage
 # run_rsync("local/path/", "user@remotehost:/remote/path/")
         
+# def copy_contents(src_dir, dst_dir):
+#     """
+#     Copy the contents of src_dir to dst_dir, including files and subdirectories.
+#     The destination directory must exist.
+#     """
+#     # Iterate over all the directories and files in the source directory
+#     for item in os.listdir(src_dir):
+#         src_item = os.path.join(src_dir, item)
+#         dst_item = os.path.join(dst_dir, item)
+        
+#         if os.path.isdir(src_item):
+#             # If the item is a directory, create it in the destination and copy its contents
+#             os.makedirs(dst_item, exist_ok=True)
+#             copy_contents(src_item, dst_item)  # Recursive call to copy subdirectory contents
+#         else:
+#             # If the item is a file, copy it directly
+#             shutil.copy2(src_item, dst_item)  # Use copy2 to preserve metadata
+
 def copy_contents(src_dir, dst_dir):
     """
     Copy the contents of src_dir to dst_dir, including files and subdirectories.
@@ -121,17 +141,17 @@ def copy_contents(src_dir, dst_dir):
     """
     # Iterate over all the directories and files in the source directory
     for item in os.listdir(src_dir):
-        src_item = os.path.join(src_dir, item)
-        dst_item = os.path.join(dst_dir, item)
-        
-        if os.path.isdir(src_item):
-            # If the item is a directory, create it in the destination and copy its contents
-            os.makedirs(dst_item, exist_ok=True)
-            copy_contents(src_item, dst_item)  # Recursive call to copy subdirectory contents
-        else:
-            # If the item is a file, copy it directly
-            shutil.copy2(src_item, dst_item)  # Use copy2 to preserve metadata
-
+        if not item.startswith('.'):  # Skip hidden files
+            src_item = os.path.join(src_dir, item)
+            dst_item = os.path.join(dst_dir, item)
+            
+            if os.path.isdir(src_item):
+                # If the item is a directory, create it in the destination and copy its contents
+                os.makedirs(dst_item, exist_ok=True)
+                copy_contents(src_item, dst_item)  # Recursive call to copy subdirectory contents
+            else:
+                # If the item is a file, copy it directly
+                shutil.copy2(src_item, dst_item)  # Use copy2 to preserve metadata
 def update_val(config_path, key, new_value):
     """
     Update the value of a given key in the configuration file with a new value,
@@ -248,66 +268,104 @@ return_time=0.0000000e+000
         file.write(new_section)
     # print("New section added to the file.")
     return True
+
+
+def copy_riv_bc_files(source_dir, orig_salinity_file_PATH, destination_dir):
+    '''
+    This will copy met office climatology into the river system as well as replace the river salinity forcing of the original. 
+    
+    Be weary about editing the original files. 
+    '''
+    
+    # Cut the rivers off of the salinity file. 
+    files = ['Discharge.bc', 'Salinity.bc']
+    sal_path = os.path.join(orig_salinity_file_PATH, files[1])
+    temp_sal_path = os.path.join(orig_salinity_file_PATH, 'temp_'+ files[1])
+    temp_sal_path_stitch = os.path.join(orig_salinity_file_PATH, 'tempstitch_'+ files[1])
+    script_path = os.path.join(pkg_resources.resource_filename('o_func', 'data/bash/cut_salinity.sh'))
+    subprocess.run([script_path, sal_path, temp_sal_path], shell=True)
+    # command = r"awk '/delft_ocean_boundary/ {{p=1; count++}} p; /^$/ && p {{p=0; if(count==2) exit}}' {} > {}".format(sal_path, temp_sal_path)
+    # # Execute the shell command
+    # subprocess.run(command, shell=True) # execute cutting and generation of temp_salinity.bc which should just be 
+    # Stitch the temp ocean river with the new river file. 
+    data_paths = [glob.glob(os.path.join(source_dir,files[1]))[0] , temp_sal_path]
+    bash_script_path = pkg_resources.resource_filename('o_func', 'data/bash/merge_csv.sh')
+    output_filedir = temp_sal_path_stitch # replace the file in the destination directory. 
+    with open( output_filedir , 'w') as f:
+        f.write('')
+    if platform.system() == "Windows":
+        subprocess.call([r"C:/Program Files/Git/bin/bash.exe", bash_script_path, output_filedir] + data_paths)
+    else: # for mac or linux
+        subprocess.call([r"bash", bash_script_path, output_filedir] + data_paths)
+    
+    # # replace the discharge file. 
+    # filenames = [os.path.join(source_dir,files[0])]
+    # copy_bc_files(source_dir, destination_dir, filenames)
+    
 #%% Make and do the models
 # Iterates through all the possible options I want to run. 
 
 if __name__ == '__main__':
-    # for model_input in ['oa', 'og', 'owa', 'ow']:
-    #     for wind in ['yawind', 'nawind']:
-    #         for flip in ['Flip', 'Orig']:
-    #             sub_path, fig_path, data_stats_path = make_paths.dir_outputs(model_input + '_' + wind +'_'+ flip +'Forcing')
-
-
-    # local_path = path_to_push
-    # remote_path = 'b.osu903@hawklogin.cf.ac.uk:/home/b.osu903/testpush/'
-    
-    # run_rsync(local_path, remote_path)
-    
-    #%% Friction model generator to test friction characteristics
-    
+    ####### ORIGINAL MODEL WIND AND NOWIND
     # Doner model to be used - Input the river forcing files. 
     donor_model = os.path.join(start_path, 'modelling_DATA','kent_estuary_project','7.met_office','models','bathymetry_testing','runSCW_bathymetry_testing')      
-    temperature_donor = os.path.join(start_path,'modelling_DATA','kent_estuary_project','7.met_office','files_bc','UKC4oa','1')     
+    temperature_donor = os.path.join(start_path,'modelling_DATA','kent_estuary_project','7.met_office','files_bc','UKC4oa','1')   
+    salinity_donor = os.path.join(start_path,'modelling_DATA','kent_estuary_project','7.met_office','files_bc','UKC4oa','rivers_all')
     for model_input in ['oa']:
-        for wind in ['nawind']:
+        for wind in ['nawind', 'yawind']:
             for flip in ['Orig']:
-                for friction in ['0.005','0.010','0.015', '0.020', '0.025', '0.030', '0.035']:
-                    sub_path, fig_path, data_stats_path = make_paths.dir_outputs(model_input + '_' + wind +'_'+ flip + '_m'+ friction +'_Forcing')
+                for friction in ['0.035']:
+                    climatology = 'no'
+                    if climatology == 'yes':
+                        met_office_climatology = '_riv_clim'
+                    else:
+                        met_office_climatology = ''
+                    sub_path, fig_path, data_stats_path = make_paths.dir_outputs(model_input + '_' + wind +'_'+ flip + '_m'+ friction +'_Forcing' + met_office_climatology)
                     run_path = glob.glob(os.path.join(sub_path,'run*'))[0]
                     # copy contents from doner_model to sub_path here. 
                     copy_contents(donor_model, run_path)
                     
+                    #update friction coefficients
                     config_path = glob.glob(os.path.join(run_path,'*.mdu'))[0]
                     update_val(config_path, 'UnifFrictCoef1D', friction)  # This one is for rivers and channels, any 1D components
                     update_val(config_path, 'UnifFrictCoef', friction)    # I believe this is the main one to be concerned about. 
                     update_val(config_path, 'UnifFrictCoefLin', '0.000') # This is one that needs to be ignored. Therefore it is now 0. 
                     
+                    #update submission file path
                     q_path = glob.glob(os.path.join(run_path,'*.q'))[0]
                     update_submission_file(q_path,
                                            job_name='nol'+friction, # NO_L NO LINEAR FRICTION can only be 8 characters
                                            time_taken='00-20:00', # Made it 16 hours as current simulation will probably time out
                                            partition='htc') # dev or htc
 
-                    # Add in temperature boundary condition
+                    # Add in temperature boundary conditions
                     add_files = ['Temperature.bc',
                                  'Salinity.bc',
                                  'WaterLevel.bc',
                                  'TangentVelocity.bc',
                                  'NormalVelocity.bc'
                                  ]
-                    
                     copy_bc_files(temperature_donor, run_path, add_files) # Add in the temperature boundary forcing. 
                     [update_forcingfile(glob.glob(os.path.join(run_path,'*.ext'))[0], i) for i in add_files]
+                    
+                    #Run with original or met office climatology. 
+                    
+                    # Currently no rivers are flowing for some reason. Can update the files manually from here. 
+                    if climatology == 'no':
+                        copy_riv_bc_files(salinity_donor, donor_model, run_path) 
+                    
+                    if wind == 'yawind':
+                        pass #pass argument here to add in wind external forcing file. 
+                        
+                        
                     
     remote_path = 'hawk:/home/b.osu903/kent/friction_testing'
     push_to_scw = input('Do you want to push to SCW? (y/n): ')
     if push_to_scw == 'y':
         run_rsync(path_to_push, remote_path)
     
-    
-    
-    
-    
+#%% ####### MET OFFICE CLIMATOLOGY.
+    # donor_model = os.path.join(start_path, 'modelling_DATA','kent_estuary_project','7.met_office','models','bathymetry_testing_met_office_rivers','runSCW_bathymetry_testing_met_office_rivers')      
     
 #%% Extra content     
     # local_path = path_to_push
@@ -315,3 +373,41 @@ if __name__ == '__main__':
     
     # run_rsync(local_path, remote_path)
     
+#%% Run a friction testing scenario. 
+    # donor_model = os.path.join(start_path, 'modelling_DATA','kent_estuary_project','7.met_office','models','bathymetry_testing','runSCW_bathymetry_testing')      
+    # temperature_donor = os.path.join(start_path,'modelling_DATA','kent_estuary_project','7.met_office','files_bc','UKC4oa','1')     
+    # for model_input in ['oa']:
+    #     for wind in ['nawind']:
+    #         for flip in ['Orig']:
+    #             for friction in ['0.005','0.010','0.015', '0.020', '0.025', '0.030', '0.035']:
+    #                 sub_path, fig_path, data_stats_path = make_paths.dir_outputs(model_input + '_' + wind +'_'+ flip + '_m'+ friction +'_Forcing')
+    #                 run_path = glob.glob(os.path.join(sub_path,'run*'))[0]
+    #                 # copy contents from doner_model to sub_path here. 
+    #                 copy_contents(donor_model, run_path)
+                    
+    #                 config_path = glob.glob(os.path.join(run_path,'*.mdu'))[0]
+    #                 update_val(config_path, 'UnifFrictCoef1D', friction)  # This one is for rivers and channels, any 1D components
+    #                 update_val(config_path, 'UnifFrictCoef', friction)    # I believe this is the main one to be concerned about. 
+    #                 update_val(config_path, 'UnifFrictCoefLin', '0.000') # This is one that needs to be ignored. Therefore it is now 0. 
+                    
+    #                 q_path = glob.glob(os.path.join(run_path,'*.q'))[0]
+    #                 update_submission_file(q_path,
+    #                                        job_name='nol'+friction, # NO_L NO LINEAR FRICTION can only be 8 characters
+    #                                        time_taken='00-20:00', # Made it 16 hours as current simulation will probably time out
+    #                                        partition='htc') # dev or htc
+
+    #                 # Add in temperature boundary condition
+    #                 add_files = ['Temperature.bc',
+    #                              'Salinity.bc',
+    #                              'WaterLevel.bc',
+    #                              'TangentVelocity.bc',
+    #                              'NormalVelocity.bc'
+    #                              ]
+                    
+    #                 copy_bc_files(temperature_donor, run_path, add_files) # Add in the temperature boundary forcing. 
+    #                 [update_forcingfile(glob.glob(os.path.join(run_path,'*.ext'))[0], i) for i in add_files]
+                    
+    # remote_path = 'hawk:/home/b.osu903/kent/friction_testing'
+    # push_to_scw = input('Do you want to push to SCW? (y/n): ')
+    # if push_to_scw == 'y':
+    #     run_rsync(path_to_push, remote_path)
