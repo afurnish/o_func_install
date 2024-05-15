@@ -8,7 +8,7 @@ Created on Wed May  8 15:23:40 2024
 
 import xarray as xr
 import matplotlib.pyplot as plt
-filepath = '/Volumes/PN/Original_Data/UKC3/sliced/oa_riv/home/d02/afurnish/retrieve_files/data/oa_riv/shelftmb_cut_to_domain/UKC4ao_1h_20131125_20131125_shelftmb_grid_T.nc' 
+filepath = '/Volumes/PN/Original_Data/UKC3/sliced/oa_riv/UKC4ao_1h_20131125_20131125_shelftmb_grid_T.nc' 
 
 data = xr.open_dataset(filepath)
 
