@@ -494,7 +494,7 @@ def main_body_data_writer(raw_data, iteration, df):
         for j, n in enumerate(user_dict['name']):
             # print(j)
             if flip == 'y':
-                newj = (j+1)*-1 # or regular j This code flips the plotting upside down
+                newj = j#(j+1)*-1 # or regular j This code flips the plotting upside down
             else:
                 newj = j
             # print((j+1)*-1)
@@ -606,12 +606,13 @@ if __name__ == '__main__':
     sub_path = make_paths.dir_outputs(os.path.split(fn)[1]) # Dealing with this model run. 
     bc_paths = make_paths.bc_outputs()
     
-    model_data = 'oa'
+    model_data = 'oa_riv'
     full_path = join(start_path, 'Original_Data' ,'UKC3','sliced',model_data,'shelftmb_cut_to_domain')
     model_data_dict = {'oa' :bc_paths[1][1],
                        'owa':bc_paths[1][2],
                        'ow' :bc_paths[1][3],
                        'og' :bc_paths[1][0],
+                   'oa_riv' :bc_paths[1][4],
                             }
     forcing_data_path = join(start_path, 'Original_Data' ,'UKC3','sliced',model_data,'shelftmb_cut_to_domain')
 

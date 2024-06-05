@@ -493,7 +493,6 @@ plt.ylim(min(eta)-2, max(eta)+2)
 # plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%H %M')) 
 plt.legend()
 plt.xlim([t[0], t[2000]])
-
 '''
 I think I need to set a timeseries data point that can passed to another function in the suite. 
 '''
@@ -506,3 +505,55 @@ I think I need to set a timeseries data point that can passed to another functio
 -2.937363000000000E+000  5.403143800000000E+001 haysham_0001
 -3.042241000000000E+000  5.345216300000000E+001 liverpool_0002
 '''
+
+if __name__ == '__main__':
+    # Generate astronomical forcings for Delft script. 
+    output_path = 'WaterLevel.bc'
+    et = est_tide()
+    df_amp, df_pha, tc_names = et.est_amp_and_phase_extractor(points_file, h_or_v = 'height')
+    df_amp = df_amp/100
+    t = et.time_maker('2013-10-30 00:00', '2013-11-30 00:00', 5)
+    # amp_phase = et.est_predic(t, df_pha, df_amp, tc_names) # sorts out the ampl
+    # For this it will put out the relevant information and generate the bc files. 
+    
+        
+    # Fixed parts of the data
+    function = "astronomic"
+    quantity1 = "astronomic component"
+    unit1 = "-"
+    quantity2 = "waterlevelbnd amplitude"
+    unit2 = "m"
+    quantity3 = "waterlevelbnd phase"
+    unit3 = "deg"
+    
+    # Tidal constituent, amplitude, and phase (you can make these variables if they need to change)
+    constituents  = ["  M2"]#, "  S2"]
+    base_name = "m2_ocean_"
+
+    with open(output_path, 'a') as file:
+        file.write('')
+    with open(output_path, 'w') as file:
+        for i in range(len(df_amp)):
+            # Write the header for each forcing block
+            file.write("[forcing]\n")
+            file.write(f"Name                            = {base_name}{i + 1:04d}\n")
+            file.write("Function                        = astronomic\n")
+            file.write("Quantity                        = astronomic component\n")
+            file.write("Unit                            = -\n")
+            file.write("Quantity                        = waterlevelbnd amplitude\n")
+            file.write("Unit                            = m\n")
+            file.write("Quantity                        = waterlevelbnd phase\n")
+            file.write("Unit                            = deg\n")
+    
+            # Prepare data for all constituents in this section
+            data_lines = []
+            for const in constituents:
+                if const in df_amp.columns and const in df_pha.columns:
+                    amplitude = df_amp.at[i, const]
+                    phase = df_pha.at[i, const]
+                    data_lines.append(f"{const.strip()}  {amplitude:.3f}  {phase:.3f}")
+    
+            # Write all constituent data at once, properly formatting to avoid unnecessary new lines
+            file.write("\n".join(data_lines) + "\n\n")
+    
+    print("File written successfully.")

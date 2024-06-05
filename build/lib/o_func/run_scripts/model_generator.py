@@ -14,7 +14,7 @@ import platform
 
 from o_func import opsys; start_path = opsys()
 from o_func import DirGen
-main_path = os.path.join(start_path, r'modelling_DATA','kent_estuary_project',r'9.friction_calibration')
+main_path = os.path.join(start_path, r'modelling_DATA','kent_estuary_project',r'10.river_testing')
 make_paths = DirGen(main_path)
 path_to_push = os.path.join(main_path, 'models/')
 #%% Wind selector
@@ -269,58 +269,128 @@ return_time=0.0000000e+000
     # print("New section added to the file.")
     return True
 
-def copy_riv_bc_files(source_dir, orig_salinity_file_PATH, destination_dir):
+def copy_riv_bc_files(salinity_donor, donor_model, run_path):
     '''
     This will copy met office climatology into the river system as well as replace the river salinity forcing of the original. 
     
     Be weary about editing the original files. 
     '''
-    
-    # Cut the rivers off of the salinity file. 
     files = ['Discharge.bc', 'Salinity.bc']
-    sal_path = os.path.join(orig_salinity_file_PATH, files[1])
-    temp_sal_path = os.path.join(orig_salinity_file_PATH, 'temp_'+ files[1])
-    temp_sal_path_stitch = os.path.join(orig_salinity_file_PATH, 'tempstitch_'+ files[1])
-    command = r"awk '/delft_ocean_boundary/ {{p=1; count++}} p; /^$/ && p {{p=0; if(count==2) exit}}' {} > {}".format(sal_path, temp_sal_path)
-    # Execute the shell command
-    subprocess.run(command, shell=True) # execute cutting and generation of temp_salinity.bc which should just be 
-    # Stitch the temp ocean river with the new river file. 
-    data_paths = [glob.glob(os.path.join(source_dir,files[1]))[0] , temp_sal_path]
+    # Dicharge handling (copy discharge to new location)
+    shutil.copy( os.path.join(salinity_donor, files[0]) , os.path.join(run_path, files[0]))
+    
+    
+    # Cut the rivers off of the salinity file. Leaving only oceans. 
+    sal_path = os.path.join(donor_model, files[1])
+    temp_sal_path = os.path.join(donor_model, 'temp_'+ files[1])
+    # temp_sal_path_stitch = os.path.join(donor_model, 'tempstitch_'+ files[1])
+    # Generate ocean only salinity file. 
+    script_path = os.path.join(pkg_resources.resource_filename('o_func', 'data/bash/cut_salinity.sh'))
+    subprocess.run([script_path, sal_path, temp_sal_path])
+    '''
+    Key things to note, it assumes ocean on top, rivers on the bottom in alphabetical order so wont work for other examples,
+    but works for the 2023 model data. 
+    
+    '''
+    merged_new_salinity_path = os.path.join (run_path, files[1])
+    
+    # order of files to be merged together. Ocean salinity, then new salinities from river data.     
+    data_paths = [temp_sal_path , os.path.join(salinity_donor, files[1])]
+    
     bash_script_path = pkg_resources.resource_filename('o_func', 'data/bash/merge_csv.sh')
-    output_filedir = temp_sal_path_stitch # replace the file in the destination directory. 
-    with open( output_filedir , 'w') as f:
+    with open( merged_new_salinity_path , 'w') as f:
         f.write('')
     if platform.system() == "Windows":
-        subprocess.call([r"C:/Program Files/Git/bin/bash.exe", bash_script_path, output_filedir] + data_paths)
+        subprocess.call([r"C:/Program Files/Git/bin/bash.exe", bash_script_path, merged_new_salinity_path] + data_paths)
     else: # for mac or linux
-        subprocess.call([r"bash", bash_script_path, output_filedir] + data_paths)
+        subprocess.call([r"bash", bash_script_path, merged_new_salinity_path] + data_paths)
     
+    os.remove(temp_sal_path)
     # # replace the discharge file. 
     # filenames = [os.path.join(source_dir,files[0])]
     # copy_bc_files(source_dir, destination_dir, filenames)
     
+# General copy files
+def copy_files(src_dir, dst_dir):
+    """
+    Copies all files from the source directory to the destination directory.
+
+    Parameters:
+    src_dir (str): The source directory path.
+    dst_dir (str): The destination directory path.
+    """
+    # Ensure the destination directory exists
+    if not os.path.exists(dst_dir):
+        os.makedirs(dst_dir)
+
+    # Loop through each file in the source directory and copy it to the destination directory
+    for filename in os.listdir(src_dir):
+        src_file = os.path.join(src_dir, filename)
+        dst_file = os.path.join(dst_dir, filename)
+
+        try:
+            if os.path.isfile(src_file):
+                shutil.copy(src_file, dst_file)
+                print(f"Copied {src_file} to {dst_file}")
+        except FileNotFoundError:
+            print(f"Source file {src_file} not found.")
+        except PermissionError:
+            print(f"Permission denied while copying {src_file} to {dst_file}.")
+        except Exception as e:
+            print(f"Error copying {src_file} to {dst_file}: {e}")
 #%% Make and do the models
 # Iterates through all the possible options I want to run. 
 
 if __name__ == '__main__':
     ####### ORIGINAL MODEL WIND AND NOWIND
-    # Doner model to be used - Input the river forcing files. 
-    donor_model = os.path.join(start_path, 'modelling_DATA','kent_estuary_project','7.met_office','models','bathymetry_testing','runSCW_bathymetry_testing')      
-    temperature_donor = os.path.join(start_path,'modelling_DATA','kent_estuary_project','7.met_office','files_bc','UKC4oa','1')   
-    salinity_donor = os.path.join(start_path,'modelling_DATA','kent_estuary_project','7.met_office','files_bc','UKC4oa','rivers_all')
-    for model_input in ['oa']:
+    
+    #2023 or 2019 delft
+    delft='2023'
+    climatology = 'no'
+    model_version = ['ao']
+    '''
+    River options:
+        AllRivNoDuddonClimatology   = This is daly climatology from rivers file on UKC4, only misses out the Duddon. 
+    '''
+    rivers = ['AllRivNoDuddonClimatology'] # if this list is empty it will assume no climatology
+    
+    if rivers == []:
+        climatology = 'no'
+    else:
+        climatology = 'yes'
+    
+    if delft == '2023':
+        donor_model = os.path.join(start_path, 'modelling_DATA','kent_estuary_project','7.met_office','models','bathymetry_testing_duddon_removed_added_Esk_Clywd_Alt','runSCW_bathymetry_testing_duddon_removed_added_Esk_Clywd_Alt') 
+    elif delft == '2019':
+        donor_model = os.path.join(start_path, 'modelling_DATA','kent_estuary_project','7.met_office','models','bathymetry_testing','runSCW_bathymetry_testing') 
+        
+    
+        
+        
+    for model_input in model_version:
+        if model_input == 'ao':
+            temperature_donor = os.path.join(start_path,'modelling_DATA','kent_estuary_project','7.met_office','files_bc','UKC4oa','1')   
+            salinity_donor = os.path.join(start_path,'modelling_DATA','kent_estuary_project','7.met_office','files_bc','UKC4oa','rivers_daily_all_no_duddon')
+        elif model_input == 'ao_riv':
+            temperature_donor = os.path.join(start_path,'modelling_DATA','kent_estuary_project','7.met_office','files_bc','UKC4oa_riv','1')   
+            salinity_donor = os.path.join(start_path,'modelling_DATA','kent_estuary_project','7.met_office','files_bc','UKC4oa_riv','rivers_jules_hydrology')
         for wind in ['nawind', 'yawind']:
-            for flip in ['Orig']:
-                for friction in ['0.035']:
-                    climatology = 'no'
-                    if climatology == 'yes':
-                        met_office_climatology = '_riv_clim'
-                    else:
-                        met_office_climatology = ''
-                    sub_path, fig_path, data_stats_path = make_paths.dir_outputs(model_input + '_' + wind +'_'+ flip + '_m'+ friction +'_Forcing' + met_office_climatology)
+            # for flip in ['Orig']:
+            for friction in ['0.035']:
+                # Determine what river choices you want to use. 
+                for river in rivers:
+                    
+                    
+                    sub_path, fig_path, data_stats_path = make_paths.dir_outputs(model_input + '_' + wind +'_'+ river + '_m'+ friction +'_Forcing' )
                     run_path = glob.glob(os.path.join(sub_path,'run*'))[0]
+                    
                     # copy contents from doner_model to sub_path here. 
                     copy_contents(donor_model, run_path)
+                    
+                    if delft == '2023':
+                       SCW_2023_files_path = pkg_resources.resource_filename('o_func', 'data/SCW_files_2023')
+                       
+                       copy_files(SCW_2023_files_path, run_path)
                     
                     #update friction coefficients
                     config_path = glob.glob(os.path.join(run_path,'*.mdu'))[0]
@@ -347,22 +417,36 @@ if __name__ == '__main__':
                     
                     #Run with original or met office climatology. 
                     
-                    # Currently no rivers are flowing for some reason. Can update the files manually from here. 
-                    if climatology == 'no':
-                        copy_riv_bc_files(salinity_donor, donor_model, run_path) 
+                    # CNeed to make sure the doner file has salinity and rivers turned on. 
+                    if climatology == 'yes':
+                        if river == 'AllRivNoDuddonClimatology':
+                            
+                            copy_riv_bc_files(salinity_donor, donor_model, run_path) 
+                      
                     
                     if wind == 'yawind':
-                        pass #pass argument here to add in wind external forcing file. 
+                        # Firstly copy across the wind external forcing file. 
+                        data_directory = pkg_resources.resource_filename('o_func', 'data/wind')
+                        data_files = pkg_resources.resource_listdir('o_func', 'data/wind')
+                        for data_file in data_files:
+                            source_path = os.path.join(data_directory, data_file)
+                            destination_path = os.path.join(run_path, data_file)
+                            shutil.copy(source_path, destination_path) #pass argument here to add in wind external forcing file. 
                         
+                        # Update value in config path 
+                        update_val(config_path, 'ExtForceFile', data_file)
                         
                     
-    remote_path = 'hawk:/home/b.osu903/kent/friction_testing'
+    remote_path = 'hawk:/home/b.osu903/kent/river_testing'
     push_to_scw = input('Do you want to push to SCW? (y/n): ')
     if push_to_scw == 'y':
         run_rsync(path_to_push, remote_path)
     
 #%% ####### MET OFFICE CLIMATOLOGY.
-    donor_model = os.path.join(start_path, 'modelling_DATA','kent_estuary_project','7.met_office','models','bathymetry_testing_met_office_rivers','runSCW_bathymetry_testing_met_office_rivers')      
+
+    # This model is run with the adjusted 2023 delft version which uses different input files and a slightly different model origin. 
+
+    # donor_model = os.path.join(start_path, 'modelling_DATA','kent_estuary_project','7.met_office','models','bathymetry_testing_met_office_rivers','runSCW_bathymetry_testing_met_office_rivers')      
     
 #%% Extra content     
     # local_path = path_to_push

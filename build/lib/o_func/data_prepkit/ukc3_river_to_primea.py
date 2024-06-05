@@ -340,13 +340,15 @@ def file_stitcher(input_file_path, output_file_path):
             subprocess.call([r"C:/Program Files/Git/bin/bash.exe", bash_script_path, output_filedir] + data_paths)
         else: # for mac or linux
             subprocess.call([r"bash", bash_script_path, output_filedir] + data_paths)
+    
     for filename in os.listdir(input_file_path):
         # Check if the file has a .csv extension
         if filename.endswith(".bc"):
             # Construct the full file path
             file_path = os.path.join(input_file_path, filename)
             # Delete the file
-            os.remove(file_path)
+            if os.path.exists(file_path):
+                os.remove(file_path)
 
 
 def add_river_data(bc_paths):
@@ -359,9 +361,9 @@ def add_river_data(bc_paths):
     #plt.figure();plt.plot(discharge_rivers_df_year['Esk'])
     for filepath in bc_paths[1]:
         print(filepath) # inside each filepath, all estuary forcings will be placed.
-        riv_in_primea_path = util.md([filepath, 'rivers_in_primea'])
-        all_riv_path = util.md([filepath, 'rivers_all'])
-        riv_dump_csv = util.md([filepath, 'rivers_dump_csv'])
+        riv_in_primea_path = util.md([filepath, 'rivers_daily_in_orig_primea'])
+        all_riv_path = util.md([filepath, 'rivers_daily_all_no_duddon'])
+        riv_dump_csv = util.md([filepath, 'rivers_daily_dump_csv'])
         
         #all rivers
         generate_bc_files(discharge_rivers_df_year, "2013-10-30", riv_dump_csv)

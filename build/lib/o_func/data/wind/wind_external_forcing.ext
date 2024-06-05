@@ -1,0 +1,18 @@
+
+QUANTITY =windx
+FILENAME =~/kent/wind_files/UM_wind_field_old/UM_x_wind.amu
+FILETYPE =4
+METHOD   =2
+OPERAND  =O
+
+QUANTITY =windy
+FILENAME =~/kent/wind_files/UM_wind_field_old/UM_y_wind.amv
+FILETYPE =4
+METHOD   =2
+OPERAND  =O
+
+#QUANTITY =atmosphericpressure
+#FILENAME =~/kent/wind_files/UM_wind_field/UM_ssp.amp
+#FILETYPE =4
+#METHOD   =2
+#OPERAND  =O

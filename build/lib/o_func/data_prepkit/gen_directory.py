@@ -67,6 +67,7 @@ class DirGen:
         self.Coa = util.md([os.path.join(self.main_dir, 'files_bc'), 'UKC4oa'])
         self.Coaw = util.md([os.path.join(self.main_dir, 'files_bc'), 'UKC4oaw'])
         self.Cow = util.md([os.path.join(self.main_dir, 'files_bc'), 'UKC4ow'])
+        self.Coariv = util.md([os.path.join(self.main_dir, 'files_bc'), 'UKC4oa_riv'])
         
         #self.csv_dump1 = util.md([self.Og, 'dump_csv'])  # This is handled in the write boundary condition script. 
         #self.csv_dump2 = util.md([self.Coa, 'dump_csv'])
@@ -144,7 +145,7 @@ class DirGen:
             DESCRIPTION.
 
         '''
-        return [['UKC4g', 'UKC4oa','UKC4oaw','UKC4ow'],[self.Og, self.Coa, self.Coaw, self.Cow]]
+        return [['UKC4g', 'UKC4oa','UKC4oaw','UKC4ow', 'UKC4oa_riv'],[self.Og, self.Coa, self.Coaw, self.Cow, self.Coariv]]
          
          
         
@@ -173,7 +174,7 @@ if __name__ == '__main__':
     # main_path = os.path.join(start_path, r'modelling_DATA','kent_estuary_project',r'6.Final2')
     main_path = os.path.join(start_path, r'modelling_DATA','kent_estuary_project',r'7.met_office')
     make_paths = DirGen(main_path)
-    sub_path, fig_path, data_stats_path = make_paths.dir_outputs('bathymetry_testing_met_office_rivers_3_days_local')
+    sub_path, fig_path, data_stats_path = make_paths.dir_outputs('bathymetry_testing_duddon_removed_added_Esk_Clywd_Alt')
     
     # for model_input in ['oa', 'og', 'owa', 'ow']:
     #     for wind in ['yawind', 'nawind']:
