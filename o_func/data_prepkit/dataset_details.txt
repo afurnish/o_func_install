@@ -1,0 +1,443 @@
+
+Variable: deptht_bounds
+<xarray.DataArray 'deptht_bounds' (deptht: 51, axis_nbounds: 2)>
+array([[   0.      ,    6.157033],
+       [   6.157033,   12.6784  ],
+       [  12.6784  ,   19.652885],
+       [  19.652885,   27.190334],
+       [  27.190334,   35.42634 ],
+       [  35.42634 ,   44.527786],
+       [  44.527786,   54.69936 ],
+       [  54.69936 ,   66.19096 ],
+       [  66.19096 ,   79.30607 ],
+       [  79.30607 ,   94.41063 ],
+       [  94.41063 ,  111.94225 ],
+       [ 111.94225 ,  132.41878 ],
+       [ 132.41878 ,  156.44502 ],
+       [ 156.44502 ,  184.71623 ],
+       [ 184.71623 ,  218.01591 ],
+       [ 218.01591 ,  257.20578 ],
+       [ 257.20578 ,  303.20535 ],
+       [ 303.20535 ,  356.95935 ],
+       [ 356.95935 ,  419.39288 ],
+       [ 419.39288 ,  491.35632 ],
+       [ 491.35632 ,  573.56494 ],
+       [ 573.56494 ,  666.5411  ],
+       [ 666.5411  ,  770.5677  ],
+       [ 770.5677  ,  885.66187 ],
+       [ 885.66187 , 1011.5732  ],
+       [1011.5732  , 1147.8073  ],
+       [1147.8073  , 1293.67    ],
+       [1293.67    , 1448.3248  ],
+       [1448.3248  , 1610.8527  ],
+       [1610.8527  , 1780.3087  ],
+       [1780.3087  , 1955.7683  ],
+       [1955.7683  , 2136.3608  ],
+       [2136.3608  , 2321.2922  ],
+       [2321.2922  , 2509.8562  ],
+       [2509.8562  , 2701.436   ],
+       [2701.436   , 2895.504   ],
+       [2895.504   , 3091.612   ],
+       [3091.612   , 3289.3862  ],
+       [3289.3862  , 3488.5156  ],
+       [3488.5156  , 3688.744   ],
+       [3688.744   , 3889.861   ],
+       [3889.861   , 4091.6963  ],
+       [4091.6963  , 4294.11    ],
+       [4294.11    , 4496.9893  ],
+       [4496.9893  , 4700.2427  ],
+       [4700.2427  , 4903.7974  ],
+       [4903.7974  , 5107.5938  ],
+       [5107.5938  , 5311.584   ],
+       [5311.584   , 5515.7295  ],
+       [5515.7295  , 5720.      ],
+       [5720.      , 5924.371   ]], dtype=float32)
+Coordinates:
+  * deptht   (deptht) float32 3.038 9.367 16.1 ... 5.414e+03 5.618e+03 5.822e+03
+Dimensions without coordinates: axis_nbounds
+--------------------------------------------------------------------------------
+
+Variable: tos
+<xarray.DataArray 'tos' (time_counter: 1, y: 201, x: 121)>
+array([[[14.22203 , 14.214919, ...,  0.      ,  0.      ],
+        [14.196926, 14.201186, ...,  0.      ,  0.      ],
+        ...,
+        [13.072851, 13.114723, ...,  0.      ,  0.      ],
+        [13.097301, 13.114452, ...,  0.      ,  0.      ]]], dtype=float32)
+Coordinates:
+    nav_lat        (y, x) float32 52.26 52.26 52.26 52.26 ... 54.99 54.99 54.99
+    nav_lon        (y, x) float32 -5.404 -5.382 -5.36 ... -2.82 -2.797 -2.773
+    time_centered  (time_counter) datetime64[ns] 2013-11-01T12:00:00
+  * time_counter   (time_counter) datetime64[ns] 2013-11-01T12:00:00
+    time_instant   (time_counter) datetime64[ns] 2013-11-02
+Dimensions without coordinates: y, x
+Attributes:
+    standard_name:       sea_surface_temperature
+    long_name:           sea_surface_temperature
+    units:               degC
+    online_operation:    average
+    interval_operation:  60 s
+    interval_write:      1 d
+    cell_methods:        time: mean (interval: 60 s)
+--------------------------------------------------------------------------------
+
+Variable: time_centered_bounds
+<xarray.DataArray 'time_centered_bounds' (time_counter: 1, axis_nbounds: 2)>
+array([['2013-11-01T00:00:00.000000000', '2013-11-02T00:00:00.000000000']],
+      dtype='datetime64[ns]')
+Coordinates:
+    time_centered  (time_counter) datetime64[ns] 2013-11-01T12:00:00
+  * time_counter   (time_counter) datetime64[ns] 2013-11-01T12:00:00
+    time_instant   (time_counter) datetime64[ns] 2013-11-02
+Dimensions without coordinates: axis_nbounds
+--------------------------------------------------------------------------------
+
+Variable: time_counter_bounds
+<xarray.DataArray 'time_counter_bounds' (time_counter: 1, axis_nbounds: 2)>
+array([['2013-11-01T00:00:00.000000000', '2013-11-02T00:00:00.000000000']],
+      dtype='datetime64[ns]')
+Coordinates:
+    time_centered  (time_counter) datetime64[ns] 2013-11-01T12:00:00
+  * time_counter   (time_counter) datetime64[ns] 2013-11-01T12:00:00
+    time_instant   (time_counter) datetime64[ns] 2013-11-02
+Dimensions without coordinates: axis_nbounds
+--------------------------------------------------------------------------------
+
+Variable: sos
+<xarray.DataArray 'sos' (time_counter: 1, y: 201, x: 121)>
+array([[[35.000034, 34.994404, ...,  0.      ,  0.      ],
+        [34.997757, 34.99111 , ...,  0.      ,  0.      ],
+        ...,
+        [34.071827, 34.038223, ...,  0.      ,  0.      ],
+        [34.065975, 34.04012 , ...,  0.      ,  0.      ]]], dtype=float32)
+Coordinates:
+    nav_lat        (y, x) float32 52.26 52.26 52.26 52.26 ... 54.99 54.99 54.99
+    nav_lon        (y, x) float32 -5.404 -5.382 -5.36 ... -2.82 -2.797 -2.773
+    time_centered  (time_counter) datetime64[ns] 2013-11-01T12:00:00
+  * time_counter   (time_counter) datetime64[ns] 2013-11-01T12:00:00
+    time_instant   (time_counter) datetime64[ns] 2013-11-02
+Dimensions without coordinates: y, x
+Attributes:
+    standard_name:       sea_surface_salinity
+    long_name:           sea_surface_salinity
+    units:               1e-3
+    online_operation:    average
+    interval_operation:  60 s
+    interval_write:      1 d
+    cell_methods:        time: mean (interval: 60 s)
+--------------------------------------------------------------------------------
+
+Variable: zos
+<xarray.DataArray 'zos' (time_counter: 1, y: 201, x: 121)>
+array([[[-0.263278, -0.263041, ...,  0.      ,  0.      ],
+        [-0.263189, -0.262966, ...,  0.      ,  0.      ],
+        ...,
+        [-0.180655, -0.178793, ...,  0.      ,  0.      ],
+        [-0.180485, -0.179659, ...,  0.      ,  0.      ]]], dtype=float32)
+Coordinates:
+    nav_lat        (y, x) float32 52.26 52.26 52.26 52.26 ... 54.99 54.99 54.99
+    nav_lon        (y, x) float32 -5.404 -5.382 -5.36 ... -2.82 -2.797 -2.773
+    time_centered  (time_counter) datetime64[ns] 2013-11-01T12:00:00
+  * time_counter   (time_counter) datetime64[ns] 2013-11-01T12:00:00
+    time_instant   (time_counter) datetime64[ns] 2013-11-02
+Dimensions without coordinates: y, x
+Attributes:
+    standard_name:       sea_surface_height_above_geoid
+    long_name:           sea_surface_height_above_geoid
+    units:               m
+    online_operation:    average
+    interval_operation:  60 s
+    interval_write:      1 d
+    cell_methods:        time: mean (interval: 60 s)
+--------------------------------------------------------------------------------
+
+Variable: temper_bot
+<xarray.DataArray 'temper_bot' (time_counter: 1, y: 201, x: 121)>
+array([[[14.226647, 14.207614, ...,  0.      ,  0.      ],
+        [14.1838  , 14.187715, ...,  0.      ,  0.      ],
+        ...,
+        [13.065541, 13.110686, ...,  0.      ,  0.      ],
+        [13.053782, 13.065379, ...,  0.      ,  0.      ]]], dtype=float32)
+Coordinates:
+    nav_lat        (y, x) float32 52.26 52.26 52.26 52.26 ... 54.99 54.99 54.99
+    nav_lon        (y, x) float32 -5.404 -5.382 -5.36 ... -2.82 -2.797 -2.773
+    time_centered  (time_counter) datetime64[ns] 2013-11-01T12:00:00
+  * time_counter   (time_counter) datetime64[ns] 2013-11-01T12:00:00
+    time_instant   (time_counter) datetime64[ns] 2013-11-02
+Dimensions without coordinates: y, x
+Attributes:
+    long_name:           sea bottom temperature
+    units:               degC
+    online_operation:    instant
+    interval_operation:  60 s
+    interval_write:      1 d
+    cell_methods:        time: point (interval: 60 s)
+--------------------------------------------------------------------------------
+
+Variable: time_instant_bounds
+<xarray.DataArray 'time_instant_bounds' (time_counter: 1, axis_nbounds: 2)>
+array([['2013-11-02T00:00:00.000000000', '2013-11-02T00:00:00.000000000']],
+      dtype='datetime64[ns]')
+Coordinates:
+    time_centered  (time_counter) datetime64[ns] 2013-11-01T12:00:00
+  * time_counter   (time_counter) datetime64[ns] 2013-11-01T12:00:00
+    time_instant   (time_counter) datetime64[ns] 2013-11-02
+Dimensions without coordinates: axis_nbounds
+--------------------------------------------------------------------------------
+
+Variable: e3t
+<xarray.DataArray 'e3t' (time_counter: 1, deptht: 51, y: 201, x: 121)>
+array([[[[0.997189, ..., 0.2     ],
+         ...,
+         [0.99878 , ..., 0.2     ]],
+
+        ...,
+
+        [[1.705667, ..., 0.2     ],
+         ...,
+         [2.673321, ..., 0.2     ]]]], dtype=float32)
+Coordinates:
+    nav_lat        (y, x) float32 52.26 52.26 52.26 52.26 ... 54.99 54.99 54.99
+    nav_lon        (y, x) float32 -5.404 -5.382 -5.36 ... -2.82 -2.797 -2.773
+  * deptht         (deptht) float32 3.038 9.367 16.1 ... 5.618e+03 5.822e+03
+    time_centered  (time_counter) datetime64[ns] 2013-11-01T12:00:00
+  * time_counter   (time_counter) datetime64[ns] 2013-11-01T12:00:00
+    time_instant   (time_counter) datetime64[ns] 2013-11-02
+Dimensions without coordinates: y, x
+Attributes:
+    standard_name:       cell_thickness
+    long_name:           T-cell thickness
+    units:               m
+    online_operation:    average
+    interval_operation:  60 s
+    interval_write:      1 d
+    cell_methods:        time: mean (interval: 60 s)
+--------------------------------------------------------------------------------
+
+Variable: votemper
+<xarray.DataArray 'votemper' (time_counter: 1, deptht: 51, y: 201, x: 121)>
+array([[[[14.22203 , ...,  0.      ],
+         ...,
+         [13.097301, ...,  0.      ]],
+
+        ...,
+
+        [[ 0.      , ...,  0.      ],
+         ...,
+         [ 0.      , ...,  0.      ]]]], dtype=float32)
+Coordinates:
+    nav_lat        (y, x) float32 52.26 52.26 52.26 52.26 ... 54.99 54.99 54.99
+    nav_lon        (y, x) float32 -5.404 -5.382 -5.36 ... -2.82 -2.797 -2.773
+  * deptht         (deptht) float32 3.038 9.367 16.1 ... 5.618e+03 5.822e+03
+    time_centered  (time_counter) datetime64[ns] 2013-11-01T12:00:00
+  * time_counter   (time_counter) datetime64[ns] 2013-11-01T12:00:00
+    time_instant   (time_counter) datetime64[ns] 2013-11-02
+Dimensions without coordinates: y, x
+Attributes:
+    standard_name:       sea_water_potential_temperature
+    long_name:           temperature
+    units:               degC
+    online_operation:    average
+    interval_operation:  60 s
+    interval_write:      1 d
+    cell_methods:        time: mean (interval: 60 s)
+--------------------------------------------------------------------------------
+
+Variable: vosaline
+<xarray.DataArray 'vosaline' (time_counter: 1, deptht: 51, y: 201, x: 121)>
+array([[[[35.000034, ...,  0.      ],
+         ...,
+         [34.065975, ...,  0.      ]],
+
+        ...,
+
+        [[ 0.      , ...,  0.      ],
+         ...,
+         [ 0.      , ...,  0.      ]]]], dtype=float32)
+Coordinates:
+    nav_lat        (y, x) float32 52.26 52.26 52.26 52.26 ... 54.99 54.99 54.99
+    nav_lon        (y, x) float32 -5.404 -5.382 -5.36 ... -2.82 -2.797 -2.773
+  * deptht         (deptht) float32 3.038 9.367 16.1 ... 5.618e+03 5.822e+03
+    time_centered  (time_counter) datetime64[ns] 2013-11-01T12:00:00
+  * time_counter   (time_counter) datetime64[ns] 2013-11-01T12:00:00
+    time_instant   (time_counter) datetime64[ns] 2013-11-02
+Dimensions without coordinates: y, x
+Attributes:
+    standard_name:       sea_water_practical_salinity
+    long_name:           salinity
+    units:               1e-3
+    online_operation:    average
+    interval_operation:  60 s
+    interval_write:      1 d
+    cell_methods:        time: mean (interval: 60 s)
+--------------------------------------------------------------------------------
+
+Variable: empmr
+<xarray.DataArray 'empmr' (time_counter: 1, y: 201, x: 121)>
+array([[[2.560273e-05, 2.592700e-05, ..., 0.000000e+00, 0.000000e+00],
+        [2.535235e-05, 2.567396e-05, ..., 0.000000e+00, 0.000000e+00],
+        ...,
+        [5.740205e-05, 5.663568e-05, ..., 0.000000e+00, 0.000000e+00],
+        [5.783005e-05, 5.670972e-05, ..., 0.000000e+00, 0.000000e+00]]],
+      dtype=float32)
+Coordinates:
+    nav_lat        (y, x) float32 52.26 52.26 52.26 52.26 ... 54.99 54.99 54.99
+    nav_lon        (y, x) float32 -5.404 -5.382 -5.36 ... -2.82 -2.797 -2.773
+    time_centered  (time_counter) datetime64[ns] 2013-11-01T12:00:00
+  * time_counter   (time_counter) datetime64[ns] 2013-11-01T12:00:00
+    time_instant   (time_counter) datetime64[ns] 2013-11-02
+Dimensions without coordinates: y, x
+Attributes:
+    standard_name:       water_flux_out_of_sea_ice_and_sea_water
+    long_name:           Net Upward Water Flux
+    units:               kg/m2/s
+    online_operation:    average
+    interval_operation:  60 s
+    interval_write:      1 d
+    cell_methods:        time: mean (interval: 60 s)
+--------------------------------------------------------------------------------
+
+Variable: qt
+<xarray.DataArray 'qt' (time_counter: 1, y: 201, x: 121)>
+array([[[-121.216095, -120.335144, ...,    0.      ,    0.      ],
+        [-122.36809 , -121.44046 , ...,    0.      ,    0.      ],
+        ...,
+        [-259.7132  , -255.78918 , ...,    0.      ,    0.      ],
+        [-261.16855 , -255.49861 , ...,    0.      ,    0.      ]]],
+      dtype=float32)
+Coordinates:
+    nav_lat        (y, x) float32 52.26 52.26 52.26 52.26 ... 54.99 54.99 54.99
+    nav_lon        (y, x) float32 -5.404 -5.382 -5.36 ... -2.82 -2.797 -2.773
+    time_centered  (time_counter) datetime64[ns] 2013-11-01T12:00:00
+  * time_counter   (time_counter) datetime64[ns] 2013-11-01T12:00:00
+    time_instant   (time_counter) datetime64[ns] 2013-11-02
+Dimensions without coordinates: y, x
+Attributes:
+    standard_name:       surface_downward_heat_flux_in_sea_water
+    long_name:           Net Downward Heat Flux
+    units:               W/m2
+    online_operation:    average
+    interval_operation:  60 s
+    interval_write:      1 d
+    cell_methods:        time: mean (interval: 60 s)
+--------------------------------------------------------------------------------
+
+Variable: qlw
+<xarray.DataArray 'qlw' (time_counter: 1, y: 201, x: 121)>
+array([[[nan, nan, ..., nan, nan],
+        [nan, nan, ..., nan, nan],
+        ...,
+        [nan, nan, ..., nan, nan],
+        [nan, nan, ..., nan, nan]]], dtype=float32)
+Coordinates:
+    nav_lat        (y, x) float32 52.26 52.26 52.26 52.26 ... 54.99 54.99 54.99
+    nav_lon        (y, x) float32 -5.404 -5.382 -5.36 ... -2.82 -2.797 -2.773
+    time_centered  (time_counter) datetime64[ns] 2013-11-01T12:00:00
+  * time_counter   (time_counter) datetime64[ns] 2013-11-01T12:00:00
+    time_instant   (time_counter) datetime64[ns] 2013-11-02
+Dimensions without coordinates: y, x
+Attributes:
+    standard_name:       surface_net_downward_longwave_flux
+    long_name:           Longwave Downward Heat Flux over open ocean
+    units:               W/m2
+    online_operation:    average
+    interval_operation:  60 s
+    interval_write:      1 d
+    cell_methods:        time: mean (interval: 60 s)
+--------------------------------------------------------------------------------
+
+Variable: qsb
+<xarray.DataArray 'qsb' (time_counter: 1, y: 201, x: 121)>
+array([[[nan, nan, ..., nan, nan],
+        [nan, nan, ..., nan, nan],
+        ...,
+        [nan, nan, ..., nan, nan],
+        [nan, nan, ..., nan, nan]]], dtype=float32)
+Coordinates:
+    nav_lat        (y, x) float32 52.26 52.26 52.26 52.26 ... 54.99 54.99 54.99
+    nav_lon        (y, x) float32 -5.404 -5.382 -5.36 ... -2.82 -2.797 -2.773
+    time_centered  (time_counter) datetime64[ns] 2013-11-01T12:00:00
+  * time_counter   (time_counter) datetime64[ns] 2013-11-01T12:00:00
+    time_instant   (time_counter) datetime64[ns] 2013-11-02
+Dimensions without coordinates: y, x
+Attributes:
+    standard_name:       surface_downward_sensible_heat_flux
+    long_name:           Sensible Downward Heat Flux over open ocean
+    units:               W/m2
+    online_operation:    average
+    interval_operation:  60 s
+    interval_write:      1 d
+    cell_methods:        time: mean (interval: 60 s)
+--------------------------------------------------------------------------------
+
+Variable: qla
+<xarray.DataArray 'qla' (time_counter: 1, y: 201, x: 121)>
+array([[[nan, nan, ..., nan, nan],
+        [nan, nan, ..., nan, nan],
+        ...,
+        [nan, nan, ..., nan, nan],
+        [nan, nan, ..., nan, nan]]], dtype=float32)
+Coordinates:
+    nav_lat        (y, x) float32 52.26 52.26 52.26 52.26 ... 54.99 54.99 54.99
+    nav_lon        (y, x) float32 -5.404 -5.382 -5.36 ... -2.82 -2.797 -2.773
+    time_centered  (time_counter) datetime64[ns] 2013-11-01T12:00:00
+  * time_counter   (time_counter) datetime64[ns] 2013-11-01T12:00:00
+    time_instant   (time_counter) datetime64[ns] 2013-11-02
+Dimensions without coordinates: y, x
+Attributes:
+    standard_name:       surface_downward_latent_heat_flux
+    long_name:           Latent Downward Heat Flux over open ocean
+    units:               W/m2
+    online_operation:    average
+    interval_operation:  60 s
+    interval_write:      1 d
+    cell_methods:        time: mean (interval: 60 s)
+--------------------------------------------------------------------------------
+
+Variable: qsr
+<xarray.DataArray 'qsr' (time_counter: 1, y: 201, x: 121)>
+array([[[ 9.77902 ,  9.984689, ...,  0.      ,  0.      ],
+        [ 9.479321,  9.627701, ...,  0.      ,  0.      ],
+        ...,
+        [61.896725, 61.57989 , ...,  0.      ,  0.      ],
+        [62.194145, 61.905968, ...,  0.      ,  0.      ]]], dtype=float32)
+Coordinates:
+    nav_lat        (y, x) float32 52.26 52.26 52.26 52.26 ... 54.99 54.99 54.99
+    nav_lon        (y, x) float32 -5.404 -5.382 -5.36 ... -2.82 -2.797 -2.773
+    time_centered  (time_counter) datetime64[ns] 2013-11-01T12:00:00
+  * time_counter   (time_counter) datetime64[ns] 2013-11-01T12:00:00
+    time_instant   (time_counter) datetime64[ns] 2013-11-02
+Dimensions without coordinates: y, x
+Attributes:
+    standard_name:       net_downward_shortwave_flux_at_sea_water_surface
+    long_name:           Shortwave Radiation
+    units:               W/m2
+    online_operation:    average
+    interval_operation:  60 s
+    interval_write:      1 d
+    cell_methods:        time: mean (interval: 60 s)
+--------------------------------------------------------------------------------
+
+Variable: taum
+<xarray.DataArray 'taum' (time_counter: 1, y: 201, x: 121)>
+array([[[0.040235, 0.040235, ..., 0.      , 0.      ],
+        [0.040235, 0.040235, ..., 0.      , 0.      ],
+        ...,
+        [0.155934, 0.155934, ..., 0.      , 0.      ],
+        [0.161545, 0.161545, ..., 0.      , 0.      ]]], dtype=float32)
+Coordinates:
+    nav_lat        (y, x) float32 52.26 52.26 52.26 52.26 ... 54.99 54.99 54.99
+    nav_lon        (y, x) float32 -5.404 -5.382 -5.36 ... -2.82 -2.797 -2.773
+    time_centered  (time_counter) datetime64[ns] 2013-11-01T12:00:00
+  * time_counter   (time_counter) datetime64[ns] 2013-11-01T12:00:00
+    time_instant   (time_counter) datetime64[ns] 2013-11-02
+Dimensions without coordinates: y, x
+Attributes:
+    standard_name:       magnitude_of_surface_downward_stress
+    long_name:           wind stress module
+    units:               N/m2
+    online_operation:    average
+    interval_operation:  60 s
+    interval_write:      1 d
+    cell_methods:        time: mean (interval: 60 s)
+--------------------------------------------------------------------------------

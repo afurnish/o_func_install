@@ -80,21 +80,22 @@ class est_tide:
         Returns an array of lat/lonor x/y
 
         '''
-
-        # Initialize an empty array
-        data_array = np.empty((0, 2), dtype=float)
-        # Read data from CSV file
-        with open(points_file, 'r') as file:
-            reader = csv.reader(file, delimiter=' ')
-            next(reader)
-            # Skip the header line if there is one
-            for i, row in enumerate(reader):
-                print(row)
-                if i != 0:
-                    data_array = np.append(data_array, [[float(row[0]), float(row[2])]], axis=0)
         
-        # Display the resulting array
-        #print(data_array)
+        if points_file.endswith(".pli"):
+            # Initialize an empty array
+            data_array = np.empty((0, 2), dtype=float)
+            # Read data from CSV file
+            with open(points_file, 'r') as file:
+                reader = csv.reader(file, delimiter=' ')
+                next(reader)
+                # Skip the header line if there is one
+                for i, row in enumerate(reader):
+                    print(row)
+                    if i != 0:
+                        data_array = np.append(data_array, [[float(row[0]), float(row[2])]], axis=0)
+            
+            # Display the resulting array
+            #print(data_array)
         return data_array
     
     def est_amp_and_phase_extractor(self,points_to_predic, h_or_v = 'height'):
@@ -557,3 +558,6 @@ if __name__ == '__main__':
             file.write("\n".join(data_lines) + "\n\n")
     
     print("File written successfully.")
+    
+    
+#%% Write this but for any set of points. 

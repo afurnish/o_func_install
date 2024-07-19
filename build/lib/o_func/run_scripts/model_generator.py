@@ -328,16 +328,9 @@ def copy_files(src_dir, dst_dir):
         src_file = os.path.join(src_dir, filename)
         dst_file = os.path.join(dst_dir, filename)
 
-        try:
-            if os.path.isfile(src_file):
-                shutil.copy(src_file, dst_file)
-                print(f"Copied {src_file} to {dst_file}")
-        except FileNotFoundError:
-            print(f"Source file {src_file} not found.")
-        except PermissionError:
-            print(f"Permission denied while copying {src_file} to {dst_file}.")
-        except Exception as e:
-            print(f"Error copying {src_file} to {dst_file}: {e}")
+        if os.path.isfile(src_file):
+            shutil.copy(src_file, dst_file)
+              
 #%% Make and do the models
 # Iterates through all the possible options I want to run. 
 
@@ -387,23 +380,13 @@ if __name__ == '__main__':
                     # copy contents from doner_model to sub_path here. 
                     copy_contents(donor_model, run_path)
                     
-                    if delft == '2023':
-                       SCW_2023_files_path = pkg_resources.resource_filename('o_func', 'data/SCW_files_2023')
-                       
-                       copy_files(SCW_2023_files_path, run_path)
-                    
                     #update friction coefficients
                     config_path = glob.glob(os.path.join(run_path,'*.mdu'))[0]
                     update_val(config_path, 'UnifFrictCoef1D', friction)  # This one is for rivers and channels, any 1D components
                     update_val(config_path, 'UnifFrictCoef', friction)    # I believe this is the main one to be concerned about. 
                     update_val(config_path, 'UnifFrictCoefLin', '0.000') # This is one that needs to be ignored. Therefore it is now 0. 
                     
-                    #update submission file path
-                    q_path = glob.glob(os.path.join(run_path,'*.q'))[0]
-                    update_submission_file(q_path,
-                                           job_name='nol'+friction, # NO_L NO LINEAR FRICTION can only be 8 characters
-                                           time_taken='00-20:00', # Made it 16 hours as current simulation will probably time out
-                                           partition='htc') # dev or htc
+                    
 
                     # Add in temperature boundary conditions
                     add_files = ['Temperature.bc',
@@ -436,6 +419,16 @@ if __name__ == '__main__':
                         # Update value in config path 
                         update_val(config_path, 'ExtForceFile', data_file)
                         
+                    if delft == '2023':
+                        SCW_2023_files_path = pkg_resources.resource_filename('o_func', 'data/SCW_files_2023')
+                       
+                        copy_files(SCW_2023_files_path, run_path)   
+                    #update submission file path
+                    q_path = glob.glob(os.path.join(run_path,'*.q'))[0]
+                    update_submission_file(q_path,
+                                           job_name='riv_' + wind[:3], # NO_L NO LINEAR FRICTION can only be 8 characters
+                                           time_taken='00-20:00', # Made it 16 hours as current simulation will probably time out
+                                           partition='htc') # dev or htc
                     
     remote_path = 'hawk:/home/b.osu903/kent/river_testing'
     push_to_scw = input('Do you want to push to SCW? (y/n): ')

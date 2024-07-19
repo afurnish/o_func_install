@@ -147,7 +147,8 @@ class Stats:
                                 # 'Liverpool':{'x':-3.1554490, 'y':53.4930250}, # Looks good but too deep on liverpool 
                                 # 'Liverpool':{'x':-3.1391550, 'y':53.4622030}, 
                                 # 'Liverpool':{'x':-3.1988680, 'y':53.4797420}, 
-                                  'Liverpool':{'x':-3.0741720, 'y':53.4634140}, 
+                                  'Liverpool':{'x':-3.0741720, 'y':53.4634140},
+                                    # 'Ribble':{'x': -3.0565639, 'y': 53.715130},
                               }
         
         # self.tide_loc_dict = tide_gauge_loc()
@@ -237,7 +238,8 @@ class Stats:
                     x,y = tide_gauge[0],tide_gauge[1] # Now the location has been determined you can apply elsewhere. 
                     self.primx.append({'PRIMEA Model' : prim_data[slicer:,x,y].data.flatten()}) # at the testing points [4:,40,20] it is almost identical. 
                     self.ukc4y.append({'UKC4 Model' : ukc4_data[slicer:,x,y].data.flatten()})
-                    self.tidex.append({'Measured Tide Gauge' : self.tide_data_dict[tide_gauge_name].Height[slicer:]})
+                    if tide_gauge_name != 'Ribble':
+                        self.tidex.append({'Measured Tide Gauge' : self.tide_data_dict[tide_gauge_name].Height[slicer:]})
             # fig, ax = plt.subplots(1, len(self.tide_save), sharey=True, sharex=True)
             # 
             def calculate_rmse(actual, predicted):
@@ -270,35 +272,36 @@ class Stats:
                 
                 fig, ax = figs() # Generate a figure the size of the two tide gauges. 
                 for i, tide_gauge in enumerate(self.tide_save):
-                    # produces Heysham and Liverpool as strings. 
-                    plotx = x[i]     # x dataset pulled out
-                    ploty = y[i]     # y dataset for one location held in dictionary of its name. 
-                    
-                    xname, yname = [i for i in plotx.keys()][0], [i for i in ploty.keys()][0] # get keys
-                    if n == 'y':
-                        plotx = min_max_scaling(plotx[xname])
-                        ploty = min_max_scaling(ploty[yname])
-                    coefficients = np.polyfit(plotx, ploty, 1)
-                    regression_line = np.poly1d(coefficients)
-                    r_squared = np.corrcoef(plotx, ploty)[0, 1] ** 2 
-                    
-                    # Plotting up the figures    
-                    
-                    ax[i].scatter(plotx,ploty, s = 1, label = xname + ' vs '+ yname + ' correlation')
-                    ax[i].plot(plotx, regression_line(plotx), label='Regression Line', c = 'b', linewidth = 0.25)  # plot the regression line
-                    ax[i].plot(plotx, plotx, label='y=x', c = 'orange', linewidth = 0.25)  # plot the y=x line for comparison
-                    
-                    fig.text(0.5, 0.01, xname + ' (normalised ' + unit + ')', ha='center', va='bottom', transform=fig.transFigure)
-                    fig.text(0.03, 0.5, yname + ' (normalised ' + unit + ')', va='center', rotation='vertical')
-                    tide_gauge_name = [j for j in self.tide_loc_dict.keys()][i]
-                    ax[i].set_title(tide_gauge_name + '\n' + f'(R$^2$ ={r_squared:.2f})')
-                    ax[i].set_aspect('equal')   
-                    ax[i].legend(loc = 'lower right', fontsize = 4, frameon=False)
-                    with open(os.path.join(data_stats_path, 'r_squared_stats.txt'), "a") as f:
-                        table_to_return =  (variable_name, tide_gauge_name, xname, yname, r_squared)
-                        print("{:<20} {:<10} {:<20} {:<15} {:<20}".format(*table_to_return))
-                        f.write("{:<20} {:<10} {:<20} {:<15} {:<20}".format(*table_to_return))
-                        f.write('\n')
+                    if tide_gauge != 'Ribble':
+                        # produces Heysham and Liverpool as strings. 
+                        plotx = x[i]     # x dataset pulled out
+                        ploty = y[i]     # y dataset for one location held in dictionary of its name. 
+                        
+                        xname, yname = [i for i in plotx.keys()][0], [i for i in ploty.keys()][0] # get keys
+                        if n == 'y':
+                            plotx = min_max_scaling(plotx[xname])
+                            ploty = min_max_scaling(ploty[yname])
+                        coefficients = np.polyfit(plotx, ploty, 1)
+                        regression_line = np.poly1d(coefficients)
+                        r_squared = np.corrcoef(plotx, ploty)[0, 1] ** 2 
+                        
+                        # Plotting up the figures    
+                        
+                        ax[i].scatter(plotx,ploty, s = 1, label = xname + ' vs '+ yname + ' correlation')
+                        ax[i].plot(plotx, regression_line(plotx), label='Regression Line', c = 'b', linewidth = 0.25)  # plot the regression line
+                        ax[i].plot(plotx, plotx, label='y=x', c = 'orange', linewidth = 0.25)  # plot the y=x line for comparison
+                        
+                        fig.text(0.5, 0.01, xname + ' (normalised ' + unit + ')', ha='center', va='bottom', transform=fig.transFigure)
+                        fig.text(0.03, 0.5, yname + ' (normalised ' + unit + ')', va='center', rotation='vertical')
+                        tide_gauge_name = [j for j in self.tide_loc_dict.keys()][i]
+                        ax[i].set_title(tide_gauge_name + '\n' + f'(R$^2$ ={r_squared:.2f})')
+                        ax[i].set_aspect('equal')   
+                        ax[i].legend(loc = 'lower right', fontsize = 4, frameon=False)
+                        with open(os.path.join(data_stats_path, 'r_squared_stats.txt'), "a") as f:
+                            table_to_return =  (variable_name, tide_gauge_name, xname, yname, r_squared)
+                            print("{:<20} {:<10} {:<20} {:<15} {:<20}".format(*table_to_return))
+                            f.write("{:<20} {:<10} {:<20} {:<15} {:<20}".format(*table_to_return))
+                            f.write('\n')
                 # plt.title(self.dataset_name)       
                 fig.savefig(os.path.join(fig_path,'correlation_' + variable_name + '_' + xname.replace(' ','_') + '_' + yname.replace(' ','_') + '_'+ '.png'), dpi = 300)
                 plt.close(fig)
@@ -391,41 +394,113 @@ class Stats:
 
             data = pd.DataFrame({'Timestamp': self.time_sliced, 'Shifted_Time': self.time_sliced + pd.Timedelta(minutes=shifted_time_val)})
             for kio, item in enumerate(self.primx):
+                # data['Values'] = item['PRIMEA Model']
+                # full_time_range = pd.date_range(start=data['Timestamp'].min(), end=data['Shifted_Time'].max(), freq='30T')
+                # shifted_time_range = pd.date_range(start=data['Shifted_Time'].min(), end=data['Shifted_Time'].max(), freq='30T')
+                # combined_times = full_time_range.union(shifted_time_range).sort_values()
+                # combined_numeric = combined_times.view(int) / 10**9
+                # # import pdb;pdb.set_trace()
+                # interpolate_func = interp1d(combined_numeric, np.interp(combined_numeric, data['Shifted_Time'].view(int) / 10**9, data['Values']), bounds_error=False, fill_value="extrapolate")
+                # # Now interpolate back to the original half-hour marks
+                # original_half_hour_marks = pd.date_range(start=data['Timestamp'].min(), end=data['Timestamp'].max(), freq='30T')
+                # original_half_hour_numeric = original_half_hour_marks.view(int) / 10**9
+                # interpolated_values = interpolate_func(original_half_hour_numeric)
+                # result_data = pd.DataFrame({'Timestamp': original_half_hour_marks, 'Interpolated_Value': interpolated_values})
+                
+                # original_frequency_data = result_data.iloc[::2].reset_index(drop=True)
+                # prix.append({'PRIMEA Model':np.array(original_frequency_data['Interpolated_Value'])})
                 data['Values'] = item['PRIMEA Model']
+
+                # Create the full and shifted time ranges
                 full_time_range = pd.date_range(start=data['Timestamp'].min(), end=data['Shifted_Time'].max(), freq='30T')
                 shifted_time_range = pd.date_range(start=data['Shifted_Time'].min(), end=data['Shifted_Time'].max(), freq='30T')
+                
+                # Combine the time ranges and sort them
                 combined_times = full_time_range.union(shifted_time_range).sort_values()
-                combined_numeric = combined_times.view(int) / 10**9
-                # import pdb;pdb.set_trace()
-                interpolate_func = interp1d(combined_numeric, np.interp(combined_numeric, data['Shifted_Time'].view(int) / 10**9, data['Values']), bounds_error=False, fill_value="extrapolate")
-                # Now interpolate back to the original half-hour marks
+                
+                # Convert combined_times to Unix timestamps in seconds
+                combined_numeric = combined_times.astype(np.int64) // 10**9
+                
+                # Convert Shifted_Time to Unix timestamps in seconds
+                shifted_time_seconds = data['Shifted_Time'].astype(np.int64) // 10**9
+                
+                # Create the interpolation function
+                interpolate_func = interp1d(
+                    combined_numeric,
+                    np.interp(combined_numeric, shifted_time_seconds, data['Values']),
+                    bounds_error=False,
+                    fill_value="extrapolate"
+                )
+                
+                # Interpolate back to the original half-hour marks
                 original_half_hour_marks = pd.date_range(start=data['Timestamp'].min(), end=data['Timestamp'].max(), freq='30T')
-                original_half_hour_numeric = original_half_hour_marks.view(int) / 10**9
+                original_half_hour_numeric = original_half_hour_marks.astype(np.int64) // 10**9
+                
+                # Get the interpolated values
                 interpolated_values = interpolate_func(original_half_hour_numeric)
+                
+                # Create the result DataFrame
                 result_data = pd.DataFrame({'Timestamp': original_half_hour_marks, 'Interpolated_Value': interpolated_values})
                 
+                # Extract original frequency data
                 original_frequency_data = result_data.iloc[::2].reset_index(drop=True)
-                prix.append({'PRIMEA Model':np.array(original_frequency_data['Interpolated_Value'])})
+                prix.append({'PRIMEA Model': np.array(original_frequency_data['Interpolated_Value'])})
             data = pd.DataFrame({'Timestamp': self.time_sliced, 'Shifted_Time': self.time_sliced + pd.Timedelta(minutes=shifted_time_val)})
             ukcy = [] 
             for kio, item in enumerate(self.ukc4y):
-                # import pdb;pdb.set_trace()
+                # # import pdb;pdb.set_trace()
+                # data['Values'] = item['UKC4 Model']
+                # full_time_range = pd.date_range(start=data['Timestamp'].min(), end=data['Shifted_Time'].max(), freq='30T')
+                # shifted_time_range = pd.date_range(start=data['Shifted_Time'].min(), end=data['Shifted_Time'].max(), freq='30T')
+                # combined_times = full_time_range.union(shifted_time_range).sort_values()
+                # combined_numeric = combined_times.view(int) / 10**9
+                # # 
+                # interpolate_func = interp1d(combined_numeric, np.interp(combined_numeric, data['Shifted_Time'].view(int) / 10**9, data['Values']), bounds_error=False, fill_value="extrapolate")
+                # # Now interpolate back to the original half-hour marks
+                # original_half_hour_marks = pd.date_range(start=data['Timestamp'].min(), end=data['Timestamp'].max(), freq='30T')
+                # original_half_hour_numeric = original_half_hour_marks.view(int) / 10**9
+                # interpolated_values = interpolate_func(original_half_hour_numeric)
+                # result_data = pd.DataFrame({'Timestamp': original_half_hour_marks, 'Interpolated_Value': interpolated_values})
+                
+                # original_frequency_data = result_data.iloc[::2].reset_index(drop=True)
+                # ukcy.append({'UKC4 Model':np.array(original_frequency_data['Interpolated_Value'])})
+                # Assuming 'data' and 'item' are already defined
                 data['Values'] = item['UKC4 Model']
+                
+                # Create the full and shifted time ranges
                 full_time_range = pd.date_range(start=data['Timestamp'].min(), end=data['Shifted_Time'].max(), freq='30T')
                 shifted_time_range = pd.date_range(start=data['Shifted_Time'].min(), end=data['Shifted_Time'].max(), freq='30T')
+                
+                # Combine the time ranges and sort them
                 combined_times = full_time_range.union(shifted_time_range).sort_values()
-                combined_numeric = combined_times.view(int) / 10**9
-                # 
-                interpolate_func = interp1d(combined_numeric, np.interp(combined_numeric, data['Shifted_Time'].view(int) / 10**9, data['Values']), bounds_error=False, fill_value="extrapolate")
-                # Now interpolate back to the original half-hour marks
+                
+                # Convert combined_times to Unix timestamps in seconds
+                combined_numeric = combined_times.astype(np.int64) // 10**9
+                
+                # Convert Shifted_Time to Unix timestamps in seconds
+                shifted_time_seconds = data['Shifted_Time'].astype(np.int64) // 10**9
+                
+                # Create the interpolation function
+                interpolate_func = interp1d(
+                    combined_numeric,
+                    np.interp(combined_numeric, shifted_time_seconds, data['Values']),
+                    bounds_error=False,
+                    fill_value="extrapolate"
+                )
+                
+                # Interpolate back to the original half-hour marks
                 original_half_hour_marks = pd.date_range(start=data['Timestamp'].min(), end=data['Timestamp'].max(), freq='30T')
-                original_half_hour_numeric = original_half_hour_marks.view(int) / 10**9
+                original_half_hour_numeric = original_half_hour_marks.astype(np.int64) // 10**9
+                
+                # Get the interpolated values
                 interpolated_values = interpolate_func(original_half_hour_numeric)
+                
+                # Create the result DataFrame
                 result_data = pd.DataFrame({'Timestamp': original_half_hour_marks, 'Interpolated_Value': interpolated_values})
                 
+                # Extract original frequency data
                 original_frequency_data = result_data.iloc[::2].reset_index(drop=True)
-                ukcy.append({'UKC4 Model':np.array(original_frequency_data['Interpolated_Value'])})
-
+                ukcy.append({'UKC4 Model': np.array(original_frequency_data['Interpolated_Value'])})
             tidx = []    
             for kio, item in enumerate(self.tidex):
                 new_tide_vaue = item['Measured Tide Gauge'] - 0.5

@@ -26,6 +26,7 @@ import o_func.utilities as util
 import subprocess
 import pkg_resources
 import platform
+import glob
 
 
 #b20_mean_discharge = means[:51]
@@ -67,6 +68,8 @@ plt.legend()
 uk_lon_min, uk_lon_max = -3.65, -2.75
 uk_lat_min, uk_lat_max = 53.20, 54.52
 
+# how did I get this information? 
+
 riv_dict = {129: 'Esk',
             124: 'Leven',
             125: 'Kent',
@@ -88,6 +91,28 @@ additional_coords = {
     'Ribble': (-2.811633371553361, 53.74817881546817),
     'Wyre': (-2.955520867395822, 53.85663354235163)
 }
+
+#%% Production of index 
+# Function to find the closest grid point
+river_names = []
+rows = []
+cols = []
+
+# Iterate through each river in the dictionary
+for row_idx, river_name in riv_dict.items():
+    river_names.append(river_name)
+    rows.append(row_indices[row_idx])
+    cols.append(col_indices[row_idx])
+    
+    
+
+# Create the DataFrame
+river_index_df = pd.DataFrame({
+    'River': river_names,
+    'Row Index': rows,
+    'Col Index': cols
+})
+#%% 
 
 shapefile_path = start_path + "modelling_DATA/kent_estuary_project/land_boundary/QGIS_Shapefiles/UK_WEST_KENT_EPSG_4326_clipped_med_domain.shp"
 gdf = gpd.read_file(shapefile_path)
@@ -372,18 +397,20 @@ def add_river_data(bc_paths):
         #prim_rivers
         generate_bc_files(prim_dataframe, "2013-10-30", riv_dump_csv)
         file_stitcher(riv_dump_csv, riv_in_primea_path)
+        
+    return discharge_rivers_df_year
 if __name__ == '__main__':
+    pass
     import glob
-    # We are adding in a function here to save the data to a modelling file path. 
     main_path = join(start_path, r'modelling_DATA','kent_estuary_project',r'7.met_office')
     make_paths = DirGen(main_path)
     fn = glob.glob(join(main_path,'models','*'))[0]
     sub_path = make_paths.dir_outputs(os.path.split(fn)[1]) # Dealing with this model run. 
     bc_paths = make_paths.bc_outputs()
     
-    add_river_data(bc_paths)
+    discharge_rivers_df_year = add_river_data(bc_paths)
     
-    
+    discharge_rivers_df_year.Ribble.to_csv('river_data.csv')
     
     
     

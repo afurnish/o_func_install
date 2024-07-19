@@ -32,20 +32,25 @@ def coastline(start_p):
 
     return UKWEST_coastline
 
-def UKC3_area(start_p):
+def UKC3_area(start_path):
     import glob
+    import os 
     import xarray as xr
     import matplotlib.pyplot as plt
-
+    def find_first_t_nc(filenames):
+        for filename in filenames:
+            if filename.endswith('T.nc'):
+                return filename
+        return None
     
-    path = r'Original Data/UKC3/owa/shelftmb' #path for hourly data
-    full_path = start_p + path + '/*'
+    path = r'Original_Data/UKC3/sliced/owa/shelftmb_cut_to_domain' #path for hourly data
+    full_path = os.path.join(start_path, path, '*')
     
     d = []
     for filename in glob.glob(full_path):
         d.append(filename)
     
-    T = xr.open_dataset(d[0])
+    T = xr.open_dataset(find_first_t_nc(d))
     fig, ax = plt.subplots(figsize=(30,30))
 
     z = T.sossheig.values[0,:,:]

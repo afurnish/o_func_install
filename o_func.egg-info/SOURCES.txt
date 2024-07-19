@@ -13,6 +13,7 @@ o_func/near_neigh.py
 o_func/net.py
 o_func/obs_model_ukep.py
 o_func/para_proc.py
+o_func/quick_gif_maker.py
 o_func/shape.py
 o_func/stats.py
 o_func/test.py
@@ -21,6 +22,9 @@ o_func.egg-info/PKG-INFO
 o_func.egg-info/SOURCES.txt
 o_func.egg-info/dependency_links.txt
 o_func.egg-info/top_level.txt
+o_func/INVEST/EBM_river_maker.py
+o_func/INVEST/bc_plotter.py
+o_func/INVEST/tide_plotter_for_river.py
 o_func/data/SCW_files/dimr_config.xml
 o_func/data/SCW_files/exclude-list.txt
 o_func/data/SCW_files/submit.q
@@ -47,6 +51,7 @@ o_func/data_prepkit/gen_directory.py
 o_func/data_prepkit/gen_interp_grid_dataset.py
 o_func/data_prepkit/gen_video.py
 o_func/data_prepkit/locations.py
+o_func/data_prepkit/make_3d_pli.py
 o_func/data_prepkit/open_nc.py
 o_func/data_prepkit/ukc3_river_to_primea.py
 o_func/data_prepkit/view_estuary_box.py
@@ -89,4 +94,5 @@ o_func/utilities/near_neigh.py
 o_func/utilities/scw_regrid.py
 o_func/utilities/start.py
 o_func/utilities/tidal_constants.py
+o_func/utilities/time_to_seconds.py
 o_func/utilities/transforms.py

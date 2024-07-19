@@ -21,7 +21,7 @@ import pkg_resources
 import platform
 import time
 #homemade packages. 
-from o_func.utilities.choices import DataChoice
+# from o_func.utilities.choices import DataChoice
 import o_func.utilities as util
 from o_func.data_prepkit import primea_bounds_for_ukc4_slicing  # import boundaries of primea model in ukc4 lon and lats
 from o_func import DirGen , opsys; start_path = opsys()
@@ -92,9 +92,17 @@ BoundaryConditionTypes = {
         'script_name': 'uxuyadvectionvelocitybnd:ux,uy',
         'units': 'm/s',
         'function': 't3d',
-        'filetype': 'UV'
+        'filetype': 'UV', 
+        'quantity': ['ux', 'uy'],
     }
 }
+
+variable_map = {
+    'surface_height': {'above_threshold': 'zos', 'below_threshold': 'sossheig'},
+    'temperature': {'above_threshold': 'temp_high', 'below_threshold': 'temp_low'},
+    # Add more variables as needed
+}
+
 
 def string_to_slice(sliced_str):
     parts = sliced_str.split(':')
@@ -146,14 +154,20 @@ def find_index(lonval, latval, lonarray, latarray):
     common_indices_list = common_indices.tolist()[0]
     return common_indices_list
 
-def UKC3_testcase(full_path):
+def UKC3_testcase(full_path, layer):
     """ Collect latitude and longitude data from UKC4 datasets.
     """
     first = sorted(glob.glob( join(full_path,'*')))[0]
     T = xr.open_dataset(first, engine = 'netcdf4')
-    z = T.sossheig.values[0,:,:]
+    
+    if layer <= 3: # handling hourly vs daily datasets which have different variables
+        z = T.sossheig.values[0,:,:]
+    else:
+        z = T.zos.values[0,:,:]
+        
     x = T.nav_lon.values
     y = T.nav_lat.values
+        
     return x,y,z
 
 def blank_pli(path, dirname):
@@ -215,14 +229,14 @@ def pli_reader(pli_file):
 
     return extracted_columns
 #%% Main Scripts
-def write_pli_file_names(forcing_data_path, fn):
+def write_pli_file_names(forcing_data_path, fn, layer = 1, pliname = '001_delft_ocean_boundary_UKC3_b601t688_length-87_points.pli'):
     """ This is part of a main function to 
     """
     pli_file = glob.glob(join(fn,'run*', '*points.pli'))[0] # reads pli file from first data entry. 
     
     pli_destination = join(os.path.split((os.path.split(fn)[0]))[0], 'files_bc')
     loc_bounds = primea_bounds_for_ukc4_slicing() # Collect min/max bounds from the UKC4 NEMO grid. 
-    user_dict['x'],user_dict['y'],z = UKC3_testcase(forcing_data_path)      # Collect a sample of latitude and longitude for manipulation later.
+    user_dict['x'],user_dict['y'],z = UKC3_testcase(forcing_data_path, layer)      # Collect a sample of latitude and longitude for manipulation later.
     user_dict
     lower = find_index(loc_bounds['South']['lon'],loc_bounds['South']['lat'],user_dict['x'], user_dict['y']) # Collects the index of the South, 
     upper = find_index(loc_bounds['North']['lon'],loc_bounds['North']['lat'],user_dict['x'], user_dict['y']) # and North points from the NEMO dataset. 
@@ -239,12 +253,13 @@ def write_pli_file_names(forcing_data_path, fn):
 
     
     
-    dirname = '001_delft_ocean_boundary_UKC3_b601t688_length-' + str(len(user_dict['pli_long'])) + '_points' # Should be read in from pli. 
+    # dirname = '001_delft_ocean_boundary_UKC3_b601t688_length-' + str(len(user_dict['pli_long'])) + '_points' # Should be read in from pli. 
+    dirname = pliname
     filepath = join(pli_destination, dirname)
     blank_pli(filepath, dirname) # This generates a pli file in the directory of the model you wish to run. 
     user_dict['var_path'] = forcing_data_path
     
-def prepare_model_data():
+def prepare_model_data(layers):
     T_path = join(user_dict['var_path'],'*T.nc')
     U_path = join(user_dict['var_path'],'*U.nc')
     V_path = join(user_dict['var_path'],'*V.nc')
@@ -259,8 +274,13 @@ def prepare_model_data():
         
     df = pd.DataFrame()
     dataset = xr.open_dataset(all_files[0][0])#start_path + r'Original_Data/UKC3/NEMO_shelftmb/UKC4aow_1h_20131130_20131130_shelftmb_grid_T.nc')
-    lon = dataset.sossheig.nav_lon.values
-    lat = dataset.sossheig.nav_lat.values
+    
+    if layers > 3:  
+        threshold = variable_map['surface_height']['above_threshold']
+    else:
+        threshold = variable_map['surface_height']['below_threshold']
+    lon = dataset[threshold].nav_lon.values
+    lat = dataset[threshold].nav_lat.values
     combined_x_y_arrays = np.dstack([lon.ravel(),lat.ravel()])[0]
     df["Lon"], df["Lat"] = combined_x_y_arrays.T
     
@@ -323,7 +343,7 @@ def prepare_model_data():
             file_ripper(store)
             if p == 'y':
                 indexer = Filetype_to_index[store[0]]
-                para_file_rip(all_files[indexer], store[0])
+                para_file_rip(all_files[indexer], store[0], layers)
             else:
                 non_para_file_rip(all_files[indexer], store[0])
             file_stitcher()
@@ -344,7 +364,10 @@ def file_ripper(store):
     print('Paths to send to file cruncher', var_list)
     
 def data_extractor(data_from_dict):
+    
     raw_data = []
+
+    
     for names in user_dict['var_list']:
         ls = user_dict['lhs']
         rs = user_dict['rhs']
@@ -353,6 +376,7 @@ def data_extractor(data_from_dict):
         print('Names  ', os.path.split(names)[-1])
         if os.path.split(names)[-1] == 'WaterLevel':
             dataset2 = []
+            
             dataset2.append(np.array(data_from_dict.sossheig[:, ls, rs]))
             
             time0 = data_from_dict.sossheig[0,:,:]
@@ -387,38 +411,54 @@ def data_extractor(data_from_dict):
                 dataset2.append('')
                 dataset2.append('')
             raw_data.append(dataset2)
-        if os.path.split(names)[-1] == 'NormalVelocity':
-            dataset2 = []
-            dataset2.append(np.array(data_from_dict.vozocrtx_top[:,ls,rs]))
-            if user_dict['layer'] > 1:
-                dataset2.append(np.array(data_from_dict.vozocrtx_mid[:,ls,rs]))
-                dataset2.append(np.array(data_from_dict.vozocrtx_bot[:,ls,rs]))
-            else:
-                dataset2.append('')
-                dataset2.append('')
-            raw_data.append(dataset2)
-        if os.path.split(names)[-1] == 'TangentVelocity':
-            dataset2 = []
-            dataset2.append(np.array(data_from_dict.vomecrty_top[:,ls,rs]))
-            if user_dict['layer'] > 1:
-                dataset2.append(np.array(data_from_dict.vomecrty_mid[:,ls,rs]))
-                dataset2.append(np.array(data_from_dict.vomecrty_bot[:,ls,rs]))
-            else:
-                dataset2.append('')
-                dataset2.append('')
-            raw_data.append(dataset2)
-        if os.path.split(names)[-1] == 'Velocity':
-            dataset2 = []
-            dataset2.append(np.array(data_from_dict.vozocrtx_top[:,ls,rs]))
-            dataset2.append(np.array(data_from_dict.vozocrtx_mid[:,ls,rs]))
-            dataset2.append(np.array(data_from_dict.vozocrtx_bot[:,ls,rs]))
-            dataset2.append(np.array(data_from_dict.vomecrty_top[:,ls,rs]))
-            dataset2.append(np.array(data_from_dict.vomecrty_mid[:,ls,rs]))
-            dataset2.append(np.array(data_from_dict.vomecrty_bot[:,ls,rs]))
-            
-            raw_data.append(dataset2)
+        if user_dict['layer'] == 1: # Generate Normal Velocity and Normal Velocity. 
+            if os.path.split(names)[-1] == 'NormalVelocity':
+                dataset2 = []
+                dataset2.append(np.array(data_from_dict.vozocrtx_top[:,ls,rs]))
+                if user_dict['layer'] > 1:
+                    dataset2.append(np.array(data_from_dict.vozocrtx_mid[:,ls,rs]))
+                    dataset2.append(np.array(data_from_dict.vozocrtx_bot[:,ls,rs]))
+                else:
+                    dataset2.append('')
+                    dataset2.append('')
+                raw_data.append(dataset2)
+            if os.path.split(names)[-1] == 'TangentVelocity':
+                dataset2 = []
+                dataset2.append(np.array(data_from_dict.vomecrty_top[:,ls,rs]))
+                if user_dict['layer'] > 1:
+                    dataset2.append(np.array(data_from_dict.vomecrty_mid[:,ls,rs]))
+                    dataset2.append(np.array(data_from_dict.vomecrty_bot[:,ls,rs]))
+                else:
+                    dataset2.append('')
+                    dataset2.append('')
+                raw_data.append(dataset2)
+        
+        else:
+            if os.path.split(names)[-1] == 'Velocity':
+                dataset2 = []
+                
+                # Check here to make sure the correct data is being passed, checl concatenated files. 
+                
+                dataset2.append(np.array(data_from_dict.vozocrtx_top[:,ls,rs])) # 0 
+                dataset2.append(np.array(data_from_dict.vozocrtx_mid[:,ls,rs])) # 1 
+                dataset2.append(np.array(data_from_dict.vozocrtx_bot[:,ls,rs])) # 2 UX ?
+                dataset2.append(np.array(data_from_dict.vomecrty_top[:,ls,rs])) # 3
+                dataset2.append(np.array(data_from_dict.vomecrty_mid[:,ls,rs])) # 4
+                dataset2.append(np.array(data_from_dict.vomecrty_bot[:,ls,rs])) # 5 vy ?
+                
+                
+                raw_data.append(dataset2)
     return raw_data
 
+def multi_data_extractor():
+    '''
+    Pulls out the total layers from the 
+
+    Returns
+    -------
+    None.
+
+    '''
 def write_header_bc(file_path, component, name, layer = 1, spacing = 'even'):
     spacing = 'ukc4'
     """
@@ -446,37 +486,56 @@ def write_header_bc(file_path, component, name, layer = 1, spacing = 'even'):
 
 
     ### MAY need to seperate this out depending on how the files are written, will mostly be editing water level and velocity. 
-        
+    layer_component = layer #user_dict['layer']     
     with open(file_path, "w") as f:
         f.write("[forcing]\n")
         f.write(f"Name                            = {name}\n")
-        f.write(f"Function                        = {function}\n")
+        if layer_component != 1:
+            f.write(f"Function                        = t3d\n")
+        else:
+            f.write(f"Function                        = {function}\n")
         f.write("Time-interpolation              = linear\n")
-        if user_dict['layer'] != 1:
+        if layer_component != 1:
             f.write("Vertical position type          = percentage from bed\n")
             f.write("Vertical position specification = ") 
             if spacing != 'even':
                 #f.write(self.spacing + "\n")
-                f.write("0 50 100\n")
+                f.write("33 67 100\n")
             else:
-                result = [(round(100 / user_dict['layer'] * i)) for i in range(1, user_dict['layer'] + 1)]
+                result = [(round(100 / layer_component * i)) for i in range(1, layer_component + 1)]
                 result_str = ' '.join(map(str, result))
                 f.write(f"{result_str}\n")
                 # Gives you 33 67 100
             f.write("Vertical interpolation          = linear\n")
         f.write("Quantity                        = time\n")
         f.write("Unit                            = seconds since " + user_dict['formatted_str'] + "\n")
-        if user_dict['layer'] == 'n':
+        if layer_component == 'n': # handles the looping of layers in the header file. 
             num_range = 1
+            velocity_factor = 1
         else:
-            num_range = user_dict['layer']
+            num_range = layer_component
+            if component == 'Velocity':
+                velocity_factor = 2
+            else:
+                velocity_factor = 1
         
-        for i in range(num_range):
-            f.write(f"Quantity                        = {scriptname}\n")
-            f.write(f"Unit                            = {units}\n")
-            if num_range > 1:
-                num = str(i+1)
-                f.write(f"Vertical position               = {num}\n")
+        if component == 'Velocity':
+            f.write(f"Vector                          = {scriptname}\n")
+        
+        for j in range(velocity_factor):
+            if velocity_factor == 1:
+                quantity_name = [scriptname, scriptname]
+            else:
+                quantity_name = items.get('quantity', 'Unknown')
+            
+            for i in range(num_range):
+                quant = quantity_name[j]
+                
+                f.write(f"Quantity                        = {quant}\n")
+                f.write(f"Unit                            = {units}\n")
+                if num_range > 1:
+                    num = str(i+1)
+                    f.write(f"Vertical position               = {num}\n")
         f.close()
         
 
@@ -484,15 +543,28 @@ def write_header_bc(file_path, component, name, layer = 1, spacing = 'even'):
     
 
 def main_body_data_writer(raw_data, iteration, df):
+    
+    '''
+    This part generates CSV files to be stored in the CSV dump which are later stitched together by bash
+    
+    It can seperate the layer data out when its in the top, middle bottom format. Check that its plotting top middle and bottom in the correct order. 
+    '''
     # self.old_j = []
     # self.new_j = []
-    for boundary_data in range(len(raw_data)):
-        
+    for boundary_data in range(len(raw_data)): # for 
+        '''
+        This loop goes through each dataset from T, U, V I think, it should also perhaps need to go through W when I add that for vertical layering. 
+        '''
+        # print(boundary_data)
         comp_name = user_dict['var_list'][boundary_data]
         print(comp_name)
         #print('comp_name')
         for j, n in enumerate(user_dict['name']):
-            # print(j)
+            # print(j, n)
+            '''
+            Loops though each point on the boundary condition later, e.g. point 1 to 87
+            '''
+            # DO NOT FLIP IT WAS FINE IN THE FIRST PLACE, JUST USED ACTUAL VALUES
             if flip == 'y':
                 newj = j#(j+1)*-1 # or regular j This code flips the plotting upside down
             else:
@@ -508,27 +580,66 @@ def main_body_data_writer(raw_data, iteration, df):
                 with open(filename, 'w') as f:
                     f.write('') # reset files for fresh data when you rerun
                 #layer = 1
-                write_header_bc(filename, os.path.split(comp_name)[-1], n, layer = user_dict['layer'])
+                if os.path.split(comp_name)[-1] != 'WaterLevel':
+                    lay = user_dict['layer']
+                else:
+                    lay = 1
+                print (lay, type(lay))
+                write_header_bc(filename, os.path.split(comp_name)[-1], n, layer = lay)
+                
+                
+            # Write the actual data to the file, this works
             if user_dict['layer'] == 1:
                 # This bit adds in the columns for the dataframes which means you get 3 layers deep of data. 
                 #print('raw_data',raw_data)
-                df['data'] = raw_data[boundary_data][0][:,newj]
+                df['top'] = raw_data[boundary_data][0][:,newj]
                 # self.old_j.append(raw_data[boundary_data][0][:,j])
                 # self.new_j.append(raw_data[boundary_data][0][:,newj])
-                
-                
-            elif user_dict['layer'] == 3: 
-                
-                df['bottom'] = raw_data[boundary_data][2][:,newj]
-                df['middle'] = raw_data[boundary_data][1][:,newj]
-                df['top'] = raw_data[boundary_data][0][:,newj]
+            elif user_dict['layer'] == 3:
+                if os.path.split(comp_name)[-1] == 'WaterLevel':
+                    df['top'] = raw_data[boundary_data][0][:,newj]
+                    # Handle specific cases, where water level only has one layer. 
+                elif os.path.split(comp_name)[-1] == 'Velocity':
+                    df['uxbottom'] = raw_data[boundary_data][2][:,newj]
+                    df['uxmiddle'] = raw_data[boundary_data][1][:,newj]
+                    df['uxtop'] = raw_data[boundary_data][0][:,newj]
+                    df['uybottom'] = raw_data[boundary_data][5][:,newj]
+                    df['uymiddle'] = raw_data[boundary_data][4][:,newj]
+                    df['uytop'] = raw_data[boundary_data][3][:,newj]
+                    '''
+                    Here I need to handle the columnsn for the velocity data, so for example top middle bottom, top middle bottom inline with the header file. 
+                    This case is only for 3 layer velocity, would need to be changed for more layer capability handling. 
+                    '''
+                else:
+                    # Anything else for 3 layers just gets 3 layers. 
+                    user_dict['sample_raw_data'] = raw_data
+                    print('------DATA-LOGGING-------')
+                    '''
+                    The error here seems to come from the way the raw data has been concatendated, there is 2 layers when there should only be one
+                    '''
+                    print('Comp Name ', comp_name)
+                    print('Boundary Data, newj ', boundary_data, newj)
+                    df['bottom'] = raw_data[boundary_data][2][:,newj]
+                    df['middle'] = raw_data[boundary_data][1][:,newj]
+                    df['top'] = raw_data[boundary_data][0][:,newj]
                 
                 # So you get Bottom Middle Top or just Top 
             
             #print('dataframe',df)
             df.to_csv(filename, header = False, index = False, sep = ' ', mode = 'a')
-        
-def para_file_rip(all_files, store):
+       
+def check_list_contents(lst):
+    if isinstance(lst, list):
+        if isinstance(lst[0], list):
+            return 'list of lists'
+        elif isinstance(lst[0], str):
+            return 'list of strings'
+        else:
+            return 'unknown'
+    else:
+        return 'not a list'    
+
+def para_file_rip(all_files, store, layers):
     '''
     Only works with smaller datasets otherwise dask throws a fit. 
     So this is the one that the program runs on,
@@ -538,13 +649,27 @@ def para_file_rip(all_files, store):
     # Key does not exist, perform the operation
     keyname = 'data_' + store
     if keyname not in user_dict:
-        user_dict[keyname] = xr.open_mfdataset(all_files, parallel=True, engine='netcdf4')#, chunks =  {'time_counter':100})
+        print('all_files = ', all_files)
+        list_check = check_list_contents(all_files)
+        if list_check == 'list of strings':
+            print('True :', keyname)
+            user_dict[keyname] = xr.open_mfdataset(all_files, parallel=True, engine='netcdf4')#, chunks =  {'time_counter':100})
+        else: # handle list of lists for uv scenario
+            
+            templist1 = xr.open_mfdataset(all_files[0], parallel=True, engine='netcdf4')#, chunks =  {'time_counter':100})
+            templist2 = xr.open_mfdataset(all_files[1], parallel=True, engine='netcdf4')#, chunks =  {'time_counter':100})
+            user_dict[keyname] = xr.merge([templist1, templist2], compat='override')
         user_dict['formatted_str'] = user_dict[keyname].time_counter[0].dt.strftime('%Y-%m-%d %H:%M:%S').item()
     
     time = convert_to_seconds_since_date(user_dict[keyname].time_counter,user_dict['formatted_str']) # why is this start time so rigid. 
     df = pd.DataFrame()
     df['time'] = [re.sub(r'[^0-9-]', '', str(i)) for i in time]
-    raw_data = data_extractor(user_dict[keyname]) # This is the process that pulls out the data from UKC4. 
+    
+    if layers > 3:
+        raw_data = multi_data_extractor(user_dict[keyname])
+    else:
+        print(keyname)
+        raw_data = data_extractor(user_dict[keyname]) # This is the process that pulls out the data from UKC4. 
     main_body_data_writer(raw_data,0,df)
     
 
@@ -571,7 +696,7 @@ def file_stitcher():
             subprocess.call([r"bash", bash_script_path, output_file_path] + data_paths)
         
 
-def write_bc_forcing_file(component, bc_paths, layer = 1):
+def write_bc_forcing_file(component, bc_paths, layer = 1, interpolate = 'no'):
     user_dict['layer'] = layer
     error = 'You need to create the Velocity.bc file which is the 3d tangent/normal velocities'
     if layer > 1 and 'WaterLevel.bc' in component:
@@ -595,33 +720,78 @@ def write_bc_forcing_file(component, bc_paths, layer = 1):
     csv_path = util.md([user_dict['layer_path'],'dump_CSV'])
     user_dict['csv_path'] = csv_path
     user_dict['component'] = component
-    prepare_model_data()
+    prepare_model_data(layer)
 
+def delete_csv_files(directory_path):
+    """
+    Delete all CSV files in the specified directory.
+
+    Parameters:
+    directory_path (str): The path to the directory containing the CSV files to be deleted.
+    """
+    # Get all CSV files in the directory
+    files_to_delete = glob.glob(os.path.join(directory_path, '*.csv'))
+
+    # Loop through the list of files and delete them
+    for file in files_to_delete:
+        try:
+            os.remove(file)
+            print(f"Deleted file: {file}")
+        except Exception as e:
+            print(f"Error deleting file {file}: {e}")
+
+    print("All specified files deleted.")
 
 #%% Run the program
 if __name__ == '__main__':
-    main_path = join(start_path, r'modelling_DATA','kent_estuary_project',r'7.met_office')
+    main_path = join(start_path, r'modelling_DATA','kent_estuary_project',r'11.3d_testing')
     make_paths = DirGen(main_path)
-    fn = glob.glob(join(main_path,'models','*'))[0]
+    fn = os.path.join(start_path, 'modelling_DATA','kent_estuary_project','7.met_office','models','PRIMEA2D_ogUMk')#glob.glob(join(main_path,'models','*'))[0]
     sub_path = make_paths.dir_outputs(os.path.split(fn)[1]) # Dealing with this model run. 
     bc_paths = make_paths.bc_outputs()
     
-    model_data = 'oa_riv'
+    ## Run single layer model outputs. 
+    
+    # model_data = 'oa_riv'
+    # full_path = join(start_path, 'Original_Data' ,'UKC3','sliced',model_data,'shelftmb_cut_to_domain')
+    # model_data_dict = {'oa' :bc_paths[1][1],
+    #                    'owa':bc_paths[1][2],
+    #                    'ow' :bc_paths[1][3],
+    #                    'og' :bc_paths[1][0],
+    #                    'oa_riv' :bc_paths[1][4],
+    #                    'og_mersea':bc_paths[1][5],
+    #                    }
+    
+    # forcing_data_path = join(start_path, 'Original_Data' ,'UKC3','sliced',model_data,'shelftmb_cut_to_domain')
+
+    # write_pli_file_names(forcing_data_path, fn)
+    
+    # write_bc_forcing_file(layer = 1, component = ['WaterLevel','Salinity','Temperature', 'NormalVelocity','TangentVelocity'],
+    #                       bc_paths = model_data_dict[model_data])
+    
+    
+#%% Running multilayer models
+    '''
+    3 layers run from the original dataset that I have been using 
+    
+    anything more will take from the 50 layer dataset and instead of hourly outputs give daily outputs. 
+    set up temporary example with the diff file conditions. 
+    '''
+    pli_name = '3d_005_delft_ocean_boundary_UKC3_b76t163_length-87_points'
+    model_data = 'og'
     full_path = join(start_path, 'Original_Data' ,'UKC3','sliced',model_data,'shelftmb_cut_to_domain')
     model_data_dict = {'oa' :bc_paths[1][1],
                        'owa':bc_paths[1][2],
                        'ow' :bc_paths[1][3],
                        'og' :bc_paths[1][0],
-                   'oa_riv' :bc_paths[1][4],
-                            }
+                       'oa_riv' :bc_paths[1][4],
+                       'og_mersea':bc_paths[1][5],
+                       }
+    
+    
     forcing_data_path = join(start_path, 'Original_Data' ,'UKC3','sliced',model_data,'shelftmb_cut_to_domain')
-
-    write_pli_file_names(forcing_data_path, fn)
+    write_pli_file_names(forcing_data_path, fn, layer = 3, pliname = pli_name)
+    write_bc_forcing_file(layer = 3, component = ['WaterLevel','Salinity','Temperature','Velocity'],
+                          bc_paths = model_data_dict[model_data], interpolate = 'yes')
     
-    
-    
-    write_bc_forcing_file(layer = 1, component = ['WaterLevel','Salinity','Temperature', 'NormalVelocity','TangentVelocity'],
-                          bc_paths = model_data_dict[model_data])
-    
-    
-    # Build up the boundary condition files.    
+    delete_csv_files(user_dict['csv_path'])
