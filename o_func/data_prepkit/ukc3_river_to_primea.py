@@ -10,7 +10,7 @@ Created on Thu Mar  7 12:15:29 2024
 
 @author: af
 """
-
+extra_detail_plots = 'y'
 import os
 import xarray as xr
 import numpy as np
@@ -37,40 +37,52 @@ runoff = np.array(data.rorunoff[0,:,:])
 non_zero_mask = np.where(runoff != 0.0)
 row_indices, col_indices = non_zero_mask
 
-lons = []
-lats = []
+# lons = []
+# lats = []
 
-for i in range(len(row_indices)):
-    lons.append(data.lon[row_indices[i], col_indices[i]].item())
-    lats.append(data.lat[row_indices[i], col_indices[i]].item())
+# for i in range(len(row_indices)):
+#     lons.append(data.lon[row_indices[i], col_indices[i]].item())
+#     lats.append(data.lat[row_indices[i], col_indices[i]].item())
+# Extract the corresponding latitude and longitude for the non-zero points
+lons = [data.lon[row, col].item() for row, col in zip(row_indices, col_indices)]
+lats = [data.lat[row, col].item() for row, col in zip(row_indices, col_indices)]
 
 # Define the UK's latitude and longitude bounds for the first plot
 uk_lon_min, uk_lon_max = -10.5, 2
 uk_lat_min, uk_lat_max = 49, 61.5
-
+#%%
 fig = plt.figure(figsize=(10, 8), dpi = 150)
 ax = plt.axes(projection=ccrs.PlateCarree())
 ax.set_extent([uk_lon_min, uk_lon_max, uk_lat_min, uk_lat_max])
+point_indices = np.arange(0, len(lons))
 ax.add_feature(cfeature.COASTLINE, linewidth=1.0, edgecolor='red')
 ax.add_feature(cfeature.BORDERS, linewidth=0.5, linestyle='dotted', edgecolor='black')
 ax.scatter(lons, lats, marker='o', color='blue', label='River Climatology Discharge')
+for lontest, lattest, indtext in zip(lons, lats, point_indices):
+    ax.text(lontest - 0.02, lattest + 0.01, f'{indtext}', ha='center', va='bottom', fontsize=10, color='blue')
+
 ax.set_xlabel('Longitude')
 ax.set_ylabel('Latitude')
 uk_extent_lon = np.linspace(-10, 2, 13)
 uk_extent_lat = np.linspace(48, 62, 15)
 
-ax.set_xticks(uk_extent_lon, crs=ccrs.PlateCarree())
-ax.set_yticks(uk_extent_lat, crs=ccrs.PlateCarree())
+# SET TO WIDE UK EXTENT
+# ax.set_xticks(uk_extent_lon, crs=ccrs.PlateCarree())
+# ax.set_yticks(uk_extent_lat, crs=ccrs.PlateCarree())
 
 plt.legend()
 
+#%%
 # Define the UK's latitude and longitude bounds for the second plot
 uk_lon_min, uk_lon_max = -3.65, -2.75
 uk_lat_min, uk_lat_max = 53.20, 54.52
 
-# how did I get this information? 
+# how did I get this information? Good question Aaron, I still don't know. 
+# This was probably plotted each one sequentically and you read the numvers, 
+latitudes = data['lat'].values
+longitudes = data['lon'].values
 
-riv_dict = {129: 'Esk',
+riv_dict = {129: 'Esk',     # These are all indexed from 1, not 0. 1 less from each. 
             124: 'Leven',
             125: 'Kent',
             120: 'Lune',
@@ -81,6 +93,7 @@ riv_dict = {129: 'Esk',
             101: 'Dee',
             103: 'Clywd'
             }
+riv_dict = {i - 1: name for i, name in riv_dict.items()}
 additional_coords = {
     'Dee': (-3.118638742308569, 53.24982016910892),
     'Duddon': (-3.230547161208941, 54.25887801158542),
@@ -91,7 +104,38 @@ additional_coords = {
     'Ribble': (-2.811633371553361, 53.74817881546817),
     'Wyre': (-2.955520867395822, 53.85663354235163)
 }
+# Initialize a dictionary to store the (nx, ny) indices for each river
+river_grid_indices = {}
 
+# Function to find the nearest grid point index
+def find_matching_index(latitudes, longitudes, target_lat, target_lon):
+    # Calculate the absolute differences
+    abs_diff_lat = np.abs(latitudes - target_lat)
+    abs_diff_lon = np.abs(longitudes - target_lon)
+    # Sum of absolute differences across lat and lon dimensions
+    total_diff = abs_diff_lat + abs_diff_lon
+    # Find the index of the minimum difference
+    min_diff_idx = np.unravel_index(np.argmin(total_diff), total_diff.shape)
+    return min_diff_idx
+
+# Loop over each river to find the corresponding grid indices
+for idx, (river_name) in riv_dict.items():
+    print(idx)
+    # Retrieve the corresponding latitude and longitude for the river
+    river_lat = lats[idx]
+    print(river_lat)
+    river_lon = lons[idx]
+    print(river_lon)
+    
+    # Find the matching grid index for the given coordinates
+    ny, nx = find_matching_index(latitudes, longitudes, river_lat, river_lon)
+    
+    # Store the indices in the dictionary
+    river_grid_indices[river_name] = (ny, nx)
+
+# Display the grid indices for each river
+for river_name, (ny, nx) in river_grid_indices.items():
+    print(f'River: {river_name}, Grid Indices: (ny: {ny}, nx: {nx})')
 #%% Production of index 
 # Function to find the closest grid point
 river_names = []
@@ -132,14 +176,26 @@ ax.set_yticks(uk_extent_lat, crs=ccrs.PlateCarree())
 # Label each point with a number from 1 to n
 # Label each point with a number from 1 to n and the corresponding river name
 # Label each point with a number from 1 to n and the corresponding river name
-for i, (lon, lat) in enumerate(zip(lons, lats), start=1):
-    if i in riv_dict:
-        ax.text(lon - 0.02, lat + 0.01, f'{riv_dict[i]}', ha='center', va='bottom', fontsize=10, color='blue')
-        # ax.text(lon + 0.02, lat - 0.05, f'{i}\n{riv_dict[i]}', ha='center', va='bottom', fontsize=10, color='green')
-    
-    # else:
-    #     ax.text(lon + 0.02, lat - 0.02, str(i), ha='center', va='bottom', fontsize=10, color='black')
 
+
+# for i, (lon, lat) in enumerate(zip(lons, lats), start=1):
+#     if i in riv_dict:
+#         ax.text(lon - 0.02, lat + 0.01, f'{riv_dict[i]}', ha='center', va='bottom', fontsize=10, color='blue')
+# Plotting the river discharge points and their respective indices and names
+for i, (lon, lat) in enumerate(zip(lons, lats)):
+    # Check if the index corresponds to a river in the dictionary
+    if i in riv_dict:
+        # Get the river name from the dictionary
+        river_name = riv_dict[i]
+        # Get the corresponding row and column indices
+        row_idx = row_indices[i]
+        col_idx = col_indices[i]
+        # Plot the river name and optionally the row and column indices
+        ax.text(lon - 0.02, lat + 0.01, f'{river_name}', ha='center', va='bottom', fontsize=10, color='blue')
+        if extra_detail_plots == 'y':
+            ax.text(lon - 0.02, lat - 0.02, f'({row_idx}, {col_idx})', ha='center', va='top', fontsize=8, color='red')
+
+    
 first_river_plotted = False
 for river, (lon, lat) in additional_coords.items():
     if not first_river_plotted:
