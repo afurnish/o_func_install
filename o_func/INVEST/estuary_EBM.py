@@ -11,6 +11,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import time
+import math
 from o_func import opsys; start_path = Path(opsys())
 
 
@@ -153,16 +154,21 @@ sh_buffer = 0    # Buffer for sea height extraction (or similar)
 x_coords = np.array([data['xy']['x'] for data in estuary_data.values()])
 y_coords = np.array([data['xy']['y'] for data in estuary_data.values()])
 
-# Define the range of indices for the buffer
-buffer_range = np.arange(-rofi_buffer, rofi_buffer + 1)
+# Create buffer ranges for both buffers
+rofi_range = np.arange(-rofi_buffer, rofi_buffer + 1)
+sh_range = np.arange(-sh_buffer, sh_buffer + 1)
 
-# Create the 2D grid for the buffer (e.g., 17x17)
-x_offsets, y_offsets = np.meshgrid(buffer_range, buffer_range, indexing='ij')
+# Create grids for both buffers
+rofi_x_offsets, rofi_y_offsets = np.meshgrid(rofi_range, rofi_range, indexing='ij')
+sh_x_offsets, sh_y_offsets = np.meshgrid(sh_range, sh_range, indexing='ij')
 
 
 # Apply offsets to the x and y coordinates
-x_indices = (x_coords[:, np.newaxis, np.newaxis] + x_offsets).clip(0, Udata.sizes['x'] - 1)
-y_indices = (y_coords[:, np.newaxis, np.newaxis] + y_offsets).clip(0, Udata.sizes['y'] - 1)
+rofi_x_indices = (x_coords[:, np.newaxis, np.newaxis] + rofi_x_offsets).clip(0, Udata.sizes['x'] - 1)
+rofi_y_indices = (y_coords[:, np.newaxis, np.newaxis] + rofi_y_offsets).clip(0, Udata.sizes['y'] - 1)
+
+sh_x_indices = (x_coords[:, np.newaxis, np.newaxis] + sh_x_offsets).clip(0, Udata.sizes['x'] - 1)
+sh_y_indices = (y_coords[:, np.newaxis, np.newaxis] + sh_y_offsets).clip(0, Udata.sizes['y'] - 1)
 
 # Open datasets with Dask to handle large files
 Tdata = xr.open_mfdataset(Tfiles, combine='by_coords', engine='h5netcdf', chunks={'time_counter': 100})
@@ -182,16 +188,15 @@ Vdata_subset = Vdata[V_variables]
 start_time = time.time()
 
 # Use advanced indexing to extract data
-sossheig_buffer = Tdata_subset['sossheig'].isel(x=(('points', 'x', 'y'), x_indices),
-                                                y=(('points', 'x', 'y'), y_indices)).compute().values
-sal_buffer = Tdata_subset['vosaline'].isel(x=(('points', 'x', 'y'), x_indices),
-                                           y=(('points', 'x', 'y'), y_indices)).compute().values
-velU_buffer = Udata_subset['vozocrtx'].isel(x=(('points', 'x', 'y'), x_indices),
-                                            y=(('points', 'x', 'y'), y_indices)).compute().values
-velV_buffer = Vdata_subset['vomecrty'].isel(x=(('points', 'x', 'y'), x_indices),
-                                            y=(('points', 'x', 'y'), y_indices)).compute().values
-
-# Measure the time taken
+sossheig_buffer = Tdata_subset['sossheig'].isel(x=(('points', 'x', 'y'), sh_x_indices),
+                                                y=(('points', 'x', 'y'), sh_y_indices)).compute().values
+sal_buffer = Tdata_subset['vosaline'].isel(x=(('points', 'x', 'y'), rofi_x_indices),
+                                           y=(('points', 'x', 'y'), rofi_y_indices)).compute().values
+velU_buffer = Udata_subset['vozocrtx'].isel(x=(('points', 'x', 'y'), rofi_x_indices),
+                                            y=(('points', 'x', 'y'), rofi_y_indices)).compute().values
+velV_buffer = Vdata_subset['vomecrty'].isel(x=(('points', 'x', 'y'), rofi_x_indices),
+                                            y=(('points', 'x', 'y'), rofi_y_indices)).compute().values
+t_raw  = Tdata_subset['time_counter'].values
 access_time = time.time() - start_time
 print(f"Access time with vectorized buffer extraction: {access_time:.2f} seconds")
 
@@ -201,40 +206,42 @@ print(f"sal buffer shape: {sal_buffer.shape}")
 print(f"velU buffer shape: {velU_buffer.shape}")
 print(f"velV buffer shape: {velV_buffer.shape}")
 
+if writemaps == 'y':
+    ## PLOT the estuary buffer locations for salinity 
+#%%
+    estuary_names = [key for key in estuary_data]  # Extract the names from the dictionary
+    # Determine the number of points (based on sal_buffer)
+    num_points = sal_buffer.shape[2]
+    # Determine the best subplot grid dimensions
+    cols = math.ceil(math.sqrt(num_points))  # Number of columns
+    rows = math.ceil(num_points / cols)      # Number of rows
+    fig, axes = plt.subplots(rows, cols, figsize=(cols * 5, rows * 5))
+    # Loop through each point and plot the salinity buffer
+    for i in range(num_points):
+        row, col = divmod(i, cols)
+        ax = axes[row, col] if num_points > 1 else axes
+        ax.pcolor(sal_buffer[0, 0, i, :, :], cmap='viridis')
+        ax.set_title(estuary_names[i])  # Set the title based on estuary name
+        # Only set the x-label for the bottom plots
+        if row == rows - 1:
+            ax.set_xlabel('X Index')
+        else:
+            ax.set_xticklabels([])
+        # Only set the y-label for the leftmost plots
+        if col == 0:
+            ax.set_ylabel('Y Index')
+        else:
+            ax.set_yticklabels([])
+    # Adjust layout to avoid overlap
+    plt.tight_layout()
+    
 
-# # Select data for the points of interest
-# Tdata_points = Tdata_subset.isel(x=x_indexer, y=y_indexer)
-# Udata_points = Udata_subset.isel(x=x_indexer, y=y_indexer)
-# Vdata_points = Vdata_subset.isel(x=x_indexer, y=y_indexer)
-
-# # Compute the results
-
-# # Compute the data to materialize Dask arrays as NumPy arrays
-# Tdata_values = Tdata_points.compute()
-# Udata_values = Udata_points.compute()
-# Vdata_values = Vdata_points.compute()
-
-# # Extract the NumPy arrays from the computed xarray objects
-# sossheig = Tdata_values['sossheig'].values
-# sal = Tdata_values['vosaline'].values
-# velU = Udata_values['vozocrtx'].values
-# velV = Vdata_values['vomecrty'].values
-# time_raw = Tdata_values.time_counter.values
-# # Measure the time taken
-# access_time = time.time() - start_time
-# print(f"Access time with xarray for selected variables: {access_time:.2f} seconds")
-
-# # Print shapes of resulting arrays for verification
-# print(f"sossheig shape: {sossheig.shape}")
-# print(f"sal shape: {sal.shape}")
-# print(f"velU shape: {velU.shape}")
-# print(f"velV shape: {velV.shape}")
 
 #%% At this point data variables are handled. Handle time here. 
 
-time = time_raw - np.timedelta64(30, 'm')
-start_time = time[0]
-stop_time = time[-1]
+t = t_raw - np.timedelta64(30, 'm')
+start_time = t[0]
+stop_time = t[-1]
 
 #%% Load river
 # Could be sped up but for the minute is sufficient. 
