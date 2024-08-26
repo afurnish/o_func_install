@@ -144,15 +144,27 @@ Vdata = xr.open_mfdataset(Tfiles, combine='by_coords', engine='h5netcdf', chunks
 
 #%% Speed up data for operations by converting everything to Numpy.
 # Example setup: Define the points of interest (replace with your actual points)
+# Doesnt need to access direct data locations at this point in time. 
+# Define constants
+rofi_buffer = 8  # Buffer to put data selection away from edge of land
+sh_buffer = 0    # Buffer for sea height extraction (or similar)
 
-x_coords = [data['xy']['x'] for data in estuary_data.values()]
-y_coords = [data['xy']['y'] for data in estuary_data.values()]
+# Example setup: Define the points of interest (replace with your actual points)
+x_coords = np.array([data['xy']['x'] for data in estuary_data.values()])
+y_coords = np.array([data['xy']['y'] for data in estuary_data.values()])
 
-# Create DataArray objects for indexing
-x_indexer = xr.DataArray(x_coords, dims="points")
-y_indexer = xr.DataArray(y_coords, dims="points")
+# Define the range of indices for the buffer
+buffer_range = np.arange(-rofi_buffer, rofi_buffer + 1)
 
-# Open datasets
+# Create the 2D grid for the buffer (e.g., 17x17)
+x_offsets, y_offsets = np.meshgrid(buffer_range, buffer_range, indexing='ij')
+
+
+# Apply offsets to the x and y coordinates
+x_indices = (x_coords[:, np.newaxis, np.newaxis] + x_offsets).clip(0, Udata.sizes['x'] - 1)
+y_indices = (y_coords[:, np.newaxis, np.newaxis] + y_offsets).clip(0, Udata.sizes['y'] - 1)
+
+# Open datasets with Dask to handle large files
 Tdata = xr.open_mfdataset(Tfiles, combine='by_coords', engine='h5netcdf', chunks={'time_counter': 100})
 Udata = xr.open_mfdataset(Ufiles, combine='by_coords', engine='h5netcdf', chunks={'time_counter': 100})
 Vdata = xr.open_mfdataset(Vfiles, combine='by_coords', engine='h5netcdf', chunks={'time_counter': 100})
@@ -167,58 +179,66 @@ Tdata_subset = Tdata[T_variables]
 Udata_subset = Udata[U_variables]
 Vdata_subset = Vdata[V_variables]
 
-# Select data for the points of interest
-Tdata_points = Tdata_subset.isel(x=x_indexer, y=y_indexer)
-Udata_points = Udata_subset.isel(x=x_indexer, y=y_indexer)
-Vdata_points = Vdata_subset.isel(x=x_indexer, y=y_indexer)
-
-# Compute the results
 start_time = time.time()
 
-# Compute the data to materialize Dask arrays as NumPy arrays
-Tdata_values = Tdata_points.compute()
-Udata_values = Udata_points.compute()
-Vdata_values = Vdata_points.compute()
-
-# Extract the NumPy arrays from the computed xarray objects
-sossheig = Tdata_values['sossheig'].values
-sal = Tdata_values['vosaline'].values
-velU = Udata_values['vozocrtx'].values
-velV = Vdata_values['vomecrty'].values
+# Use advanced indexing to extract data
+sossheig_buffer = Tdata_subset['sossheig'].isel(x=(('points', 'x', 'y'), x_indices),
+                                                y=(('points', 'x', 'y'), y_indices)).compute().values
+sal_buffer = Tdata_subset['vosaline'].isel(x=(('points', 'x', 'y'), x_indices),
+                                           y=(('points', 'x', 'y'), y_indices)).compute().values
+velU_buffer = Udata_subset['vozocrtx'].isel(x=(('points', 'x', 'y'), x_indices),
+                                            y=(('points', 'x', 'y'), y_indices)).compute().values
+velV_buffer = Vdata_subset['vomecrty'].isel(x=(('points', 'x', 'y'), x_indices),
+                                            y=(('points', 'x', 'y'), y_indices)).compute().values
 
 # Measure the time taken
 access_time = time.time() - start_time
-print(f"Access time with xarray for selected variables: {access_time:.2f} seconds")
+print(f"Access time with vectorized buffer extraction: {access_time:.2f} seconds")
 
 # Print shapes of resulting arrays for verification
-print(f"sossheig shape: {sossheig.shape}")
-print(f"sal shape: {sal.shape}")
-print(f"velU shape: {velU.shape}")
-print(f"velV shape: {velV.shape}")
+print(f"sossheig buffer shape: {sossheig_buffer.shape}")
+print(f"sal buffer shape: {sal_buffer.shape}")
+print(f"velU buffer shape: {velU_buffer.shape}")
+print(f"velV buffer shape: {velV_buffer.shape}")
+
+
+# # Select data for the points of interest
+# Tdata_points = Tdata_subset.isel(x=x_indexer, y=y_indexer)
+# Udata_points = Udata_subset.isel(x=x_indexer, y=y_indexer)
+# Vdata_points = Vdata_subset.isel(x=x_indexer, y=y_indexer)
+
+# # Compute the results
+
+# # Compute the data to materialize Dask arrays as NumPy arrays
+# Tdata_values = Tdata_points.compute()
+# Udata_values = Udata_points.compute()
+# Vdata_values = Vdata_points.compute()
+
+# # Extract the NumPy arrays from the computed xarray objects
+# sossheig = Tdata_values['sossheig'].values
+# sal = Tdata_values['vosaline'].values
+# velU = Udata_values['vozocrtx'].values
+# velV = Vdata_values['vomecrty'].values
+# time_raw = Tdata_values.time_counter.values
+# # Measure the time taken
+# access_time = time.time() - start_time
+# print(f"Access time with xarray for selected variables: {access_time:.2f} seconds")
+
+# # Print shapes of resulting arrays for verification
+# print(f"sossheig shape: {sossheig.shape}")
+# print(f"sal shape: {sal.shape}")
+# print(f"velU shape: {velU.shape}")
+# print(f"velV shape: {velV.shape}")
 
 #%% At this point data variables are handled. Handle time here. 
 
-
-#%% 
-
-vomecrty = Vdata.vomecrty
-vomecrty['time_counter'] = vomecrty['time_counter'] - np.timedelta64(30, 'm')
-vozocrtx = Udata.vozocrtx
-vozocrtx['time_counter'] = vozocrtx['time_counter'] - np.timedelta64(30, 'm')
-salinity = Tdata.vosaline 
-salinity['time_counter'] = salinity['time_counter'] - np.timedelta64(30, 'm')
-sh = Tdata.sossheig
-sh['time_counter'] = sh['time_counter'] - np.timedelta64(30, 'm')
-
-
-# Sort out the timesteps
-# Assuming salinity.time_counter is your DataArray containing the timestamps
-salinity_start_time = pd.to_datetime(salinity.time_counter[0].values)
-salinity_stop_time = pd.to_datetime(salinity.time_counter[-1].values)
-
+time = time_raw - np.timedelta64(30, 'm')
+start_time = time[0]
+stop_time = time[-1]
 
 #%% Load river
-def load_river_data(start_time, stop_time):
+# Could be sped up but for the minute is sufficient. 
+def load_river_data(start_time, stop_time, river_path, estuary_data):
     # Create a complete hourly time index from start_time to stop_time
     full_time_index = pd.date_range(start=start_time, end=stop_time, freq='H')
 
@@ -259,19 +279,13 @@ def load_river_data(start_time, stop_time):
             estuary_data[river_name]['discharge'] = filtered_data['Discharge'].to_numpy()
         else:
             print(f"River name {river_name} not found in dictionary.")
-            # estuary_data[river_name] = {
-            #     'time': filtered_data.index.to_numpy(),
-            #     'discharge': filtered_data['Discharge'].to_numpy()
-            # }
 
     return estuary_data
-    
-start_time = salinity_start_time#datetime(2013, 11, 1, 0)
-stop_time = salinity_stop_time#datetime(2013, 11, 30, 23)
-estuary_data = load_river_data(start_time, stop_time)
+
+estuary_data = load_river_data(start_time, stop_time, river_path, estuary_data)
 
 
-#%% EBM 
+#%% EBM Functions
 # Function to calculate segment means without ignoring any segment
 # def calculate_segment_means(salinity_series, discharge_series):
 #     segment_salinity_means = []
@@ -581,7 +595,7 @@ def extract_and_attach_data():
         print(f'Extract for ...{estuary}')
         est = estuary_data[estuary]
         # Case for handling 3 layers. Divide the layers equally, sigma layering. 
-        if vomecrty.deptht.size == 3:
+        if Vdata.deptht.size == 3:
             depth_coords = np.array([0, est['height_at_mouth']/2 ,est['height_at_mouth']])
         x = info['xy']['x']
         y = info['xy']['y']
