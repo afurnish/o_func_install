@@ -10,47 +10,40 @@ from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-#from datetime import datetime, timedelta
+import time
 from o_func import opsys; start_path = Path(opsys())
+
 
 path = start_path / Path('Original_Data/UKC3/og/shelftmb_combined_to_3_layers_for_tmb')
 river_path = start_path / Path('modelling_DATA/kent_estuary_project/river_boundary_conditions/original_river_data/processed')
+savepath = start_path / Path('modelling_DATA/EBM_PRIMEA/EBM_python/figures')
+
 writemaps = 'y'
 side = 'east'
 include_tidal = True
 
-Ufiles = []
-Vfiles = []
-Tfiles = []
-for file in path.glob('*.nc'):
-    if str(file).endswith('T.nc'):
-        Tfiles.append(file)
-    elif str(file).endswith('U.nc'):
-        Ufiles.append(file)
-    else:
-        Vfiles.append(file)
-    
-Tdata = xr.open_mfdataset(Tfiles)
-Udata = xr.open_mfdataset(Ufiles)
-Vdata = xr.open_mfdataset(Vfiles)
+real_data = 'y' # implement real or not real data
 
-vomecrty = Vdata.vomecrty
-vomecrty['time_counter'] = vomecrty['time_counter'] - np.timedelta64(30, 'm')
-vozocrtx = Udata.vozocrtx
-vozocrtx['time_counter'] = vozocrtx['time_counter'] - np.timedelta64(30, 'm')
-salinity = Tdata.vosaline 
-salinity['time_counter'] = salinity['time_counter'] - np.timedelta64(30, 'm')
-sh = Tdata.sossheig
-sh['time_counter'] = sh['time_counter'] - np.timedelta64(30, 'm')
-
-
-# Sort out the timesteps
-# Assuming salinity.time_counter is your DataArray containing the timestamps
-salinity_start_time = pd.to_datetime(salinity.time_counter[0].values)
-salinity_stop_time = pd.to_datetime(salinity.time_counter[-1].values)
-
+# If not real data, what do you want to implement for all estuaries.
+flow_speed = 100
+tide_cons = ['M2', 'S2']
 
 #%%  Estuary Dictionary
+# These coords are pulled from the river location discharge points, 
+# primarily for caqlculating tidal predictions as needed. 
+correct_coords = {
+    'Dee': (-3.118638742308569, 53.24982016910892),
+    'Duddon': (-3.230547161208941, 54.25887801158542),
+    'Kent': (-2.811861321397053, 54.25064484652686),
+    'Leven': (-3.052120073154467, 54.23186185336646),
+    'Lune': (-2.840884669179119, 54.03655050082423),
+    'Mersey': (-2.768434835109615, 53.34491510325321),
+    'Ribble': (-2.811633371553361, 53.74817881546817),
+    'Wyre': (-2.955520867395822, 53.85663354235163)
+}
+
+
+
 estuary_data = {
     'Dee': { 
         'latlon'         : {'lat': 34.0522, 'lon': -118.2437},
@@ -125,6 +118,103 @@ estuary_data = {
         'angle'          : 63,
     }
 }
+
+for estuary_name, coords in correct_coords.items():
+    if estuary_name in estuary_data:
+        lon, lat = coords
+        estuary_data[estuary_name]['latlon'] = {'lat': lat, 'lon': lon}
+
+#%% Collecting data paths and loading it into xarray. 
+
+Ufiles = []
+Vfiles = []
+Tfiles = []
+for file in path.glob('*.nc'):
+    if str(file).endswith('T.nc'):
+        Tfiles.append(file)
+    elif str(file).endswith('U.nc'):
+        Ufiles.append(file)
+    else:
+        Vfiles.append(file)
+    
+# Load lazaily using dask into xarray format
+Tdata = xr.open_mfdataset(Tfiles, combine='by_coords', engine='h5netcdf', chunks={'time_counter': 100})
+Udata = xr.open_mfdataset(Tfiles, combine='by_coords', engine='h5netcdf', chunks={'time_counter': 100})
+Vdata = xr.open_mfdataset(Tfiles, combine='by_coords', engine='h5netcdf', chunks={'time_counter': 100})
+
+#%% Speed up data for operations by converting everything to Numpy.
+# Example setup: Define the points of interest (replace with your actual points)
+
+x_coords = [data['xy']['x'] for data in estuary_data.values()]
+y_coords = [data['xy']['y'] for data in estuary_data.values()]
+
+# Create DataArray objects for indexing
+x_indexer = xr.DataArray(x_coords, dims="points")
+y_indexer = xr.DataArray(y_coords, dims="points")
+
+# Open datasets
+Tdata = xr.open_mfdataset(Tfiles, combine='by_coords', engine='h5netcdf', chunks={'time_counter': 100})
+Udata = xr.open_mfdataset(Ufiles, combine='by_coords', engine='h5netcdf', chunks={'time_counter': 100})
+Vdata = xr.open_mfdataset(Vfiles, combine='by_coords', engine='h5netcdf', chunks={'time_counter': 100})
+
+# Define the variables to extract
+T_variables = ['vosaline', 'sossheig']
+U_variables = ['vozocrtx']
+V_variables = ['vomecrty']
+
+# Extract only the variables of interest
+Tdata_subset = Tdata[T_variables]
+Udata_subset = Udata[U_variables]
+Vdata_subset = Vdata[V_variables]
+
+# Select data for the points of interest
+Tdata_points = Tdata_subset.isel(x=x_indexer, y=y_indexer)
+Udata_points = Udata_subset.isel(x=x_indexer, y=y_indexer)
+Vdata_points = Vdata_subset.isel(x=x_indexer, y=y_indexer)
+
+# Compute the results
+start_time = time.time()
+
+# Compute the data to materialize Dask arrays as NumPy arrays
+Tdata_values = Tdata_points.compute()
+Udata_values = Udata_points.compute()
+Vdata_values = Vdata_points.compute()
+
+# Extract the NumPy arrays from the computed xarray objects
+sossheig = Tdata_values['sossheig'].values
+sal = Tdata_values['vosaline'].values
+velU = Udata_values['vozocrtx'].values
+velV = Vdata_values['vomecrty'].values
+
+# Measure the time taken
+access_time = time.time() - start_time
+print(f"Access time with xarray for selected variables: {access_time:.2f} seconds")
+
+# Print shapes of resulting arrays for verification
+print(f"sossheig shape: {sossheig.shape}")
+print(f"sal shape: {sal.shape}")
+print(f"velU shape: {velU.shape}")
+print(f"velV shape: {velV.shape}")
+
+#%% At this point data variables are handled. Handle time here. 
+
+
+#%% 
+
+vomecrty = Vdata.vomecrty
+vomecrty['time_counter'] = vomecrty['time_counter'] - np.timedelta64(30, 'm')
+vozocrtx = Udata.vozocrtx
+vozocrtx['time_counter'] = vozocrtx['time_counter'] - np.timedelta64(30, 'm')
+salinity = Tdata.vosaline 
+salinity['time_counter'] = salinity['time_counter'] - np.timedelta64(30, 'm')
+sh = Tdata.sossheig
+sh['time_counter'] = sh['time_counter'] - np.timedelta64(30, 'm')
+
+
+# Sort out the timesteps
+# Assuming salinity.time_counter is your DataArray containing the timestamps
+salinity_start_time = pd.to_datetime(salinity.time_counter[0].values)
+salinity_stop_time = pd.to_datetime(salinity.time_counter[-1].values)
 
 
 #%% Load river
@@ -236,7 +326,8 @@ def calculate_segment_means(salinity_series, discharge_series, time_series):
 
     return segment_salinity_means, segment_discharge_means, segment_end_times
 
-def ebm(W_m, h, Q_r, Q_m, S_l, Q_l, S_oc, length):
+#%% EBM 
+def ebm(W_m, h, Q_r, Q_m, S_l, Q_l, S_oc, length, estuary):
     """ EBM Parameters
     ----------
     W_m : float
@@ -432,6 +523,9 @@ def ebm(W_m, h, Q_r, Q_m, S_l, Q_l, S_oc, length):
     ax1.legend(loc='upper left')
     ax2.legend(loc='upper center')
     ax3.legend(loc='upper right')
+    plt.setp(ax1.get_xticklabels(), rotation=45, ha="right")
+    plt.tight_layout()
+    plt.savefig(savepath / Path(estuary), dpi = 500)
         
     #! Lower layer salinity * Lower Layer volume flux + Ocean Salinity at mouth. 
     # Compute the fisher flow number to access whether any of this is suitable or not
@@ -440,7 +534,7 @@ def ebm(W_m, h, Q_r, Q_m, S_l, Q_l, S_oc, length):
     #print('S_u',S_u)
     #print('Lx',Lx)
     
-    return Q_u, Lx, S_u, Fi, Flushing_Time
+    return Q_u, Lx, S_u, Fi, Flushing_Time, cleaned_flushing_time_phase, S_ebb
 
 #%% Parameters. # Load data from model based on its location.
 
@@ -570,7 +664,7 @@ for estuary in estuary_data:
     est['SA'] = W_m * est['length']
     length = est['length']
     
-    Q_u, Lx, S_u, Fi = ebm(W_m, h, Q_r, Q_m, S_l, Q_l, S_oc, length)
+    Q_u, Lx, S_u, Fi, Flushing_Time, cleaned_flushing_time_phase, S_ebb= ebm(W_m, h, Q_r, Q_m, S_l, Q_l, S_oc, length, estuary)
     
     est['Q_u'] = Q_u 
     est['Lx'] = Lx 
@@ -578,6 +672,9 @@ for estuary in estuary_data:
     est['Fi'] = np.array(Fi) 
     est['Fi_mean'] = np.nanmean(abs(est['Fi']))
     est['Fi_max'] = np.max(abs(est['Fi']))
+    est['Flushing_Time'] = Flushing_Time # Flushing time values
+    est['S_ebb'] = S_ebb
+    est['Flushing_Time_Phase'] = cleaned_flushing_time_phase # times of the fluhsing time values
     
     # Calculate Surface Height
     est['sh_box'] = calculate_water_height_change(Q_u = Q_u, Q_l = Q_l, Q_r = Q_r, surface_area = est['SA'], tidal_array = est['sh'])
@@ -638,7 +735,7 @@ In the context of our calculations:
      \eta_A = \frac{(2)^2 \cdot 50}{5} = 40
      \]
    - Estuary B: Width = 100 m, Height = 10 m, \(\text{Fr}_{\text{box}} = 1\)
-     \[
+     \[None
      \eta_B = \frac{(1)^2 \cdot 100}{10} = 10
      \]
 
@@ -667,12 +764,12 @@ These choices are derived from empirical data and model calibration to accuratel
 
 # Testing plotting
 time = estuary_data['Ribble']['time']
-salin = estuary_data['Wyre']['S_u'].values
-plt.figure();plt.plot(time, salin, c = 'b'); plt.plot(est['time'], est['discharge'], c = 'r')
-plt.figure();plt.plot(time, salin, c = 'b'); plt.plot(est['time'], est['discharge'], c = 'r')
-plt.figure();plt.plot(time, estuary_data['Ribble']['Q_l'], c = 'r')
-plt.figure();plt.plot(time, estuary_data['Ribble']['vomecrty'], c = 'r');plt.plot(time, estuary_data['Ribble']['vozocrtx'], c = 'r')
-plt.figure(); plt.plot(time, estuary_data['Ribble']['Q_l'], c = 'r') ;plt.plot(time, S_u.values, c = 'g')
+salin = estuary_data['Wyre']['S_u']
+# plt.figure();plt.scatter(time, salin, c = 'b'); plt.plot(est['time'], est['discharge'], c = 'r')
+# plt.figure();plt.plot(time, salin, c = 'b'); plt.plot(est['time'], est['discharge'], c = 'r')
+# plt.figure();plt.plot(time, estuary_data['Ribble']['Q_l'], c = 'r')
+# plt.figure();plt.plot(time, estuary_data['Ribble']['vomecrty'], c = 'r');plt.plot(time, estuary_data['Ribble']['vozocrtx'], c = 'r')
+# plt.figure(); plt.plot(time, estuary_data['Ribble']['Q_l'], c = 'r') ;plt.plot(time, S_u, c = 'g')
 
 # # Plot phasing of salinity 
 # # Create the figure and first axis
@@ -705,7 +802,7 @@ ax1.tick_params(axis='y', labelcolor='r')
 
 # Create a second y-axis and plot the second dataset
 ax2 = ax1.twinx()
-ax2.plot(time, S_u.values, color='g')
+ax2.plot(time, estuary_data['Ribble']['S_u'], color='g')
 ax2.set_ylabel('S_u (Green)', color='g')
 ax2.tick_params(axis='y', labelcolor='g')
 
@@ -722,7 +819,7 @@ ax3.tick_params(axis='y', labelcolor='b')
 plt.title('Q_l, S_u, and Q_r Over Time')
 plt.show()
 
-plt.figure(); plt.plot(time, estuary_data['Ribble']['Q_l'], c = 'r') ;plt.plot(time, S_u.values, c = 'g')
+plt.figure(); plt.plot(time, estuary_data['Ribble']['Q_l'], c = 'r') ;plt.plot(time, estuary_data['Ribble']['S_u'], c = 'g')
 
 plt.figure(); plt.plot(time, estuary_data['Ribble']['S_u'], c = 'r'); plt.plot(time, estuary_data['Ribble']['salinity'].mean(dim=['deptht','y', 'x'], skipna=True), c = 'r')
 
