@@ -17,9 +17,6 @@ import math
 from datetime import datetime
 import os
 from o_func import opsys; start_path = Path(opsys())
-from o_func import near_neigh
-
-import ttide as tt 
 
 def time64(time_str):
     if ' ' not in time_str:
@@ -34,33 +31,19 @@ path = start_path / Path('Original_Data/UKC3/og/shelftmb_combined_to_3_layers_fo
 river_path = start_path / Path('modelling_DATA/kent_estuary_project/river_boundary_conditions/original_river_data/processed')
 savepath = start_path / Path('modelling_DATA/EBM_PRIMEA/EBM_python/figures')
 storage_location = start_path / Path('modelling_DATA/EBM_PRIMEA/EBM_python/simulation_results')
-fes_path = start_path / Path('Original_Data/FES2014/UK_bounds')
 os.makedirs(storage_location, exist_ok=True)
 writemaps = 'n'
 side = 'east'
 include_tidal = True
 
-'''
------------------------- Key parameters to change as either y/n ----------------------------------
-'''
 artificial_river = 'y' # implement real or not real data
-artificial_tide = 'y'
-'''
------------------------- Key parameters to change as either y/n ----------------------------------
-'''
-
-
-if artificial_tide == 'y':                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            
-    start_time = time64('2013-11-01 00:00')
-    stop_time  = time64('2013-11-30 23:00')
-    file_list = ['S2  ']
-    
-    tnameprime = '_artificial_tide_' + '_'.join(file_list)
-    
-    tide_freqs = [0.08333333]#, ] 0.0805114
-else:
-    tnameprime = '_real_tide'
+artificial_tide = 'n'
+if artificial_tide == 'y':
+    start_time = time64('2013-11-01')
+    stop_time  = time64('2013-11-30')
 # If not real data, what do you want to implement for all estuaries.
+discharge = 100
+tide_cons = ['M2', 'S2']
 
 #%%  Estuary Dictionary
 # These coords are pulled from the river location discharge points, 
@@ -111,8 +94,8 @@ estuary_data = {
         'xy'             : {'x': 790, 'y': 651},
         'length'         : 10280, # Estuary Length (m)
         'width_at_mouth' : 540,  # Estuary Width (m)
-        'height_at_mouth': 2,      # Estuary Height (m)
-        'h_l'            : 2/2,
+        'height_at_mouth': 0.1,      # Estuary Height (m)
+        'h_l'            : 0.1/2,
         'angle'          : 17,
     },
     'Mersey': {
@@ -203,9 +186,6 @@ def calculate_segment_means(salinity_series, discharge_series, time_series):
     while start_idx < len(salinity_series):
         # Find the next NaN or the end of the series
         end_idx = start_idx
-        
-        ''' We iterate through the salinity series picking out the tides. 
-        '''
         while end_idx < len(salinity_series) and not np.isnan(salinity_series[end_idx]):
             end_idx += 1
 
@@ -441,7 +421,7 @@ def ebm(W_m, h, Q_r, Q_m, S_l, Q_l, S_oc, length, time_array):
     volume = W_m * h * length
  
     ur = Q_r / ((h / 2) * W_m)
-    vel_tide = Q_l / area   # Lower layer volume flux / cross sectional area, m/s
+    vel_tide = Q_l / area
     
     
     Fr = Q_r / ((h / 2) * W_m * ((h / 2) * g)**0.5)
@@ -457,76 +437,35 @@ def ebm(W_m, h, Q_r, Q_m, S_l, Q_l, S_oc, length, time_array):
     C_k[mask] = ((Ro_s[mask] / 1000) ** 20) * ((vel_tide[mask] / ur[mask]) ** -0.5) * np.exp(-2000 * Eta[mask])
     C_k[~mask] = 200*((Ro_s[~mask] / 1000) ** 20) * ((vel_tide[~mask] / ur[~mask]) ** 0.1) * np.exp(-2000 * Eta[~mask])
     
-    k_x = W_m * vel_tide * C_k # m^2/s , scale of flux. 
+    k_x = W_m * vel_tide * C_k
     
     Q_u = Q_r + Q_l # Q_l volume 
     
-    Q_l_positive = np.where(Q_l > 0, Q_l, 0)
-
     Lx = h * 0.019 * (Fr ** -0.673) * ((Ro_s / 1000) ** 108.92) * ((Q_l / Q_r) ** -0.0098)
     
+    S_u = np.full_like(Q_l, np.nan)
+    S_ebb = np.full_like(Q_l, np.nan)
     
-    '''
-    Height *  froude number * (density of sea / freshwater) * (sea inflowing volume flux / river volumne flux)
+    previous_S_u = np.full((8,), np.nan)  # Array to store the previous flood tide salinity for each location
     
-    Attempt at a simplistic length of estuarine intrusion below
-    
-    Add Kx 
-    '''
-    #Lx = 5 * area**0.5 * (Q_l_positive / Q_r)**0.75
-
-    S_u = np.full_like(Q_l, np.nan) # This is technically surface outflow. 
-    S_flood = np.full_like(Q_l, np.nan) # Inflow at bottom so flood, renamed as such
-    
-    previous_S_u = np.full((Q_l.shape[1],), np.nan)  # Array to store the previous flood tide salinity for each location
-                                          # Actually stores the ebb tide currently but we will adjust as needed. 
-    
-    #S_l[np.isfinite(S_l)] = 30
+    S_l[np.isfinite(S_l)] = 30
     # Apply constant salinities. say set S_l to 25. 
     # Loop through each time step
-    for i in range(len(Q_l)):          # Determine the flood or ebb, pos = flood, neg = ebb
-        inflow_mask = Q_l[i] > 0   # Flood mask 
-        outflow_mask = Q_l[i] < 0  # Ebb mask 
+    for i in range(len(Q_l)):
+        inflow_mask = Q_l[i] > 0
+        outflow_mask = Q_l[i] < 0
         
-        
-        ''' S_u understanding.
-        S_u is outflowing new salinity that was originally calculated daily. Therefore this represents the ebb. 
-        Therefore the oppsoite of this component should be S_flood. Therefore S_flood should be ignored for later calculations 
-        and S_u should be used. 
-        
-        Originally the S_u (ebb tide river flow) was calculated using the inflow river, which generates an outflow
-        
-        So at some point they have to swap places. 
-        
-        Salinity on the flood is assumed to be that of 
-        
-        '''
-        mask_used = inflow_mask
-        if np.any(mask_used):    # This was originally inflow
-            
-            # print (i) # This will print the iterations on which the inflow occurs. 
-            S_u[i, mask_used] = (S_l[i, mask_used] * Q_l[i, mask_used] + S_oc[i, mask_used] + 
-                                   k_x[i, mask_used] * h[:, mask_used].flatten() * W_m[:, mask_used].flatten() * 
-                                   (S_oc[i, mask_used] / (Lx[i, mask_used] * 1000))) / (Q_r[i, mask_used] + Q_l[i, mask_used])
-            previous_S_u[mask_used] = S_u[i, mask_used]
-            
-            
-            '''
-            (Lower layer salinity * Lower layer volume flux) + (Salinity at mouth) + (mixing coefficient * height * width * (salinity at mouth / length of saline intrusion) / (river discharge + lower layer influx. ) )
-            '''
-        
-        mask_used = outflow_mask    
+        if np.any(inflow_mask):
+            S_u[i, inflow_mask] = (S_l[i, inflow_mask] * Q_l[i, inflow_mask] + S_oc[i, inflow_mask] + 
+                                   k_x[i, inflow_mask] * h[:, inflow_mask].flatten() * W_m[:, inflow_mask].flatten() * 
+                                   (S_oc[i, inflow_mask] / (Lx[i, inflow_mask] * 1000))) / (Q_r[i, inflow_mask] + Q_l[i, inflow_mask])
+            previous_S_u[inflow_mask] = S_u[i, inflow_mask]
+ 
         if np.any(outflow_mask):
-            ''' Now on the flood tide what is the salinity ? why its the starting salinity is it not ? not this equation. 
-            Old equation is listed below, new equation replaces it with the S_l at that time. 
-            '''
-            S_flood[i, outflow_mask] = S_oc[i, outflow_mask] # What to set for the other salinity. 
-            
-            #S_flood[i, outflow_mask] = (previous_S_u[outflow_mask] * abs(Q_l[i, outflow_mask]) + S_r * Q_r[i, outflow_mask]) / (abs(Q_l[i, outflow_mask]) + Q_r[i, outflow_mask])
-            
-        # print(previous_S_u.shape)
-    # Mask Q_l where S_ebb is NaN to create Q_outflow # WAS S_ebb, now is going to be S_u 
-    Q_outflow = np.where(~np.isnan(S_flood), np.abs(Q_l), np.nan) # Outflow is calculated on the ebb tide. (but its S_flood for the moment.)
+            S_ebb[i, outflow_mask] = (previous_S_u[outflow_mask] * abs(Q_l[i, outflow_mask]) + S_r * Q_r[i, outflow_mask]) / (abs(Q_l[i, outflow_mask]) + Q_r[i, outflow_mask])
+ 
+    # Mask Q_l where S_ebb is NaN to create Q_outflow
+    Q_outflow = np.where(~np.isnan(S_ebb), np.abs(Q_l), np.nan)
  
     # Initialize lists to store the results for each estuary
     flushing_time_list = []
@@ -534,78 +473,58 @@ def ebm(W_m, h, Q_r, Q_m, S_l, Q_l, S_oc, length, time_array):
  
     
     est_names = [i for i in estuary_data.keys()]
-    dis = str(discharge_examples)
+    dis = str(discharge)
 
     # Copy nan logic onto this data. 
-    S_l_nan_mask = np.isnan(S_flood) # S_l lower layer mask should in theory be the S_ebb data, which is actually S_flood. gone from S_u to S_ebb(flood)
-    S_l_nans = S_l.astype(float) # handle fake data by ensuring its generated as a float rather than integer
+    S_l_nan_mask = np.isnan(S_u)
+    S_l_nans = S_l
     S_l_nans[S_l_nan_mask] = np.nan
     
     Q_r_estuary = Q_r 
-    
-    est_number = 0
     # Loop through each location (estuary) and calculate flushing time
     for loc in range(S_l_nans.shape[1]):
-        if loc != 50:
-            est_number = est_number + 1
-            S_u_series = pd.Series(S_u[:, loc]) # This is salinity on the outflow upper layer. 
-            S_l_series = pd.Series(S_l_nans[:, loc]) # This is a series of S_l on the inflow lower layer
-            Q_outflow_series = pd.Series(Q_outflow[:, loc])
-            Q_inflow_series = pd.Series(np.where(Q_l[:, loc] > 0, Q_l[:, loc], np.nan))
-            Q_r_series = pd.Series(Q_r[:, loc])
+        S_ebb_series = pd.Series(S_ebb[:, loc])
+        S_l_series = pd.Series(S_l_nans[:, loc]) # what if this is meant to be S_l
+        Q_outflow_series = pd.Series(Q_outflow[:, loc])
+        Q_inflow_series = pd.Series(np.where(Q_l[:, loc] > 0, Q_l[:, loc], np.nan))
+        Q_r_series = pd.Series(Q_r[:, loc])
+
+        # Calculate segment means for inflow and outflow
+        salinity_in_means, discharge_in_means, time_series_in = calculate_segment_means(S_l_series, Q_inflow_series, time_array)
+        salinity_out_means, discharge_out_means, time_series_out = calculate_segment_means(S_ebb_series, Q_outflow_series, time_array)
+        _, river_discharge_means, _ = calculate_segment_means(S_ebb_series, Q_r_series, time_array)
+        dis_out_mean_corrected = [estuary_out + river_out for estuary_out, river_out in zip(discharge_out_means, river_discharge_means)]
+
+        Flushing_Time = []
+        Flushing_Time_Phase = []
+ 
+        # Calculate flushing time for each tidal cycle # was dis_out_mean_correct
+        for sal_in_mean, sal_out_mean, dis_out_mean, end_time in zip(salinity_in_means, salinity_out_means, river_discharge_means, time_series_out):
+            if not np.isnan(sal_in_mean) and not np.isnan(sal_out_mean) and not np.isnan(dis_out_mean):
+                ft = (volume[0,loc] * (sal_in_mean - sal_out_mean)) / (dis_out_mean * sal_in_mean)
+                Flushing_Time.append(ft / 3600)  # Convert seconds to hours
+                Flushing_Time_Phase.append(end_time)
+ 
+                flushing_time_list.append(Flushing_Time)
+                cleaned_flushing_time_phase_list.append(Flushing_Time_Phase)
+ 
     
-            # Calculate segment means for inflow and outflow
-            '''
-            This is where the opposites start to occur. 
-            
-            SO S_l which is lower layer inflowing salinity is now matched in time frequency to the outflow
-            This means that when the river is accounted for we actually need to use the inflow salinity parameter to achieve when its actually outflowing. 
-            '''
-            salinity_in_means, discharge_out_means, time_series_in = calculate_segment_means(S_l_series, Q_outflow_series, time_array)
-            salinity_out_means, discharge_in_means, time_series_out = calculate_segment_means(S_u_series, Q_inflow_series, time_array)
-            _, river_discharge_means, _ = calculate_segment_means(S_l_series, Q_r_series, time_array)
-            
-            # Temporary mean 
-            #salinity_out_means[np.isfinite(np.array(salinity_out_means))] = 29.5
-            
-            # Generate the discharges only on the outflow. 
-            dis_out_mean_corrected = [estuary_out + river_out for estuary_out, river_out in zip(discharge_out_means, river_discharge_means)]
+        
+     
     
-            Flushing_Time = []
-            Flushing_Time_Phase = []
-            sub_loop = 0
-     
-            # Calculate flushing time for each tidal cycle # was dis_out_mean_correct
-            for sal_in_mean, sal_out_mean, dis_out_mean, end_time in zip(salinity_in_means, salinity_out_means, river_discharge_means, time_series_out):
-                if not np.isnan(sal_in_mean) and not np.isnan(sal_out_mean) and not np.isnan(dis_out_mean):
-                    sub_loop = sub_loop + 1
-                    #print('It breaks on estuary number: ', est_number)
-                    #print('It breaks on loop: ', sub_loop)
-                    ft = (volume[0,loc] * (sal_in_mean - sal_out_mean)) / (dis_out_mean * sal_in_mean)
-                    Flushing_Time.append(ft / 3600)  # Convert seconds to hours
-                    Flushing_Time_Phase.append(end_time)
-     
-                    flushing_time_list.append(Flushing_Time)
-                    cleaned_flushing_time_phase_list.append(Flushing_Time_Phase)
-     
-        
-            
-            # print('Discharge is saying it is this:', dis)
-        
-            new_name = est_names[loc]
-            # Save results for this estuary
-            filename = f"{new_name}_discharge_{dis}_{tnameprime}.npz"
-            filepath = os.path.join(storage_location, filename)
-            np.savez(filepath,
-                     sal_in_mean=salinity_in_means,
-                     sal_out_mean=salinity_out_means,
-                     dis_out_mean=dis_out_mean_corrected,
-                     flushing_time=Flushing_Time,
-                     flushing_time_phase=Flushing_Time_Phase,
-                     length_of_intrusion=Lx[:,loc])
+        new_name = est_names[loc]
+        # Save results for this estuary
+        filename = f"{new_name}_discharge_{dis}.npz"
+        filepath = os.path.join(storage_location, filename)
+        np.savez(filepath,
+                 sal_in_mean=salinity_in_means,
+                 sal_out_mean=salinity_out_means,
+                 dis_out_mean=dis_out_mean_corrected,
+                 flushing_time=Flushing_Time,
+                 flushing_time_phase=Flushing_Time_Phase)
     Fi = (Q_l / (area / 2)) / (Q_r / (area / 2))  # Compute the Fisher flow number element-wise
  
-    return Q_u, Lx, S_u, Fi, flushing_time_list, cleaned_flushing_time_phase_list, S_flood
+    return Q_u, Lx, S_u, Fi, flushing_time_list, cleaned_flushing_time_phase_list, S_ebb
     
 #%% Collecting data paths and loading it into xarray. 
 def load_tidal_data():
@@ -697,8 +616,6 @@ def load_tidal_data():
     theta_degrees = np.degrees(theta)
     angles = [estuary_data[i]['angle'] for i in estuary_data]
     relative_angle = theta_degrees - angles
-    relative_angle = (relative_angle + 180) % 360 - 180  # Normalize to [-180, 180]
-
     
     # Preparing depth averaged calculations. 
     if Tdata_subset.deptht.size == 3:
@@ -727,7 +644,7 @@ def load_tidal_data():
 
     masked_salinity = np.where(np.isnan(sal_buffer_corrected), np.nan, sal_buffer_corrected)
     masked_velocity = np.where(np.isnan(vel_magnitude), np.nan, vel_magnitude)
-    #!!
+    #!!!
     depth_diff_transposed = np.transpose(depth_weights_broadcasted, (1, 2, 0, 3, 4))
 
 
@@ -744,7 +661,6 @@ def load_tidal_data():
       # Assuming `relative_angle` is a numpy array with the same shape as avg_weighted_vel (e.g., (time, locations))
     # `relative_angle` should also be averaged across x and y before this step, similar to avg_weighted_vel
     
-    # Here it takes -90 and above 
     signed_magnitude = np.where(
         (relative_angle >= -90) & (relative_angle <= 90),
         avg_weighted_vel,  # Positive for inflow
@@ -794,179 +710,18 @@ def load_tidal_data():
     start_time = t[0]
     stop_time = t[-1]
     
+    
+    
+    
+    
+    
     return start_time, stop_time, Q_l, S_col, S_l, ham, wam 
 
-def generate_tide():
-    wam = [estuary_data[i]['width_at_mouth'] for i in estuary_data] # Set width at mouth
-    ham = [estuary_data[i]['height_at_mouth'] for i in estuary_data] # Set height at mouth 
-    latlon = [estuary_data[i]['latlon'] for i in estuary_data]
-    
-    def load_fes_data(file_path):
-        dataset = xr.open_mfdataset(file_path)
-        lat = dataset.variables['lat'][:]
-        lon = dataset.variables['lon'][:]
-        data = dataset.variables['data_variable'][:]  # Use the actual variable name in your files
-        dataset.close()
-        return lat, lon, data
-    
-    load_fes_data_U = [i for i in (fes_path / Path('eastward_velocity')).glob('*.nc')]
-    load_fes_data_V = [i for i in (fes_path / Path('northward_velocity')).glob('*.nc')]
-    
-    def generate_fes_dict(file_list):
-        fes_dict = {}
-        for file_path in file_list:
-            # Extract the file name without extension
-            constituent_name = file_path.stem
-            
-            # Capitalize and pad the name to be exactly 4 characters
-            constituent_key = constituent_name.upper().ljust(4)
-            
-            # Add to dictionary
-            fes_dict[constituent_key] = file_path
-        return fes_dict
-    
-    
-    dataV_fesdict = generate_fes_dict(load_fes_data_V)
-    dataU_fesdict = generate_fes_dict(load_fes_data_U)
-    
-    def load_selected_fes_data(fes_dict, selected_constituents):
-       
-        files_to_load = [fes_dict[constituent] for constituent in selected_constituents if constituent in fes_dict]
-        constituent_name = [i.stem for i in files_to_load]
-        constituent_key = [i.upper().ljust(4) for i in constituent_name]
-        # Capitalize and pad the name to be exactly 4 characters
-        
-        loaded_files_dict = {}
-        
-        if len(files_to_load) > 0:
-            for i, file in enumerate(files_to_load):
-            # Load the files into a single xarray dataset using open_mfdataset
-                loaded_files_dict[constituent_key[i]] = xr.open_dataset(file)
-                              
-        else:
-            raise ValueError("No valid files found for the selected constituents.")
-
-        return loaded_files_dict
-    
-    
-    combined_datasetV = load_selected_fes_data(dataV_fesdict, file_list)
-    combined_datasetU = load_selected_fes_data(dataU_fesdict, file_list)
-    
-    # Here is where the datasets are combined into the megadataset and everything is stored.
-    combined_dataset = {'U': combined_datasetU, 'V':combined_datasetV}
-    
-    def nearest_grid_points(combined_dataset, latlon):
-        """
-        Find the nearest grid points for each lat/lon in latlon_list.
-        
-        Parameters:
-        - combined_dataset: xarray dataset containing lat and lon coordinates.
-        - latlon_list: list of dictionaries with 'lat' and 'lon' keys.
-        
-        Returns:
-        - amplitude_array: array of amplitudes for each point.
-        - phase_array: array of phases for each point.
-        """
-        amplitude_array = []
-        phase_array = []
-        
-        for key in combined_dataset.keys(): # Run the U and V
-            for constituent in combined_dataset[key].keys():
-                # Loop over each lat/lon pair
-                for point in latlon:
-                    lat = point['lat']
-                    lon = point['lon']
-            
-                    # Select the nearest grid point in the dataset
-                    nearest_point = combined_dataset.sel(lat=lat, lon=lon, method='nearest')
-            
-                    # Extract amplitude ('Va') and phase ('Vg') for the selected point
-                    amplitude = nearest_point['Va'].values  # Amplitude (replace 'Va' with the actual var if different)
-                    phase = nearest_point['Vg'].values      # Phase (replace 'Vg' with the actual var if different)
-            
-                    amplitude_array.append(amplitude)
-                    phase_array.append(phase)
-            
-                amplitude_array = np.array(amplitude_array)
-                phase_array = np.array(phase_array)
-        
-        
-        return combined_dataset
-    
-    def generate_tide_series(start_time, stop_time, interval, amplitude, phase, lat):
-        """
-        Generates tidal time series using M2 and S2 constituents based on amplitude and phase.
-        
-        Parameters:
-        - start_time: Start time for the time series (string or datetime object).
-        - stop_time: Stop time for the time series (string or datetime object).
-        - interval: Time interval in minutes between each time point.
-        - amplitude: List of amplitudes for M2 and S2.
-        - phase: List of phases (in degrees) for M2 and S2.
-        - lat: Latitude of the location for nodal corrections.
-        
-        Returns:
-        - eta: Predicted tidal time series.
-        """
-        # Generate time array using pandas date_range
-        time_array = pd.date_range(start=start_time, end=stop_time, freq=f'{interval}T').to_pydatetime()
-        
-        # Tidal constituent names (M2 and S2)
-        m2_s2_names = np.array([s.encode() for s in file_list])
-    
-        # Tidal constituent frequencies for M2 and S2
-        m2_s2_freq = np.array(tide_freqs)  # M2 and S2 frequencies
-    
-        # Create the tidecon array: amplitude and phase for M2 and S2, followed by two zeros for SNR and Doodson
-        m2_s2_tidecon = np.array([
-            [amplitude[0], 0, phase[0], 0]  # M2: [amplitude, SNR, phase, Doodson]
-            #[amplitude[1], 0, phase[1], 0]   # S2: [amplitude, SNR, phase, Doodson]
-        ])
-    
-        # Use t_predic to calculate the tidal prediction (eta)
-        eta = tt.t_predic(np.array(time_array), m2_s2_names, m2_s2_freq, m2_s2_tidecon)
-    
-        return eta
-    
-    #!!! Example usage
-    # start_time = '2013-11-01T00:00:00'
-    # stop_time = '2013-11-30T00:00:00'  # 1 month of data
-    interval = 60  # 1-hour interval
-    
-    amplitude = [0.153]  # Example amplitude values for M2 and S2
-    phase = [-61.85]  # Example phase values for M2 and S2 (in degrees)
-    lat = 53.25  # Latitude of the location
-    
-    # Generate the tidal series using M2 and S2
-    etaV = generate_tide_series(start_time, stop_time, interval, amplitude, phase, lat)
-    amplitude = [0.40]  # Example amplitude values for M2 and S2
-    phase = [-121.54]  # Example phase values for M2 and S2 (in degrees)
-    etaU = generate_tide_series(start_time, stop_time, interval, amplitude, phase, lat)
-    # Print the predicted time series
-    #print("Predicted Tidal Series (Eta):", eta)
-    
-    angle = np.arctan2(etaV, etaU)
-    magnitude = np.sqrt(etaU**2 + etaV**2)
-    
-    Q_l_single = np.where(
-        (-np.pi/2 <= angle) & (angle <= np.pi/2), magnitude, -magnitude)
-    
-    x = len(estuary_data)
-    Q_l_velocity = np.tile(Q_l_single[:, np.newaxis], (1, x))
-    
-    Q_l = Q_l_velocity * ham * wam
-    
-    
-
-
-    S_l = np.full(Q_l.shape, 30)
-
-    S_col = np.full(Q_l.shape, 30)
-
-
-    return Q_l, S_col, S_l, ham, wam
-
-
+if artificial_tide == 'n':
+    start_time, stop_time, Q_l, S_col, S_l, ham, wam  = load_tidal_data()
+elif artificial_tide == 'y':
+    pass
+    #generate_tidal_data()
 #%% Load river
 # Could be sped up but for the minute is sufficient. 
 def load_river_data(start_time, stop_time, river_path, estuary_data):
@@ -1047,27 +802,13 @@ def artificial_river_data(start_time, stop_time, estuary_data, discharge):
     return estuary_data
 
 #%%
-if artificial_tide == 'n':
-    start_time, stop_time, Q_l, S_col, S_l, ham, wam  = load_tidal_data()
-    
-    
-elif artificial_tide == 'y':
-    #start_time, stop_time these are generated at the surface
-    Q_l, S_col, S_l, ham, wam = generate_tide()
-    #generate_tidal_data()
-
-if artificial_river == 'y':
-    runs_to_complete = [10,20,30,40,50,75,100,150]
-else:
-    runs_to_complete = ['real_river']
-
-for discharge_examples in runs_to_complete:
+for discharge in [10,20,30,40,50,75,100,150]:
 
     # Use the function as needed
     if artificial_river == 'n':
         estuary_data = load_river_data(start_time, stop_time, river_path, estuary_data)
     elif artificial_river == 'y':
-        estuary_data = artificial_river_data(start_time, stop_time, estuary_data, discharge_examples)
+        estuary_data = artificial_river_data(start_time, stop_time, estuary_data, discharge)
         
         
     #% Run the EBM
@@ -1080,7 +821,6 @@ for discharge_examples in runs_to_complete:
     time_array = np.array([estuary_data[i]['time'] for i in estuary_data.keys()][0] ) # River discharge, shape (720, 8)
     
     Q_m = np.mean(Q_r, axis=1)  # Mean river discharge over time, shape (8,)
-    Q_m_for_const_flows= int(Q_m.mean())
     S_l_copy = S_l  # Lower layer salinity, shape (720, 8)
     Q_l_copy = Q_l  # Lower layer volume flux, shape (720, 8)
     S_oc = S_col # Ocean salinity at mouth, shape (720, 8)
@@ -1103,192 +843,140 @@ for discharge_examples in runs_to_complete:
     
     
     #%
-    Q_u, Lx, S_u, Fi, Flushing_Time, cleaned_flushing_time_phase, S_flood= ebm(W_m, h, Q_r, Q_m, S_l_copy, Q_l_copy, S_oc, length_copy, time_array)
-    #% EBM extra Functions and plotting
-    def plot_flushing_time_and_discharge(cleaned_flushing_time_phase_list, flushing_time_list, Q_u, Q_r, time_array, savep, estuary_names, attempt_label='attempt_2'):
-        
+    Q_u, Lx, S_u, Fi, Flushing_Time, cleaned_flushing_time_phase, S_ebb= ebm(W_m, h, Q_r, Q_m, S_l_copy, Q_l_copy, S_oc, length_copy, time_array)
+    #%% EBM extra Functions and plotting
+    def plot_flushing_time_and_discharge(cleaned_flushing_time_phase_list, flushing_time_list, Q_u, discharge, time_array, savepath, estuary_names, attempt_label='attempt_2'):
         for loc, estuary in enumerate(estuary_names):
-            if loc != 50: # 5 is a bad egg 
-                if artificial_tide == 'y':
-                    filename = f"{estuary}_discharge_{Q_m_for_const_flows}_{tnameprime}.npz" # ensure correct datset is opened. 
-                else:
-                    filename = f"{estuary}_discharge_real_river_{tnameprime}.npz" # Need to recreate the normal use case which will be plotted here
-                
+            fig, ax1 = plt.subplots(figsize=(10, 6))
             
-                    
-                
-                filepath = os.path.join(storage_location, filename)
-                data = np.load(filepath)
-                sal_out_mean = data['sal_out_mean']
-                length_of_intrusion = data['length_of_intrusion']
-                
-                
-                fig, ax1 = plt.subplots(figsize=(10, 6))
-                
-                # Plot Flushing Time on the primary y-axis
-                ax1.scatter(cleaned_flushing_time_phase_list[loc], flushing_time_list[loc], marker='o', color='b', label='Flushing Time')
-                ax1.set_xlabel('Time (End of Ebb Tide)')
-                ax1.set_ylabel('Flushing Time (hours)', color='b')
-                ax1.tick_params(axis='y', labelcolor='b')
-                ax1.grid(True)
-                
-                # Create a secondary y-axis sharing the same x-axis for Q_u
-                ax2 = ax1.twinx()
-                ax2.plot(time_array, Q_u[:, loc], color='r', label='Q_u')
-                ax2.set_ylabel('Q_u (m³/s)', color='r')
-                ax2.tick_params(axis='y', labelcolor='r')
-                
-                # Create a third y-axis sharing the same x-axis for discharge
-                ax3 = ax1.twinx()
-                
-                # Offset the third axis to avoid overlap
-                ax3.spines['right'].set_position(('outward', 60))  # Move the third axis outward by 60 points
-                ax3.plot(time_array, Q_r[:, loc], color='g', label='Discharge')
-                ax3.set_ylabel('Discharge (m³/s)', color='g')
-                ax3.tick_params(axis='y', labelcolor='g')
-                
-                length_of_flushing = cleaned_flushing_time_phase_list[loc]
-                if len(sal_out_mean) != len(length_of_flushing):
-                    sal_out_mean = sal_out_mean[:len(length_of_flushing)]
-                   
-                
-                # 4th Axis tgo plot on the outflowing salinity after interacting with the ocean water, (was fresh at river mouth, 30 at ocean)
-                ax4 = ax1.twinx()
-                ax4.spines['right'].set_position(('outward', 120))  # Move the fourth axis outward by 120 points
-                ax4.plot(cleaned_flushing_time_phase_list[loc], sal_out_mean, color='black', label='Salinity Out', linestyle='-', linewidth=1.5)  # Thinner pink line
-                ax4.set_ylabel('Salinity Out (ppt)', color='black')
-                ax4.tick_params(axis='y', labelcolor='black')
-                
-                ax5 = ax1.twinx()
-                ax5.spines['right'].set_position(('outward', 180))  # Move the fourth axis outward by 120 points
-                ax5.plot(time_array, length_of_intrusion, color='magenta', label='Estuarine Intrusion', linestyle='-.', linewidth=1)  # Thinner pink line
-                ax5.set_ylabel('Length of Intrusion (m)', color='magenta')
-                ax5.tick_params(axis='y', labelcolor='magenta')
+            # Plot Flushing Time on the primary y-axis
+            ax1.scatter(cleaned_flushing_time_phase_list[loc], flushing_time_list[loc], marker='o', color='b', label='Flushing Time')
+            ax1.set_xlabel('Time (End of Ebb Tide)')
+            ax1.set_ylabel('Flushing Time (hours)', color='b')
+            ax1.tick_params(axis='y', labelcolor='b')
+            ax1.grid(True)
+            
+            # Create a secondary y-axis sharing the same x-axis for Q_u
+            ax2 = ax1.twinx()
+            ax2.plot(time_array, Q_u[:, loc], color='r', label='Q_u')
+            ax2.set_ylabel('Q_u (m³/s)', color='r')
+            ax2.tick_params(axis='y', labelcolor='r')
+            
+            # Create a third y-axis sharing the same x-axis for discharge
+            ax3 = ax1.twinx()
+            
+            # Offset the third axis to avoid overlap
+            ax3.spines['right'].set_position(('outward', 60))  # Move the third axis outward by 60 points
+            ax3.plot(time_array, discharge[:, loc], color='g', label='Discharge')
+            ax3.set_ylabel('Discharge (m³/s)', color='g')
+            ax3.tick_params(axis='y', labelcolor='g')
+            
+            # Add titles and legends
+            fig.suptitle(f'Flushing Time, Q_u, and Discharge Over Time ({estuary})')
+            ax1.legend(loc='upper left')
+            ax2.legend(loc='upper center')
+            ax3.legend(loc='upper right')
+            plt.setp(ax1.get_xticklabels(), rotation=45, ha="right")
+            plt.tight_layout()
     
-                # Add titles and legends
-                fig.suptitle(f'Flushing Time, Q_u, and Discharge Over Time ({estuary})')
-                ax1.legend(loc='upper left')
-                ax2.legend(loc='upper center')
-                ax3.legend(loc='upper right')
-                ax4.legend(loc='center left')
-                
-                
-                plt.setp(ax1.get_xticklabels(), rotation=45, ha="right")
-                plt.tight_layout()
-        
-                # Save the figure with a unique filename
-                filename = f"{estuary}_{attempt_label}.png"
-                plt.savefig(savepath / Path(filename), dpi=500)
-                plt.close(fig)
+            # Save the figure with a unique filename
+            filename = f"{estuary}_{attempt_label}.png"
+            plt.savefig(savepath / Path(filename), dpi=500)
+            plt.close(fig)
     
-    al = ''
     if artificial_river == 'y':
-        al = al + 'discharge_' + str(discharge_examples)
+        al = 'discharge_' + str(discharge)
     else:
-        al = al + "faster_ebm"
-        
-    if artificial_tide == 'y':
-        al = al + '_artificial_tide_' + '_'.join(file_list)
+        al = "faster_ebm"
     # Assuming the variables are already defined and filled during the EBM processing
     plot_flushing_time_and_discharge(
         cleaned_flushing_time_phase_list=cleaned_flushing_time_phase,
         flushing_time_list=Flushing_Time,
         Q_u=Q_u,
-        Q_r=Q_r,  # Assuming Q_r is the discharge data
+        discharge=Q_r,  # Assuming Q_r is the discharge data
         time_array=time_array,
-        savep=savepath,  # Define the path where you want to save the plots
+        savepath=savepath,  # Define the path where you want to save the plots
         estuary_names=list(estuary_data.keys()),  # Use the estuary names from the original data
         attempt_label=al
     )
 
 # %% Plot the numpy saved attributes. 
 
-if artificial_tide == 'y':
-    tname = '_'.join(file_list)
-else:
-    tname = 'realtide'
-    
-if artificial_river == 'y':
-    rname = 'arti_river'
-else:
-    rname = 'real_river'
+
+
 def plot_estuary_data(storage_location, savepath):
     estuaries = ['Dee', 'Duddon', 'Kent', 'Leven', 'Lune', 'Mersey', 'Ribble', 'Wyre']
     discharges = [10, 20, 30, 40, 50, 75, 100, 150]
-    
-    
+
     for estuary in estuaries:
         fig, axs = plt.subplots(2, 2, figsize=(14, 10))  # 2x2 grid for each estuary
-        if estuary != 'Deee':
-            for discnumber, disc in enumerate(runs_to_complete):
-                if disc != 1550:
-                    # Load the data
-                    filename = f"{estuary}_discharge_{disc}_{tnameprime}.npz"
-                    print(filename)
-                    filepath = os.path.join(storage_location, filename)
-                    data = np.load(filepath)
-        
-                    # Extract data
-                    sal_in_mean = data['sal_in_mean']
-                    print(sal_in_mean[0])
-                    sal_out_mean = data['sal_out_mean']
-                    dis_out_mean = data['dis_out_mean']
-                    flushing_time = data['flushing_time']
-                    flushing_time_phase = data['flushing_time_phase']
-        
-                    # Determine the minimum length among all time series
-                    min_len = min(len(sal_in_mean), len(sal_out_mean), len(dis_out_mean), len(flushing_time_phase))
-        
-                    # Truncate all arrays to the minimum length
-                    sal_in_mean = sal_in_mean[:min_len]
-                    sal_out_mean = sal_out_mean[:min_len]
-                    dis_out_mean = dis_out_mean[:min_len]
-                    flushing_time = flushing_time[:min_len]
-                    flushing_time_phase = flushing_time_phase[:min_len]
-        
-                    # Convert flushing_time_phase to datetime for plotting
-                    flushing_time_phase = [np.datetime64(time, 's') for time in flushing_time_phase]
-        
-                    # Plot Salinity Inflow Mean
-                    ax1 = axs[0, 0]
-                    ax1.plot(flushing_time_phase, sal_in_mean, label=f"Discharge {disc} m³/s")
-                    ax1.set_title("Salinity Inflow Mean", fontsize=14)
-                    ax1.set_ylabel("Salinity In (ppt)", fontsize=12)
-                    ax1.set_xlabel("Time", fontsize=12)
-                    ax1.tick_params(axis='x', labelrotation=45)
-                    ax1.legend(fontsize=8)
-        
-                    # Plot Salinity Outflow Mean
-                    ax2 = axs[0, 1]
-                    ax2.plot(flushing_time_phase, sal_out_mean, label=f"Discharge {disc} m³/s")
-                    ax2.set_title("Salinity Outflow Mean", fontsize=14)
-                    ax2.set_ylabel("Salinity Out (ppt)", fontsize=12)
-                    ax2.set_xlabel("Time", fontsize=12)
-                    ax2.tick_params(axis='x', labelrotation=45)
-                    ax2.legend(fontsize=8)
-        
-                    # Plot Discharge Outflow Mean
-                    ax3 = axs[1, 0]
-                    ax3.plot(flushing_time_phase, dis_out_mean, label=f"Discharge {disc} m³/s")
-                    ax3.set_title("Discharge Outflow Mean", fontsize=14)
-                    ax3.set_ylabel("Discharge Out (m³/s)", fontsize=12)
-                    ax3.set_xlabel("Time", fontsize=12)
-                    ax3.tick_params(axis='x', labelrotation=45)
-                    ax3.legend(fontsize=8)
-        
-                    # Plot Flushing Time
-                    ax4 = axs[1, 1]
-                    ax4.plot(flushing_time_phase, flushing_time, label=f"Discharge {disc} m³/s")
-                    ax4.set_title("Flushing Time", fontsize=14)
-                    ax4.set_ylabel("Flushing Time (hours)", fontsize=12)
-                    ax4.set_xlabel("Time", fontsize=12)
-                    ax4.tick_params(axis='x', labelrotation=45)
-                    ax4.legend(fontsize=8)
 
-                plt.tight_layout(pad=3.0)  # Add padding between plots
+        for discharge in discharges:
+            # Load the data
+            filename = f"{estuary}_discharge_{discharge}.npz"
+            filepath = os.path.join(storage_location, filename)
+            data = np.load(filepath)
+
+            # Extract data
+            sal_in_mean = data['sal_in_mean']
+            sal_out_mean = data['sal_out_mean']
+            dis_out_mean = data['dis_out_mean']
+            flushing_time = data['flushing_time']
+            flushing_time_phase = data['flushing_time_phase']
+
+            # Determine the minimum length among all time series
+            min_len = min(len(sal_in_mean), len(sal_out_mean), len(dis_out_mean), len(flushing_time_phase))
+
+            # Truncate all arrays to the minimum length
+            sal_in_mean = sal_in_mean[:min_len]
+            sal_out_mean = sal_out_mean[:min_len]
+            dis_out_mean = dis_out_mean[:min_len]
+            flushing_time = flushing_time[:min_len]
+            flushing_time_phase = flushing_time_phase[:min_len]
+
+            # Convert flushing_time_phase to datetime for plotting
+            flushing_time_phase = [np.datetime64(time, 's') for time in flushing_time_phase]
+
+            # Plot Salinity Inflow Mean
+            ax1 = axs[0, 0]
+            ax1.plot(flushing_time_phase, sal_in_mean, label=f"Discharge {discharge} m³/s")
+            ax1.set_title("Salinity Inflow Mean", fontsize=14)
+            ax1.set_ylabel("Salinity In (ppt)", fontsize=12)
+            ax1.set_xlabel("Time", fontsize=12)
+            ax1.tick_params(axis='x', labelrotation=45)
+            ax1.legend(fontsize=8)
+
+            # Plot Salinity Outflow Mean
+            ax2 = axs[0, 1]
+            ax2.plot(flushing_time_phase, sal_out_mean, label=f"Discharge {discharge} m³/s")
+            ax2.set_title("Salinity Outflow Mean", fontsize=14)
+            ax2.set_ylabel("Salinity Out (ppt)", fontsize=12)
+            ax2.set_xlabel("Time", fontsize=12)
+            ax2.tick_params(axis='x', labelrotation=45)
+            ax2.legend(fontsize=8)
+
+            # Plot Discharge Outflow Mean
+            ax3 = axs[1, 0]
+            ax3.plot(flushing_time_phase, dis_out_mean, label=f"Discharge {discharge} m³/s")
+            ax3.set_title("Discharge Outflow Mean", fontsize=14)
+            ax3.set_ylabel("Discharge Out (m³/s)", fontsize=12)
+            ax3.set_xlabel("Time", fontsize=12)
+            ax3.tick_params(axis='x', labelrotation=45)
+            ax3.legend(fontsize=8)
+
+            # Plot Flushing Time
+            ax4 = axs[1, 1]
+            ax4.plot(flushing_time_phase, flushing_time, label=f"Discharge {discharge} m³/s")
+            ax4.set_title("Flushing Time", fontsize=14)
+            ax4.set_ylabel("Flushing Time (hours)", fontsize=12)
+            ax4.set_xlabel("Time", fontsize=12)
+            ax4.tick_params(axis='x', labelrotation=45)
+            ax4.legend(fontsize=8)
+
+        plt.tight_layout(pad=3.0)  # Add padding between plots
         
         # Save the figure for the current estuary
-        results_path = savepath / f"results_data_{estuary}_{rname}_{tname}_.png"
+        results_path = savepath / f"results_data_sal30_{estuary}.png"
         plt.savefig(results_path, dpi=300)
         plt.close()
 

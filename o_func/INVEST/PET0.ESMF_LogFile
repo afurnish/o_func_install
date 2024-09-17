@@ -1,0 +1,5 @@
+20240906 160003.318 ERROR            PET0 ESMF_Mesh_C.F90:176 f_esmf_meshcreatefromfile Wrong argument specified  - - incorrect args for UGRID
+20240906 160003.319 ERROR            PET0 ESMF_Mesh_C.F90:178 f_esmf_meshcreatefromfile Wrong argument specified  - Internal subroutine call returned Error
+20240906 160003.319 ERROR            PET0 /Users/runner/miniforge3/conda-bld/esmf_1718175203354/work/src/Infrastructure/Mesh/src/ESMCI_Mesh.C:123 ESMCI::Mesh::createfromfile() Wrong argument specified  - Internal subroutine call returned Error
+20240906 160003.319 ERROR            PET0 ESMCI_MeshCap.C:508 MeshCap::meshcreatefromfile() Wrong argument specified  - Internal subroutine call returned Error
+20240906 160003.319 ERROR            PET0 ESMC_Mesh.C:137 ESMC_MeshCreateFromFile() Wrong argument specified  - Internal subroutine call returned Error

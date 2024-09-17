@@ -32,12 +32,9 @@ def near_neigh(df_loc,df_area,k):
 
     Parameters
     ----------
-    df_loc : TYPE
-        DESCRIPTION.
-    df_area : TYPE
-        DESCRIPTION.
-    k : TYPE
-        DESCRIPTION.
+    df_loc : Points that you wish to be searched through a larger grid
+    df_area : The larger grid
+    k : How many points do you want to find close to the target point, 1,2,3 etc. 
 
     Returns
     -------
