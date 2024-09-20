@@ -17,7 +17,9 @@ import math
 from datetime import datetime
 import os
 from o_func import opsys; start_path = Path(opsys())
-from o_func import near_neigh
+from sklearn.neighbors import BallTree
+
+nst = time.time()
 
 import ttide as tt 
 
@@ -26,6 +28,7 @@ def time64(time_str):
         time_str += ' 00:00'
     try:
         valid_date = datetime.strptime(time_str, '%Y-%m-%d %H:%M')
+        del valid_date
     except ValueError:
         raise ValueError(f"Invalid date format: {time_str}")
     return np.datetime64(time_str)
@@ -34,30 +37,43 @@ path = start_path / Path('Original_Data/UKC3/og/shelftmb_combined_to_3_layers_fo
 river_path = start_path / Path('modelling_DATA/kent_estuary_project/river_boundary_conditions/original_river_data/processed')
 savepath = start_path / Path('modelling_DATA/EBM_PRIMEA/EBM_python/figures')
 storage_location = start_path / Path('modelling_DATA/EBM_PRIMEA/EBM_python/simulation_results')
-fes_path = start_path / Path('Original_Data/FES2014/UK_bounds')
+fes_path = start_path / Path('Original_Data/FES2014/raw')
+EBM_python = start_path / Path('modelling_DATA/EBM_PRIMEA/EBM_python')
 os.makedirs(storage_location, exist_ok=True)
 writemaps = 'n'
 side = 'east'
 include_tidal = True
+
+plotting = 'n'
 
 '''
 ------------------------ Key parameters to change as either y/n ----------------------------------
 '''
 artificial_river = 'y' # implement real or not real data
 artificial_tide = 'y'
+time_generating_step = 1       # timesteps to generate the resultant output data. set at one minute for a balance of speed etc. 
 '''
 ------------------------ Key parameters to change as either y/n ----------------------------------
 '''
 
+discharge_list = [1,2,5,10,20,30,40,50]
 
-if artificial_tide == 'y':                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            
+if artificial_tide == 'y': 
+    artificial_salinities = 'y'  
+    art_sal = 30                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         
     start_time = time64('2013-11-01 00:00')
     stop_time  = time64('2013-11-30 23:00')
-    file_list = ['S2  ']
+    file_list = ['M2  ','S2  ']
+    simple_tide = 'y' # if yes just uses random values for all places. If no uses actual values from FES2014
+    tide_freqs = [0.0805114, 0.08333333]#, ]  # this is M2 and S2 where M2 is 805.    
     
-    tnameprime = '_artificial_tide_' + '_'.join(file_list)
-    
-    tide_freqs = [0.08333333]#, ] 0.0805114
+    if simple_tide == 'n':
+        
+        tnameprime = '_artificial_tide-simple_' + 't'+ str(time_generating_step) + '_tide-' + '_'.join(file_list).replace(' ','')
+    else:
+        tnameprime = '_artificial_tide-FES2014_'+ 't'+ str(time_generating_step) + '_tide-' + '_'.join(file_list).replace(' ','')
+        
+        
 else:
     tnameprime = '_real_tide'
 # If not real data, what do you want to implement for all estuaries.
@@ -80,7 +96,6 @@ correct_coords = {
 
 estuary_data = {
     'Dee': { 
-        'latlon'         : {'lat': 34.0522, 'lon': -118.2437},
         'xy'             : {'x': 779, 'y': 597},
         'length'         : 10000, # Estuary Length (m)
         'width_at_mouth' : 8000,  # Estuary Width (m)
@@ -89,7 +104,6 @@ estuary_data = {
         'angle'          : 141,
     },
     'Leven': {
-        'latlon'         : {'lat': 36.7783, 'lon': -119.4179},
         'xy'             : {'x': 783, 'y': 666},
         'length'         : 16150, # Estuary Length (m)
         'width_at_mouth' : 4860,  # Estuary Width (m)
@@ -98,7 +112,6 @@ estuary_data = {
         'angle'          : 4,
     },
     'Ribble': {
-        'latlon'         : {'lat': 40.7128, 'lon': -74.0060},
         'xy'             : {'x': 788, 'y': 631},
         'length'         : 13500, # Estuary Length (m)
         'width_at_mouth' : 10000,  # Estuary Width (m)
@@ -107,7 +120,6 @@ estuary_data = {
         'angle'          : 84,
     },
     'Lune': {
-        'latlon'         : {'lat': 40.7128, 'lon': -74.0060},
         'xy'             : {'x': 790, 'y': 651},
         'length'         : 10280, # Estuary Length (m)
         'width_at_mouth' : 540,  # Estuary Width (m)
@@ -116,7 +128,6 @@ estuary_data = {
         'angle'          : 17,
     },
     'Mersey': {
-        'latlon'         : {'lat': 40.7128, 'lon': -74.0060},
         'xy'             : {'x': 782, 'y': 612},
         'length'         : 16090, # Estuary Length (m)
         'width_at_mouth' : 1770,  # Estuary Width (m)
@@ -125,7 +136,6 @@ estuary_data = {
         'angle'          : 158,
     },
     'Wyre': {
-        'latlon'         : {'lat': 40.7128, 'lon': -74.0060},
         'xy'             : {'x': 785, 'y': 647},
         'length'         : 16090, # Estuary Length (m)
         'width_at_mouth' : 530,   # Estuary Width (m)
@@ -134,7 +144,6 @@ estuary_data = {
         'angle'          : 180,
     },
     'Kent': {
-        'latlon'         : {'lat': 40.7128, 'lon': -74.0060},
         'xy'             : {'x': 790, 'y': 666},
         'length'         : 12000, # Estuary Length (m)
         'width_at_mouth' : 10500,  # Estuary Width (m)
@@ -143,7 +152,6 @@ estuary_data = {
         'angle'          : 48,
     },
     'Duddon': {
-        'latlon'         : {'lat': 40.7128, 'lon': -74.0060},
         'xy'             : {'x': 776, 'y': 668},
         'length'         : 12000,  # Estuary Length (m)
         'width_at_mouth' : 4900,  # Estuary Width (m)
@@ -211,6 +219,7 @@ def calculate_segment_means(salinity_series, discharge_series, time_series):
 
         # Calculate means for the segment between start_idx and end_idx
         if end_idx > start_idx:
+            # print(end_idx)
             segment_salinity_mean = salinity_series[start_idx:end_idx].mean()
             segment_discharge_mean = discharge_series[start_idx:end_idx].mean()
             
@@ -440,90 +449,126 @@ def ebm(W_m, h, Q_r, Q_m, S_l, Q_l, S_oc, length, time_array):
     area = W_m * h
     volume = W_m * h * length
  
-    ur = Q_r / ((h / 2) * W_m)
+    ur = Q_r / ((h / 2) * W_m) # This should be the velocity in one half layer. 
     vel_tide = Q_l / area   # Lower layer volume flux / cross sectional area, m/s
     
     
-    Fr = Q_r / ((h / 2) * W_m * ((h / 2) * g)**0.5)
+    Fr = Q_r / ((h / 2) * W_m * ((h / 2) * g)**0.5) 
+    
     Ro_s = 1000 * (1 + (7.7e-4 * S_l))
     Fr_box = vel_tide / ((h * g) ** 0.5)
+    ''' For the original estuary box model the froude box for the estuary woudl have used tidal velocities of say (0.02 to) 0.03. 
+    Height of their estuary was 5. Gives a froude number of  roughly 0.002855686245854129 to  0.004283529368781193
+    
+    This gives something like this when plugged into the second half of the equation for C_k np.exp(-2000 *  (Fr_box * (200/5) ) ) = 6.07152391910112e-100
+    Set salinity to be 1035. (1035/ 1000)**20 = 1.989788863465843
+    
+    Set ur to be ur =218 / ((5 / 2) * 200) =  0.436 and we can start to plug those numbers together. 
+    
+    ((1035 / 1000)**20) * (((vel_tide) / ur)**-0.5) * np.exp(-2000 * (Fr_box * (200/5) )) or 5.640699357189822e-99 a very small number for C_k 
+    Ro_s for the first one is actually calculated as Ro_s = 1000*(1+((7.7*(1E-4)) * 35.95)) = 1027.6815
+    '''
     Eta = (Fr_box ** 2) * (W_m / h)
  
     tolerance = 1e-5  # Small positive value
-    mask = Q_r > (Q_m - tolerance)
+    mask = Q_r > (Q_m + tolerance) # was + and this makes falses
     
     C_k = np.zeros_like(Q_r)
     
-    C_k[mask] = ((Ro_s[mask] / 1000) ** 20) * ((vel_tide[mask] / ur[mask]) ** -0.5) * np.exp(-2000 * Eta[mask])
-    C_k[~mask] = 200*((Ro_s[~mask] / 1000) ** 20) * ((vel_tide[~mask] / ur[~mask]) ** 0.1) * np.exp(-2000 * Eta[~mask])
-    
-    k_x = W_m * vel_tide * C_k # m^2/s , scale of flux. 
-    
-    Q_u = Q_r + Q_l # Q_l volume 
-    
-    Q_l_positive = np.where(Q_l > 0, Q_l, 0)
+    #%%
+    ''' ----------------------------------------------------------------------------
+    C_k handling, Lets iterate over several versions to see what happens to C_k. 
+        In the original formula. This can be handled with a for loop plotting function 
+        to access the impact of different C_k values. 
+        To start with a version set to 100 as the original estuary EBM is used. 
 
-    Lx = h * 0.019 * (Fr ** -0.673) * ((Ro_s / 1000) ** 108.92) * ((Q_l / Q_r) ** -0.0098)
-    
-    
     '''
-    Height *  froude number * (density of sea / freshwater) * (sea inflowing volume flux / river volumne flux)
     
-    Attempt at a simplistic length of estuarine intrusion below
+    plt.figure()
+    for C_k_iteration in range(1):
+        # First 2 are the originals. 
+        mid_comp = [-0.5]
+        end_comp= [-2000]
+        mc = str(mid_comp[C_k_iteration])
+        ec = str(end_comp[C_k_iteration])
+        
+        # Original Set of Ck equations. 
+        C_k[mask] = (Ro_s[mask] / 1000)**20 * (vel_tide[mask] / ur[mask])**-0.5 * np.exp(-2000 * Eta[mask])
+        C_k[~mask] =  200 * (Ro_s[~mask] / 1000)**20 * (vel_tide[~mask] / ur[~mask])**0.1 * np.exp(-2000 * Eta[~mask])
+        
+        # label = 'C_k_' + str(100)
+        # C_k = C_k*0+100
+        # plt.plot(C_k, label = label)
+        
+        
+        k_x = W_m * vel_tide * C_k # m^2/s , scale of flux. 
+        
+        Q_u = Q_r + Q_l # Q_l volume 
+        
+        Q_l_positive = np.where(Q_l > 0, Q_l, 0)
     
-    Add Kx 
-    '''
-    #Lx = 5 * area**0.5 * (Q_l_positive / Q_r)**0.75
-
-    S_u = np.full_like(Q_l, np.nan) # This is technically surface outflow. 
-    S_flood = np.full_like(Q_l, np.nan) # Inflow at bottom so flood, renamed as such
-    
-    previous_S_u = np.full((Q_l.shape[1],), np.nan)  # Array to store the previous flood tide salinity for each location
-                                          # Actually stores the ebb tide currently but we will adjust as needed. 
-    
-    #S_l[np.isfinite(S_l)] = 30
-    # Apply constant salinities. say set S_l to 25. 
-    # Loop through each time step
-    for i in range(len(Q_l)):          # Determine the flood or ebb, pos = flood, neg = ebb
-        inflow_mask = Q_l[i] > 0   # Flood mask 
-        outflow_mask = Q_l[i] < 0  # Ebb mask 
+        Lx = h * 0.019 * (Fr ** -0.673) * ((Ro_s / 1000) ** 108.92) * ((Q_l / Q_r) ** -0.0098)
         
-        
-        ''' S_u understanding.
-        S_u is outflowing new salinity that was originally calculated daily. Therefore this represents the ebb. 
-        Therefore the oppsoite of this component should be S_flood. Therefore S_flood should be ignored for later calculations 
-        and S_u should be used. 
-        
-        Originally the S_u (ebb tide river flow) was calculated using the inflow river, which generates an outflow
-        
-        So at some point they have to swap places. 
-        
-        Salinity on the flood is assumed to be that of 
         
         '''
-        mask_used = inflow_mask
-        if np.any(mask_used):    # This was originally inflow
-            
-            # print (i) # This will print the iterations on which the inflow occurs. 
-            S_u[i, mask_used] = (S_l[i, mask_used] * Q_l[i, mask_used] + S_oc[i, mask_used] + 
-                                   k_x[i, mask_used] * h[:, mask_used].flatten() * W_m[:, mask_used].flatten() * 
-                                   (S_oc[i, mask_used] / (Lx[i, mask_used] * 1000))) / (Q_r[i, mask_used] + Q_l[i, mask_used])
-            previous_S_u[mask_used] = S_u[i, mask_used]
-            
-            
-            '''
-            (Lower layer salinity * Lower layer volume flux) + (Salinity at mouth) + (mixing coefficient * height * width * (salinity at mouth / length of saline intrusion) / (river discharge + lower layer influx. ) )
-            '''
+        Height *  froude number * (density of sea / freshwater) * (sea inflowing volume flux / river volumne flux)
         
-        mask_used = outflow_mask    
-        if np.any(outflow_mask):
-            ''' Now on the flood tide what is the salinity ? why its the starting salinity is it not ? not this equation. 
-            Old equation is listed below, new equation replaces it with the S_l at that time. 
+        Attempt at a simplistic length of estuarine intrusion below
+        
+        Add Kx 
+        '''
+        #Lx = 5 * area**0.5 * (Q_l_positive / Q_r)**0.75
+    
+        S_u          = np.full_like(Q_l, np.nan) # This is technically surface outflow. 
+        S_flood      = np.full_like(Q_l, np.nan) # Inflow at bottom so flood, renamed as such
+        
+        previous_S_u = np.full((Q_l.shape[1],), np.nan)  # Array to store the previous flood tide salinity for each location
+                                              # Actually stores the ebb tide currently but we will adjust as needed. 
+        
+        # S_u_no_kx = np.full_like(Q_l, np.nan)
+        #S_l[np.isfinite(S_l)] = 30
+        # Apply constant salinities. say set S_l to 25. 
+        # Loop through each time step
+        stored_ck = []
+        for i in range(len(Q_l)):          # Determine the flood or ebb, pos = flood, neg = ebb
+            inflow_mask = Q_l[i] > 0   # Flood mask 
+            outflow_mask = Q_l[i] < 0  # Ebb mask 
+            ''' S_u understanding.
+            S_u is outflowing new salinity that was originally calculated daily. Therefore this represents the ebb. 
+            Therefore the oppsoite of this component should be S_flood. Therefore S_flood should be ignored for later calculations 
+            and S_u should be used. 
+            Originally the S_u (ebb tide river flow) was calculated using the inflow river, which generates an outflow
+            So at some point they have to swap places. 
+            Salinity on the flood is assumed to be that of 
             '''
-            S_flood[i, outflow_mask] = S_oc[i, outflow_mask] # What to set for the other salinity. 
+            mask_used = inflow_mask
             
-            #S_flood[i, outflow_mask] = (previous_S_u[outflow_mask] * abs(Q_l[i, outflow_mask]) + S_r * Q_r[i, outflow_mask]) / (abs(Q_l[i, outflow_mask]) + Q_r[i, outflow_mask])
-            
+            if np.any(mask_used):    # This was originally inflow
+                # print(Q_l[i, mask_used])
+                # print (i) # This will print the iterations on which the inflow occurs. 
+                S_u[i, mask_used] = (S_l[i, mask_used] * Q_l[i, mask_used] + S_oc[i, mask_used] + 
+                                     k_x[i, mask_used] * h[:, mask_used].flatten() * W_m[:, mask_used].flatten() * 
+                                     (S_oc[i, mask_used] / (Lx[i, mask_used] * 1000))) / (Q_r[i, mask_used] + Q_l[i, mask_used])
+
+                previous_S_u[mask_used] = S_u[i, mask_used]
+
+            mask_used = outflow_mask    
+            if np.any(outflow_mask):
+                ''' Now on the flood tide what is the salinity ? why its the starting salinity is it not ? not this equation. 
+                Old equation is listed below, new equation replaces it with the S_l at that time. 
+                '''
+                S_flood[i, outflow_mask] = S_oc[i, outflow_mask] # What to set for the other salinity. 
+                
+                #S_flood[i, outflow_mask] = (previous_S_u[outflow_mask] * abs(Q_l[i, outflow_mask]) + S_r * Q_r[i, outflow_mask]) / (abs(Q_l[i, outflow_mask]) + Q_r[i, outflow_mask])
+                
+        plt.plot(S_u, label = '')    
+        plt.savefig(EBM_python/Path(f'Ck_figures/Ck_midcalibration{mc}_endcalibration{ec}.png'), dpi = 300)
+                
+        ''' 
+        (Lower layer salinity * Lower layer volume flux) + (Salinity at mouth) + (mixing coefficient * height * width * (salinity at mouth / length of saline intrusion) / (river discharge + lower layer influx. ) )
+        ----------------------------------------------------------------------------
+        '''     
+        #%%
         # print(previous_S_u.shape)
     # Mask Q_l where S_ebb is NaN to create Q_outflow # WAS S_ebb, now is going to be S_u 
     Q_outflow = np.where(~np.isnan(S_flood), np.abs(Q_l), np.nan) # Outflow is calculated on the ebb tide. (but its S_flood for the moment.)
@@ -549,11 +594,13 @@ def ebm(W_m, h, Q_r, Q_m, S_l, Q_l, S_oc, length, time_array):
         if loc != 50:
             est_number = est_number + 1
             S_u_series = pd.Series(S_u[:, loc]) # This is salinity on the outflow upper layer. 
+            Lx_series = pd.Series(Lx[:, loc])
             S_l_series = pd.Series(S_l_nans[:, loc]) # This is a series of S_l on the inflow lower layer
             Q_outflow_series = pd.Series(Q_outflow[:, loc])
             Q_inflow_series = pd.Series(np.where(Q_l[:, loc] > 0, Q_l[:, loc], np.nan))
             Q_r_series = pd.Series(Q_r[:, loc])
     
+            cross_sectional_surface_area = area[:,loc]
             # Calculate segment means for inflow and outflow
             '''
             This is where the opposites start to occur. 
@@ -563,6 +610,9 @@ def ebm(W_m, h, Q_r, Q_m, S_l, Q_l, S_oc, length, time_array):
             '''
             salinity_in_means, discharge_out_means, time_series_in = calculate_segment_means(S_l_series, Q_outflow_series, time_array)
             salinity_out_means, discharge_in_means, time_series_out = calculate_segment_means(S_u_series, Q_inflow_series, time_array)
+            
+            Lx_in_means, b, ttodump = calculate_segment_means(Lx_series, Q_inflow_series, time_array)
+            
             _, river_discharge_means, _ = calculate_segment_means(S_l_series, Q_r_series, time_array)
             
             # Temporary mean 
@@ -576,12 +626,15 @@ def ebm(W_m, h, Q_r, Q_m, S_l, Q_l, S_oc, length, time_array):
             sub_loop = 0
      
             # Calculate flushing time for each tidal cycle # was dis_out_mean_correct
-            for sal_in_mean, sal_out_mean, dis_out_mean, end_time in zip(salinity_in_means, salinity_out_means, river_discharge_means, time_series_out):
+            for sal_in_mean, sal_out_mean, dis_out_mean, end_time, estuary_intrusion in zip(salinity_in_means, salinity_out_means, river_discharge_means, time_series_out, Lx_in_means):
                 if not np.isnan(sal_in_mean) and not np.isnan(sal_out_mean) and not np.isnan(dis_out_mean):
                     sub_loop = sub_loop + 1
+                    # print(sal_out_mean)
                     #print('It breaks on estuary number: ', est_number)
+                    tidal_prism = cross_sectional_surface_area*estuary_intrusion
+                    t_cycle = 12.42 * 3600
                     #print('It breaks on loop: ', sub_loop)
-                    ft = (volume[0,loc] * (sal_in_mean - sal_out_mean)) / (dis_out_mean * sal_in_mean)
+                    ft = (volume[0,loc] * (sal_in_mean - sal_out_mean)) / ((dis_out_mean * sal_in_mean) )# + (tidal_prism/t_cycle)
                     Flushing_Time.append(ft / 3600)  # Convert seconds to hours
                     Flushing_Time_Phase.append(end_time)
      
@@ -699,7 +752,7 @@ def load_tidal_data():
     relative_angle = theta_degrees - angles
     relative_angle = (relative_angle + 180) % 360 - 180  # Normalize to [-180, 180]
 
-    
+    1
     # Preparing depth averaged calculations. 
     if Tdata_subset.deptht.size == 3:
         ham = [estuary_data[i]['height_at_mouth'] for i in estuary_data]
@@ -718,6 +771,8 @@ def load_tidal_data():
     # 3. Normalize the weights along the depth axis
     depth_weights_sum = np.sum(depth_weights, axis=1, keepdims=True)  # Sum along the depth axis
     depth_weights_normalized = depth_weights / depth_weights_sum  # Shape: (8, 3, 1, 1)
+    
+    # This line would need to be edited for other real world data. 
     depth_weights_broadcasted = np.broadcast_to(depth_weights_normalized, (8, 3, 720, 17, 17))  # Shape: (8, 3, 720, 17, 17)
 
 
@@ -855,45 +910,140 @@ def generate_tide():
     # Here is where the datasets are combined into the megadataset and everything is stored.
     combined_dataset = {'U': combined_datasetU, 'V':combined_datasetV}
     
-    def nearest_grid_points(combined_dataset, latlon):
-        """
-        Find the nearest grid points for each lat/lon in latlon_list.
+    def nearest_neighbour(combined_dataset):
+        cmap = plt.cm.viridis  # Use viridis for normal values
+        # cmap.set_bad(color='grey')  # Set the color for masked values (zeros)
+        # Assuming the lat/lon data is common across all U and V datasets
+        first_velocity_key = next(iter(combined_dataset)) 
+        first_constituent_key = next(iter(combined_dataset[first_velocity_key]))  # This gets the first tidal constituent, like 'M2'
+        lats = np.deg2rad(combined_dataset[first_velocity_key][first_constituent_key]['lat'].values)  # Or another coordinate name if different
+        lons = np.deg2rad(combined_dataset[first_velocity_key][first_constituent_key]['lon'].values)
+        lons_reoriented = np.where(lons > np.pi, lons - 2 * np.pi, lons)
         
-        Parameters:
-        - combined_dataset: xarray dataset containing lat and lon coordinates.
-        - latlon_list: list of dictionaries with 'lat' and 'lon' keys.
-        
-        Returns:
-        - amplitude_array: array of amplitudes for each point.
-        - phase_array: array of phases for each point.
-        """
-        amplitude_array = []
-        phase_array = []
-        
-        for key in combined_dataset.keys(): # Run the U and V
-            for constituent in combined_dataset[key].keys():
-                # Loop over each lat/lon pair
-                for point in latlon:
-                    lat = point['lat']
-                    lon = point['lon']
-            
-                    # Select the nearest grid point in the dataset
-                    nearest_point = combined_dataset.sel(lat=lat, lon=lon, method='nearest')
-            
-                    # Extract amplitude ('Va') and phase ('Vg') for the selected point
-                    amplitude = nearest_point['Va'].values  # Amplitude (replace 'Va' with the actual var if different)
-                    phase = nearest_point['Vg'].values      # Phase (replace 'Vg' with the actual var if different)
-            
-                    amplitude_array.append(amplitude)
-                    phase_array.append(phase)
-            
-                amplitude_array = np.array(amplitude_array)
-                phase_array = np.array(phase_array)
+        split_index = (len(lons_reoriented) // 2) + 1
+        # Split the array into two parts: west and east
+        lons_reoriented_final = np.concatenate((lons_reoriented[split_index:], lons_reoriented[:split_index]))
+        lats_2d, lons_2d = np.meshgrid(lats, lons_reoriented_final)
+        lats_deg = np.rad2deg(lats_2d.T)
+        lons_deg = np.rad2deg(lons_2d.T)
         
         
-        return combined_dataset
     
-    def generate_tide_series(start_time, stop_time, interval, amplitude, phase, lat):
+        
+        # swap_180to360_to_neg180to0 or swap east west swew
+        def swew(data):
+            west = data[:, split_index:]  # Data corresponding to longitudes in [180, 360]
+            east = data[:, :split_index]  # Data corresponding to longitudes in [0, 180]
+            reordered = np.concatenate((west, east), axis=1)
+            return reordered
+        
+        # Generate data nan maskfor nearest neighbour interpolation
+        # data_to_be_masked = swew(combined_dataset['U'][first_constituent_key]['Ug'].values)
+        # valid_mask = ~np.isnan(data_to_be_masked)  # Mask of valid (non-NaN) points
+
+        def makeamap():
+            ## Temporary fes map
+            # Use the swew to swap the sides. 
+            Ua_data = swew(combined_dataset['U'][first_constituent_key]['Ug'].values)
+            
+            Ua_masked = np.ma.masked_where(np.isnan(Ua_data), Ua_data)
+            
+            
+            plt.figure();plt.pcolormesh(lons_deg, lats_deg,  Ua_masked, shading='auto', cmap=cmap)
+            cbar = plt.colorbar(cmap=cmap)
+            actual_lons = [estuary_data[estuary]['latlon']['lon'] for estuary in estuary_data]
+            actual_lats = [estuary_data[estuary]['latlon']['lat'] for estuary in estuary_data]
+            plt.scatter(actual_lons, actual_lats, s = 1)
+        # makeamap()
+        # plt.xlim([-3.5,2.5])
+        # plt.ylim([53.2,54.4])
+        
+        
+        # Function to find the first valid (non-NaN) index
+        # Function to find the first valid (non-NaN) index
+        
+        def find_nearest_non_nan(idx, latlon_grid, Ua_data, lats_2d, lons_2d):
+            for candidate_idx in idx[0]:  # Loop through all nearest neighbors
+                # print(candidate_idx)
+                # Get the lat/lon of the candidate point
+                nearest_lat = latlon_grid[candidate_idx, 0]
+                nearest_lon = latlon_grid[candidate_idx, 1]
+        
+                # Find the corresponding 2D indices (j, i) for this lat/lon in the full grid
+                j, i = np.unravel_index(np.argmin(np.abs(lats_2d - nearest_lat) + np.abs(lons_2d - nearest_lon)), lats_2d.shape)
+        
+                if np.isnan(Ua_data[i, j]) == False:
+                    # print('Its a real number')
+                    return j, i
+                # Else it would be a nan
+                    # print('Its a nan')
+                
+            return None, None
+
+
+        # Flatten the 2D arrays for use in BallTree
+        latlon_grid = np.column_stack([lats_2d.ravel(), lons_2d.ravel()]) # All points
+        # latlon_grid_valid = np.column_stack([lats_2d.ravel()[valid_mask.ravel()], lons_2d.ravel()[valid_mask.ravel()]]) # Set to no nans but is borky
+
+        # Create a BallTree using the haversine distance metric
+        tree = BallTree(latlon_grid, metric='haversine')
+        estuary_tidal_constituentsV, estuary_tidal_constituentsU = [],[]
+        plt.figure()
+        plt.pcolormesh(lons_deg, lats_deg,swew(combined_dataset['U']['M2  '].Ua), shading='auto', cmap=cmap)
+        for estuary_key in estuary_data.keys():
+            estuary_lat = np.deg2rad(estuary_data[estuary_key]['latlon']['lat'])
+            estuary_lon = np.deg2rad(estuary_data[estuary_key]['latlon']['lon'])
+        
+        
+            # Find the nearest grid point using the BallTree (note: haversine distances return radians)
+            dist, idx = tree.query([[estuary_lat, estuary_lon]], k=100)
+        
+            # Get the corresponding lat/lon index in the 2D array
+            #nearest_idx = idx[0][0]
+            
+            #j,i = np.unravel_index(nearest_idx, lats_2d.shape)
+            
+            j, i = find_nearest_non_nan(idx, latlon_grid, swew(combined_dataset['U']['M2  '].Ua), lats_2d, lons_2d)
+            
+            # plot a map again.
+            
+                
+            plt.scatter(lons_deg[i,j], lats_deg[i,j], s = 1)
+            # plt.text(lons_deg[i,j], lats_deg[i,j], s = estuary_key)
+            plt.xlim([-4,-2])
+            plt.ylim([53,55])
+            # plt.close()
+        
+            # For each tidal constituent, extract the amplitude and phase dynamically
+            tideconU, tideconV = [],[]
+            for constituent_key in combined_dataset[first_velocity_key].keys():  # Loop through all tidal constituents
+                amplitude_U = swew(combined_dataset['U'][constituent_key]['Ua'].values)[i, j]  # Corrected order (lon, lat)
+                phase_U = swew(combined_dataset['U'][constituent_key]['Ug'].values)[i, j]     # Corrected order (lon, lat)
+                amplitude_V = swew(combined_dataset['V'][constituent_key]['Va'].values)[i, j] # Corrected order (lon, lat)
+                phase_V = swew(combined_dataset['V'][constituent_key]['Vg'].values)[i, j]     # Corrected order (lon, lat)
+        
+                # Append amplitude and phase data for each constituent
+                # Convert from cm/s to m/s by dividing by 100
+                tideconU.append([amplitude_U / 100, 0, phase_U, 0])  # [amplitude, SNR, phase, Doodson]
+                tideconV.append([amplitude_V / 100, 0, phase_V, 0])
+        
+            # Append the estuary's tidal data to the list
+            estuary_tidal_constituentsU.append(np.array(tideconU))
+            estuary_tidal_constituentsV.append(np.array(tideconV))
+            
+        return estuary_tidal_constituentsU, estuary_tidal_constituentsV
+        
+    
+    
+    '''
+    The tidal amplitues and phases generated from the exact points as specified in the estuarine dictionary 
+    are produced here, this is primarily for calibration of EBM with other models to generate accurate 
+    tidal signals that are reproducable. 
+    '''
+    estuary_tidal_constituentsU, estuary_tidal_constituentsV = nearest_neighbour(combined_dataset)
+    
+    
+    def generate_tide_series(start_time, stop_time, interval, amppha, lat):
         """
         Generates tidal time series using M2 and S2 constituents based on amplitude and phase.
         
@@ -908,60 +1058,87 @@ def generate_tide():
         Returns:
         - eta: Predicted tidal time series.
         """
-        # Generate time array using pandas date_range
-        time_array = pd.date_range(start=start_time, end=stop_time, freq=f'{interval}T').to_pydatetime()
         
-        # Tidal constituent names (M2 and S2)
-        m2_s2_names = np.array([s.encode() for s in file_list])
+        etalist = []
+        for i in amppha:
+            print(i)
+            # Generate time array using pandas date_range
+            time_array = pd.date_range(start=start_time, end=stop_time, freq=f'{interval}T').to_pydatetime()
+            
+            # Tidal constituent names (M2 and S2)
+            m2_s2_names = np.array([s.encode() for s in file_list])
+        
+            # Tidal constituent frequencies for M2 and S2
+            m2_s2_freq = np.array(tide_freqs)  # M2 and S2 frequencies
+        
+        
+            # Use t_predic to calculate the tidal prediction (eta)
+            eta = tt.t_predic(np.array(time_array), m2_s2_names, m2_s2_freq, i)
+            etalist.append(eta)
     
-        # Tidal constituent frequencies for M2 and S2
-        m2_s2_freq = np.array(tide_freqs)  # M2 and S2 frequencies
+        return np.column_stack(etalist)
     
-        # Create the tidecon array: amplitude and phase for M2 and S2, followed by two zeros for SNR and Doodson
-        m2_s2_tidecon = np.array([
-            [amplitude[0], 0, phase[0], 0]  # M2: [amplitude, SNR, phase, Doodson]
-            #[amplitude[1], 0, phase[1], 0]   # S2: [amplitude, SNR, phase, Doodson]
-        ])
+    interval = time_generating_step  # 1-hour interval now its set from the main time_generating step 
+    # Timeseries for simlistic data without location basis. 
+    def simplistic_tidal_timeseries():
     
-        # Use t_predic to calculate the tidal prediction (eta)
-        eta = tt.t_predic(np.array(time_array), m2_s2_names, m2_s2_freq, m2_s2_tidecon)
+        # Set the amplitude and phase into list to make things easier. 
+        amplitude = [0.153]  # Example amplitude values for M2 and S2
+        phase = [-61.85]  # Example phase values for M2 and S2 (in degrees)
+        amppha = [np.array([
+            [amplitude[0], 0, phase[0], 0] , # M2: [amplitude, SNR, phase, Doodson]
+            [amplitude[0], 0, phase[0], 0] ,  # S2: [amplitude, SNR, phase, Doodson]
+        ])]
+        lat = 53.25  # Latitude of the location
+        
+        # Generate the tidal series using M2 and S2
+        etaV = generate_tide_series(start_time, stop_time, interval, amppha, lat)
+        amplitude = [0.40]  # Example amplitude values for M2 and S2
+        phase = [-121.54]  # Example phase values for M2 and S2 (in degrees)
+        amppha = [np.array([
+            [amplitude[0], 0, phase[0], 0] , # M2: [amplitude, SNR, phase, Doodson]
+            [amplitude[0], 0, phase[0], 0] ,  # S2: [amplitude, SNR, phase, Doodson]
+        ])]
+        etaU = generate_tide_series(start_time, stop_time, interval, amppha, lat)
+        
     
-        return eta
+        return etaU, etaV 
     
-    #!!! Example usage
-    # start_time = '2013-11-01T00:00:00'
-    # stop_time = '2013-11-30T00:00:00'  # 1 month of data
-    interval = 60  # 1-hour interval
+    if simple_tide == 'y':
+        etaU, etaV  = simplistic_tidal_timeseries()
+        etaU = etaU[:,0]
+        etaV = etaV[:,0]
+        
+        angle = np.arctan2(etaV, etaU)
+        magnitude = np.sqrt(etaU**2 + etaV**2)
+        Q_l_single_velocity = np.where(  (-np.pi/2 <= angle) & (angle <= np.pi/2), magnitude, -magnitude)
+        x = len(estuary_data)
+        Q_l_velocity = np.tile(Q_l_single_velocity[:, np.newaxis], (1, x))
+
+    else:
+        amppha = estuary_tidal_constituentsU
+        etaU = generate_tide_series(start_time, stop_time, interval, amppha, lat)
+
+        amppha = estuary_tidal_constituentsV
+        etaV = generate_tide_series(start_time, stop_time, interval, amppha, lat)
     
-    amplitude = [0.153]  # Example amplitude values for M2 and S2
-    phase = [-61.85]  # Example phase values for M2 and S2 (in degrees)
-    lat = 53.25  # Latitude of the location
+        angle = np.arctan2(etaV, etaU)
+        magnitude = np.sqrt(etaU**2 + etaV**2)
+        Q_l_velocity = np.where(  (-np.pi/2 <= angle) & (angle <= np.pi/2), magnitude, -magnitude)
     
-    # Generate the tidal series using M2 and S2
-    etaV = generate_tide_series(start_time, stop_time, interval, amplitude, phase, lat)
-    amplitude = [0.40]  # Example amplitude values for M2 and S2
-    phase = [-121.54]  # Example phase values for M2 and S2 (in degrees)
-    etaU = generate_tide_series(start_time, stop_time, interval, amplitude, phase, lat)
-    # Print the predicted time series
-    #print("Predicted Tidal Series (Eta):", eta)
+    # This takes the calculated velocities and computes them into resultant magnitude with direction 
     
-    angle = np.arctan2(etaV, etaU)
-    magnitude = np.sqrt(etaU**2 + etaV**2)
     
-    Q_l_single = np.where(
-        (-np.pi/2 <= angle) & (angle <= np.pi/2), magnitude, -magnitude)
     
-    x = len(estuary_data)
-    Q_l_velocity = np.tile(Q_l_single[:, np.newaxis], (1, x))
+    
+    
+    
     
     Q_l = Q_l_velocity * ham * wam
     
-    
+    S_l = np.full(Q_l.shape, art_sal)
 
-
-    S_l = np.full(Q_l.shape, 30)
-
-    S_col = np.full(Q_l.shape, 30)
+    S_col = np.full(Q_l.shape, art_sal)
 
 
     return Q_l, S_col, S_l, ham, wam
@@ -1014,9 +1191,9 @@ def load_river_data(start_time, stop_time, river_path, estuary_data):
     return estuary_data
 
 
-def artificial_river_data(start_time, stop_time, estuary_data, discharge):
+def artificial_river_data(start_time, stop_time, estuary_data, discharge, time_generating_step):
     # Create a complete hourly time index from start_time to stop_time
-    full_time_index = pd.date_range(start=start_time, end=stop_time, freq='H')
+    full_time_index = pd.date_range(start=start_time, end=stop_time, freq=f'{time_generating_step}min')
 
     # Determine how to handle the discharge parameter based on its type and length
     if isinstance(discharge, (int, float)):
@@ -1048,18 +1225,27 @@ def artificial_river_data(start_time, stop_time, estuary_data, discharge):
 
 #%%
 if artificial_tide == 'n':
+    print('Using read in tidal data')
     start_time, stop_time, Q_l, S_col, S_l, ham, wam  = load_tidal_data()
     
     
 elif artificial_tide == 'y':
     #start_time, stop_time these are generated at the surface
+    print('Using artificial tide')
     Q_l, S_col, S_l, ham, wam = generate_tide()
-    #generate_tidal_data()
+    
+    if artificial_salinities == 'n':
+        print('Using real salinities. ')
+        # We need to redo S_l and S_col with real data as can be seen here. 
+        _, _, _, S_col, S_l, _, _  = load_tidal_data()
 
 if artificial_river == 'y':
-    runs_to_complete = [10,20,30,40,50,75,100,150]
+    runs_to_complete = discharge_list #[10,20,30,40,50,75,100,150]
 else:
     runs_to_complete = ['real_river']
+    
+
+    
 
 for discharge_examples in runs_to_complete:
 
@@ -1067,7 +1253,7 @@ for discharge_examples in runs_to_complete:
     if artificial_river == 'n':
         estuary_data = load_river_data(start_time, stop_time, river_path, estuary_data)
     elif artificial_river == 'y':
-        estuary_data = artificial_river_data(start_time, stop_time, estuary_data, discharge_examples)
+        estuary_data = artificial_river_data(start_time, stop_time, estuary_data, discharge_examples, time_generating_step)
         
         
     #% Run the EBM
@@ -1177,7 +1363,7 @@ for discharge_examples in runs_to_complete:
                 plt.tight_layout()
         
                 # Save the figure with a unique filename
-                filename = f"{estuary}_{attempt_label}.png"
+                filename = f"{estuary}_{attempt_label}_timestep-mins-{time_generating_step}.png"
                 plt.savefig(savepath / Path(filename), dpi=500)
                 plt.close(fig)
     
@@ -1188,18 +1374,19 @@ for discharge_examples in runs_to_complete:
         al = al + "faster_ebm"
         
     if artificial_tide == 'y':
-        al = al + '_artificial_tide_' + '_'.join(file_list)
+        al = al + tnameprime
     # Assuming the variables are already defined and filled during the EBM processing
-    plot_flushing_time_and_discharge(
-        cleaned_flushing_time_phase_list=cleaned_flushing_time_phase,
-        flushing_time_list=Flushing_Time,
-        Q_u=Q_u,
-        Q_r=Q_r,  # Assuming Q_r is the discharge data
-        time_array=time_array,
-        savep=savepath,  # Define the path where you want to save the plots
-        estuary_names=list(estuary_data.keys()),  # Use the estuary names from the original data
-        attempt_label=al
-    )
+    if plotting == 'y':
+        plot_flushing_time_and_discharge(
+            cleaned_flushing_time_phase_list=cleaned_flushing_time_phase,
+            flushing_time_list=Flushing_Time,
+            Q_u=Q_u,
+            Q_r=Q_r,  # Assuming Q_r is the discharge data
+            time_array=time_array,
+            savep=savepath,  # Define the path where you want to save the plots
+            estuary_names=list(estuary_data.keys()),  # Use the estuary names from the original data
+            attempt_label=al
+        )
 
 # %% Plot the numpy saved attributes. 
 
@@ -1215,12 +1402,15 @@ else:
 def plot_estuary_data(storage_location, savepath):
     estuaries = ['Dee', 'Duddon', 'Kent', 'Leven', 'Lune', 'Mersey', 'Ribble', 'Wyre']
     discharges = [10, 20, 30, 40, 50, 75, 100, 150]
-    
+    a = 0
+    b = 0
     
     for estuary in estuaries:
+        a +=1
         fig, axs = plt.subplots(2, 2, figsize=(14, 10))  # 2x2 grid for each estuary
         if estuary != 'Deee':
             for discnumber, disc in enumerate(runs_to_complete):
+                b +=1
                 if disc != 1550:
                     # Load the data
                     filename = f"{estuary}_discharge_{disc}_{tnameprime}.npz"
@@ -1230,15 +1420,13 @@ def plot_estuary_data(storage_location, savepath):
         
                     # Extract data
                     sal_in_mean = data['sal_in_mean']
-                    print(sal_in_mean[0])
                     sal_out_mean = data['sal_out_mean']
                     dis_out_mean = data['dis_out_mean']
                     flushing_time = data['flushing_time']
                     flushing_time_phase = data['flushing_time_phase']
         
                     # Determine the minimum length among all time series
-                    min_len = min(len(sal_in_mean), len(sal_out_mean), len(dis_out_mean), len(flushing_time_phase))
-        
+                    min_len = min(len(sal_in_mean), len(sal_in_mean), len(dis_out_mean), len(dis_out_mean), len(flushing_time))
                     # Truncate all arrays to the minimum length
                     sal_in_mean = sal_in_mean[:min_len]
                     sal_out_mean = sal_out_mean[:min_len]
@@ -1288,18 +1476,15 @@ def plot_estuary_data(storage_location, savepath):
                 plt.tight_layout(pad=3.0)  # Add padding between plots
         
         # Save the figure for the current estuary
-        results_path = savepath / f"results_data_{estuary}_{rname}_{tname}_.png"
+        results_path = savepath / f"results_data_{estuary}_{rname}_{tnameprime}_timestep-mins-{time_generating_step}_.png"
         plt.savefig(results_path, dpi=300)
         plt.close()
+        
 
-# Example usage:
-# plot_estuary_data('path_to_folder_containing_npz_files', 'output_filename.png')
-
-plot_estuary_data(storage_location, savepath)
+if plotting == 'y':
+    plot_estuary_data(storage_location, savepath)
 # Example usage:
 # plot_estuary_data('path_to_folder_containing_npz_files')
-
-
 
  #%% Run EBM
 
@@ -1474,27 +1659,27 @@ The concept of "estuary self-similar character" refers to the property of estuar
 
 In the context of our calculations:
 
-1. **Self-Similarity**: The parameter \(\eta\) is used to characterize the self-similarity of estuarine flows. If \(\eta\) remains constant across different estuarine scales, it indicates that the flow patterns are self-similar. This implies that despite changes in the estuary's physical dimensions, the scaled Froude number can predict similar flow characteristics.
+1. **Self-Similarity**: The parameter backslash(backslashetabackslash) is used to characterize the self-similarity of estuarine flows. If backslash(backslashetabackslash) remains constant across different estuarine scales, it indicates that the flow patterns are self-similar. This implies that despite changes in the estuary's physical dimensions, the scaled Froude number can predict similar flow characteristics.
 
-2. **Formula for \(\eta\)**:
-   \[
-   \eta = \frac{( \text{Fr}_{\text{box}} )^2 \cdot W_m}{h}
-   \]
-   where \(\text{Fr}_{\text{box}}\) is the Froude number, \(W_m\) is the width of the estuary, and \(h\) is the height.
+2. **Formula for backslash(backslashetabackslash)**:
+   backslash[
+   backslasheta = backslashfrac{( backslashtext{Fr}_{backslashtext{box}} )^2 backslashcdot W_m}{h}
+   backslash]
+   where backslash(backslashtext{Fr}_{backslashtext{box}}backslash) is the Froude number, backslash(W_mbackslash) is the width of the estuary, and backslash(hbackslash) is the height.
 
-3. **Practical Interpretation**: If \(\eta\) is consistent for different estuarine systems with varying dimensions, it supports the notion of self-similarity. This means that the flow patterns and behaviors might be similar when scaled appropriately.
+3. **Practical Interpretation**: If backslash(backslashetabackslash) is consistent for different estuarine systems with varying dimensions, it supports the notion of self-similarity. This means that the flow patterns and behaviors might be similar when scaled appropriately.
 
 4. **Example**:
-   - Estuary A: Width = 50 m, Height = 5 m, \(\text{Fr}_{\text{box}} = 2\)
-     \[
-     \eta_A = \frac{(2)^2 \cdot 50}{5} = 40
-     \]
-   - Estuary B: Width = 100 m, Height = 10 m, \(\text{Fr}_{\text{box}} = 1\)
-     \[None
-     \eta_B = \frac{(1)^2 \cdot 100}{10} = 10
-     \]
+   - Estuary A: Width = 50 m, Height = 5 m, backslash(backslashtext{Fr}_{backslashtext{box}} = 2backslash)
+     backslash[
+     backslasheta_A = backslashfrac{(2)^2 backslashcdot 50}{5} = 40
+     backslash]
+   - Estuary B: Width = 100 m, Height = 10 m, backslash(backslashtext{Fr}_{backslashtext{box}} = 1backslash)
+     backslash[None
+     backslasheta_B = backslashfrac{(1)^2 backslashcdot 100}{10} = 10
+     backslash]
 
-   If \(\eta\) reflects consistent flow behaviors in different estuaries, it indicates self-similarity in the flow patterns.
+   If backslash(backslashetabackslash) reflects consistent flow behaviors in different estuaries, it indicates self-similarity in the flow patterns.
 """
 """
 Box Coefficient (C_k) Calculation
@@ -1707,3 +1892,6 @@ These choices are derived from empirical data and model calibration to accuratel
 # for filename in example_files:
 #     filepath = os.path.join(path_to_npz_files, filename)
 #     inspect_npz_file(filepath)
+
+[plt.close() for i in range(30)]
+print((time.time()-nst)/60)

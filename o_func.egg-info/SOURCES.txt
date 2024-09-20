@@ -101,10 +101,11 @@ o_func/utilities/io.py
 o_func/utilities/local_regrid.py
 o_func/utilities/mdu_compare.py
 o_func/utilities/near_neigh.py
+o_func/utilities/plot_Thom_sal_data.py
 o_func/utilities/regrid_3d.py
 o_func/utilities/scw_regrid.py
 o_func/utilities/start.py
 o_func/utilities/tidal_constants.py
 o_func/utilities/time_to_seconds.py
 o_func/utilities/transforms.py
-o_func/utilities/xesmf.py
+o_func/utilities/x_regrid.py
