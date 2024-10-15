@@ -90,6 +90,82 @@ filtered_df_within_box = filtered_df[
 
 
 #%% Plot the map 
+# import matplotlib.pyplot as plt
+# import cartopy.crs as ccrs
+# import cartopy.feature as cfeature
+
+# # Assuming 'filtered_df_within_box' contains the filtered data
+
+# # Create a figure and an axis with a specific projection
+# fig = plt.figure(figsize=(10, 10))
+# ax = plt.axes(projection=ccrs.PlateCarree())
+
+# # Set the extent of the map to your bounding box
+# ax.set_extent([-3.65, -2.75, 53.2, 54.52], crs=ccrs.PlateCarree())
+
+# # Add features to the map (coastlines, borders, land, and ocean)
+# ax.add_feature(cfeature.COASTLINE)
+# ax.add_feature(cfeature.BORDERS)
+# ax.add_feature(cfeature.LAND, edgecolor='black')
+# ax.add_feature(cfeature.OCEAN)
+
+# # Plot each data point from the DataFrame
+# ax.scatter(
+#     filtered_df_within_box['Lon'], 
+#     filtered_df_within_box['Lat'], 
+#     color='red', 
+#     s=50, 
+#     label='Data Points',
+#     transform=ccrs.PlateCarree()
+# )
+
+# # Add gridlines for better readability
+# ax.gridlines(draw_labels=True)
+
+# # Add a title and legend
+# plt.title('Filtered Data Points on Map')
+# plt.legend()
+
+# # Show the plot
+# plt.show()
+
+# #%% Number point count 
+# location_counts = filtered_df_within_box.groupby(['Lat', 'Lon']).size().reset_index(name='Count')
+
+# # Create a figure and an axis with a specific projection
+# fig = plt.figure(figsize=(10, 10))
+# ax = plt.axes(projection=ccrs.PlateCarree())
+
+# # Set the extent of the map to your bounding box
+# ax.set_extent([-3.65, -2.75, 53.2, 54.52], crs=ccrs.PlateCarree())
+
+# # Add features to the map (coastlines, borders, land, and ocean)
+# ax.add_feature(cfeature.COASTLINE)
+# ax.add_feature(cfeature.BORDERS)
+# ax.add_feature(cfeature.LAND, edgecolor='black')
+# ax.add_feature(cfeature.OCEAN)
+
+# # Plot each location with its count
+# for idx, row in location_counts.iterrows():
+#     ax.text(
+#         row['Lon'], row['Lat'], 
+#         str(int(row['Count'])), 
+#         color='blue', 
+#         fontsize=8, 
+#         ha='center', 
+#         va='center',
+#         transform=ccrs.PlateCarree()
+#     )
+
+# # Add gridlines for better readability
+# ax.gridlines(draw_labels=True)
+
+# # Add a title
+# plt.title('Number of Data Points at Each Location')
+
+# # Show the plot
+# plt.show()
+#%% Plot the map with adjustments
 import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
@@ -103,9 +179,12 @@ ax = plt.axes(projection=ccrs.PlateCarree())
 # Set the extent of the map to your bounding box
 ax.set_extent([-3.65, -2.75, 53.2, 54.52], crs=ccrs.PlateCarree())
 
-# Add features to the map (coastlines, borders, land, and ocean)
-ax.add_feature(cfeature.COASTLINE)
-ax.add_feature(cfeature.BORDERS)
+# Add higher resolution coastlines (10m)
+ax.add_feature(cfeature.NaturalEarthFeature('physical', 'coastline', '10m',
+                edgecolor='black', facecolor='none'))
+
+# Add other features (borders, land, and ocean)
+ax.add_feature(cfeature.BORDERS, linestyle=':')
 ax.add_feature(cfeature.LAND, edgecolor='black')
 ax.add_feature(cfeature.OCEAN)
 
@@ -120,16 +199,18 @@ ax.scatter(
 )
 
 # Add gridlines for better readability
-ax.gridlines(draw_labels=True)
+gl = ax.gridlines(draw_labels=True, crs=ccrs.PlateCarree(), linestyle='--')
+gl.top_labels = False
+gl.right_labels = False
 
-# Add a title and legend
-plt.title('Filtered Data Points on Map')
-plt.legend()
+# Manually add x and y labels
+ax.text(-3.2, 53.2, 'Longitude', va='center', ha='center', fontsize=12, transform=ccrs.PlateCarree())
+ax.text(-3.65, 53.85, 'Latitude', va='center', ha='center', rotation='vertical', fontsize=12, transform=ccrs.PlateCarree())
 
-# Show the plot
+# Show the plot without the title (since it will be part of a figure)
 plt.show()
 
-#%% Number point count 
+#%% Number point count with adjustments
 location_counts = filtered_df_within_box.groupby(['Lat', 'Lon']).size().reset_index(name='Count')
 
 # Create a figure and an axis with a specific projection
@@ -139,9 +220,12 @@ ax = plt.axes(projection=ccrs.PlateCarree())
 # Set the extent of the map to your bounding box
 ax.set_extent([-3.65, -2.75, 53.2, 54.52], crs=ccrs.PlateCarree())
 
-# Add features to the map (coastlines, borders, land, and ocean)
-ax.add_feature(cfeature.COASTLINE)
-ax.add_feature(cfeature.BORDERS)
+# Add higher resolution coastlines (10m)
+ax.add_feature(cfeature.NaturalEarthFeature('physical', 'coastline', '10m',
+                edgecolor='black', facecolor='none'))
+
+# Add other features (borders, land, and ocean)
+ax.add_feature(cfeature.BORDERS, linestyle=':')
 ax.add_feature(cfeature.LAND, edgecolor='black')
 ax.add_feature(cfeature.OCEAN)
 
@@ -158,10 +242,13 @@ for idx, row in location_counts.iterrows():
     )
 
 # Add gridlines for better readability
-ax.gridlines(draw_labels=True)
+gl = ax.gridlines(draw_labels=True, crs=ccrs.PlateCarree(), linestyle='--')
+gl.top_labels = False
+gl.right_labels = False
 
-# Add a title
-plt.title('Number of Data Points at Each Location')
+# Manually add x and y labels
+ax.text(-3.2, 53.1, 'Longitude', va='center', ha='center', fontsize=12, transform=ccrs.PlateCarree())
+ax.text(-3.82, 53.85, 'Latitude', va='center', ha='center', rotation='vertical', fontsize=12, transform=ccrs.PlateCarree())
 
-# Show the plot
+# Show the plot without the title (since it will be part of a figure)
 plt.show()
