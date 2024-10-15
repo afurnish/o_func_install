@@ -1,0 +1,22 @@
+
+
+# Apply C_k equations based on estuary name
+
+for i, estuary_name in enumerate(est_names):
+
+    if estuary_name == 'Dee':
+        C_k[:, i] = C_k = 2.2159 + (-0.00000203 * ur[:, i]) + (-0.0386 * Q_r[:, i]) + (-1.2610 * neap_encoded[:, i])
+    if estuary_name == 'Kent':
+        C_k[:, i] = C_k = 2.3290 + (-0.00000162 * ur[:, i]) + (-0.0426 * Q_r[:, i]) + (-1.1090 * neap_encoded[:, i])
+    if estuary_name == 'Leven':
+        C_k[:, i] = C_k = 2.8063 + (-0.00000459 * ur[:, i]) + (-0.0558 * Q_r[:, i]) + (-1.2140 * neap_encoded[:, i])
+    if estuary_name == 'Lune':
+        C_k[:, i] = C_k = 0.5742 + (-0.00002150 * ur[:, i]) + (-0.0116 * Q_r[:, i]) + (-0.3114 * neap_encoded[:, i])
+    if estuary_name == 'Mersey':
+        C_k[:, i] = C_k = 3.0549 + (-0.00001052 * ur[:, i]) + (-0.0582 * Q_r[:, i]) + (-1.9060 * neap_encoded[:, i])
+    if estuary_name == 'Ribble':
+        C_k[:, i] = C_k = 3.4210 + (-0.00000157 * ur[:, i]) + (-0.0549 * Q_r[:, i]) + (-2.2597 * neap_encoded[:, i])
+    if estuary_name == 'Wyre':
+        C_k[:, i] = C_k = 0.0232 + (-0.00000282 * ur[:, i]) + (-0.0004 * Q_r[:, i]) + (-0.0144 * neap_encoded[:, i])
+    if estuary_name == 'Duddon':
+        C_k[:, i] = C_k = 0.3363 + (-0.00000106 * ur[:, i]) + (-0.0078 * Q_r[:, i]) + (-0.1048 * neap_encoded[:, i])

@@ -10,7 +10,7 @@ files for easier readability.
 from .data_visuals.plotting_figures_for_latex import Plot
 
 from .utilities.finder import finder
-from .utilities.start import opsys
+from .utilities.start import opsys, opsyst
 from .utilities.choices import DataChoice
 from .utilities.distance import uk_bounds, uk_bounds_wide
 

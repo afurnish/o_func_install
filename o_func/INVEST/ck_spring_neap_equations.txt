@@ -1,0 +1,32 @@
+Dee:
+  Spring: C_k (spring) = -1.1455 + (0.1951 * log(vel_tide / ur)) + (0.0000 * Eta) + ((Ro_s / 1000) ** 20)
+  Neap: C_k (neap) = -2.9247 + (1.0689 * log(vel_tide / ur)) + (0.0000 * Eta) + ((Ro_s / 1000) ** 20)
+
+Kent:
+  Spring: C_k (spring) = -2.8153 + (0.3489 * log(vel_tide / ur)) + (0.0276 * Eta) + ((Ro_s / 1000) ** 20)
+  Neap: C_k (neap) = -3.1309 + (1.0450 * log(vel_tide / ur)) + (0.0000 * Eta) + ((Ro_s / 1000) ** 20)
+
+Leven:
+  Spring: C_k (spring) = -1.3914 + (0.4624 * log(vel_tide / ur)) + (-0.0939 * Eta) + ((Ro_s / 1000) ** 20)
+  Neap: C_k (neap) = -3.2127 + (1.3476 * log(vel_tide / ur)) + (0.0000 * Eta) + ((Ro_s / 1000) ** 20)
+
+Lune:
+  Spring: C_k (spring) = -0.1077 + (0.0428 * log(vel_tide / ur)) + (0.0000 * Eta) + ((Ro_s / 1000) ** 20)
+  Neap: C_k (neap) = 0.1303 + (0.4010 * log(vel_tide / ur)) + (0.0000 * Eta) + ((Ro_s / 1000) ** 20)
+
+Mersey:
+  Spring: C_k (spring) = 0.0000 + (0.0000 * log(vel_tide / ur)) + (0.0000 * Eta) + ((Ro_s / 1000) ** 20)
+  Neap: C_k (neap) = -4.3620 + (2.1902 * log(vel_tide / ur)) + (0.0000 * Eta) + ((Ro_s / 1000) ** 20)
+
+Ribble:
+  Spring: C_k (spring) = -0.5394 + (0.0827 * log(vel_tide / ur)) + (0.0000 * Eta) + ((Ro_s / 1000) ** 20)
+  Neap: C_k (neap) = -5.7905 + (1.7269 * log(vel_tide / ur)) + (0.0000 * Eta) + ((Ro_s / 1000) ** 20)
+
+Wyre:
+  Spring: C_k (spring) = 0.0000 + (0.0000 * log(vel_tide / ur)) + (0.0000 * Eta) + ((Ro_s / 1000) ** 20)
+  Neap: C_k (neap) = 0.0270 + (0.0184 * log(vel_tide / ur)) + (0.0000 * Eta) + ((Ro_s / 1000) ** 20)
+
+Duddon:
+  Spring: C_k (spring) = -0.4104 + (0.0827 * log(vel_tide / ur)) + (0.0000 * Eta) + ((Ro_s / 1000) ** 20)
+  Neap: C_k (neap) = -0.4232 + (0.1926 * log(vel_tide / ur)) + (0.0000 * Eta) + ((Ro_s / 1000) ** 20)
+
