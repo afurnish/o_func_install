@@ -775,7 +775,23 @@ class Stats:
 
             
         return heightprim, heightukc4, height_difference
+    
+    
+    def salinity_validation(self, ukc4sal, primsal):
+        '''
+        This program takes outside salinity values which have been measured and then 
+        correlates them with modelled values. 
 
+        Parameters
+        ----------
+        ukc4sal : Salinity from the UKC4 datasets across all time dimensions. 
+        primsal : Salinity from the PRIMEA datasets across all time dimensions. 
+
+        Returns
+        -------
+        Figures of salinity calibration as well as general salinity plots. 
+
+        '''
 def find_dir(file_path, filename='kent_regrid.nc'):
     """
     Find directories within the given file_path that contain the specified filename.
@@ -836,12 +852,15 @@ if __name__ == '__main__':
         sub_path, fig_path, data_stats_path = make_paths.dir_outputs(fn)
         lp = os.path.join(sub_path, 'kent_regrid.nc') # this was originally globbed due to 2 nc files 
         sts = Stats(lp, fn)
+        
+        
         load = sts.load_raw()
         Stats.print_dict_keys(load[1]) # prints out the dictionaries of data being used. 
         extract_prims, extract_ukc4s = sts.linear_regression(fig_path, data_stats_path)
         tide_gauge, ind = sts.load_tide_gauge()
         transect = sts.transect(fig_path)
         prim, ukc4, height_diff = sts.max_compare(fig_path)
+        surface_salinity = sts.salinity_validation(extract_ukc4s[0],  extract_prims[0])
         # tp = sts.tidal_plots(fig_path)
         
 # EXTRA PLOTTING

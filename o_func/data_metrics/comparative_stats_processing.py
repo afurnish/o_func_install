@@ -775,7 +775,108 @@ class Stats:
 
             
         return heightprim, heightukc4, height_difference
+    
+    
+    def salinity_validation(self, ukc4sal, primsal):
+        '''
+        This function matches observed salinity values with modeled values from both UKC4 and PRIMEA datasets.
+    
+        Parameters
+        ----------
+        df : pandas DataFrame
+            DataFrame containing observational data with columns ['Lat', 'Lon', 'DateTime', 'Salinity'].
+        ukc4sal : xarray.DataArray
+            UKC4 salinity data with time, latitude, and longitude dimensions.
+        primsal : xarray.DataArray
+            PRIMEA salinity data with time, latitude, and longitude dimensions.
+        lat_name : str, optional
+            The name of the latitude variable in the xarray datasets. Default is 'nav_lat'.
+        lon_name : str, optional
+            The name of the longitude variable in the xarray datasets. Default is 'nav_lon'.
+    
+        Returns
+        -------
+        df_result : pandas DataFrame
+            DataFrame with matched observed and modeled salinity values.
+        '''
+        from o_func.data_prepkit import extract_salinities
+        from o_func import uk_bounds
+        lon, lat = uk_bounds()
+        df = extract_salinities(start_path, lon, lat)
+        df = df.dropna(subset=['Salinity'])
+        df = df.reset_index(drop=True)
 
+        
+        from sklearn.neighbors import BallTree
+        # Prepare coordinates from model data
+        model_lats_ukc4 = ukc4sal['nav_lat'].values
+        model_lons_ukc4 = ukc4sal['nav_lon'].values
+        model_lats_prim = primsal['nav_lat'].values
+        model_lons_prim = primsal['nav_lon'].values
+    
+        # Flatten latitude and longitude arrays to 1D for BallTree
+        flat_model_coords_ukc4 = np.column_stack([model_lats_ukc4.ravel(), model_lons_ukc4.ravel()])
+        flat_model_coords_prim = np.column_stack([model_lats_prim.ravel(), model_lons_prim.ravel()])
+    
+        # Build BallTrees for both UKC4 and PRIMEA models
+        tree_ukc4 = BallTree(np.deg2rad(flat_model_coords_ukc4), metric='haversine')
+        tree_prim = BallTree(np.deg2rad(flat_model_coords_prim), metric='haversine')
+    
+        # Convert observational lat/lon to radians for BallTree
+        obs_coords = np.deg2rad(np.column_stack([df['Lat'].values, df['Lon'].values]))
+    
+        # Query BallTree for nearest neighbors (locations)
+        dist_ukc4, idx_ukc4 = tree_ukc4.query(obs_coords, k=1)
+        dist_prim, idx_prim = tree_prim.query(obs_coords, k=1)
+        grid_shape = model_lats_ukc4.shape
+    
+        # Find nearest time indices in the model datasets
+        def find_nearest_time(model_times, obs_time):
+            time_diffs = np.abs((model_times - np.datetime64(obs_time)).astype('timedelta64[s]'))
+            return np.argmin(time_diffs)
+    
+        # Initialize lists to store model salinity values
+        matched_ukc4_salinities = []
+        matched_prim_salinities = []
+    
+        # Loop through each observation
+        for i, obs in df.iterrows():
+            print(i)
+            # Get the observation time
+            obs_time = obs['DateTime']
+    
+            # Find the nearest time index in the model datasets
+            nearest_time_ukc4 = find_nearest_time(ukc4sal['time_primea'].values, obs_time)
+            nearest_time_prim = find_nearest_time(primsal['time_primea'].values, obs_time)
+    
+            # Get the corresponding grid point indices from the BallTree
+            flat_idx_ukc4 = idx_ukc4[i][0]  # This is the flat index from BallTree
+            flat_idx_prim = idx_prim[i][0]
+    
+            # Convert the flat index back to the 2D grid
+            grid_idx_ukc4 = np.unravel_index(flat_idx_ukc4, grid_shape)
+            grid_idx_prim = np.unravel_index(flat_idx_prim, grid_shape)
+    
+            # Extract the salinity values for UKC4 and PRIMEA at the nearest time and location
+            ukc4_salinity = ukc4sal.isel(time_primea=nearest_time_ukc4, y=grid_idx_ukc4[0], x=grid_idx_ukc4[1]).values
+            prim_salinity = primsal.isel(time_primea=nearest_time_prim, y=grid_idx_prim[0], x=grid_idx_prim[1]).values
+    
+            # Append the salinity values to the lists
+            matched_ukc4_salinities.append(ukc4_salinity)
+            matched_prim_salinities.append(prim_salinity)
+    
+        # Add the matched salinities to the DataFrame
+        df['UKC4_Salinity'] = matched_ukc4_salinities
+        df['PRIMEA_Salinity'] = matched_prim_salinities
+    
+        return df
+
+# Example usage
+# df = extract_salinities(start_path, lon, lat)
+# result_df = salinity_validation(df, ukc4sal, primsal)
+
+
+        
 def find_dir(file_path, filename='kent_regrid.nc'):
     """
     Find directories within the given file_path that contain the specified filename.
@@ -836,12 +937,15 @@ if __name__ == '__main__':
         sub_path, fig_path, data_stats_path = make_paths.dir_outputs(fn)
         lp = os.path.join(sub_path, 'kent_regrid.nc') # this was originally globbed due to 2 nc files 
         sts = Stats(lp, fn)
+        
+        
         load = sts.load_raw()
         Stats.print_dict_keys(load[1]) # prints out the dictionaries of data being used. 
         extract_prims, extract_ukc4s = sts.linear_regression(fig_path, data_stats_path)
         tide_gauge, ind = sts.load_tide_gauge()
         transect = sts.transect(fig_path)
         prim, ukc4, height_diff = sts.max_compare(fig_path)
+        surface_salinity = sts.salinity_validation(extract_ukc4s[1],  extract_prims[1])
         # tp = sts.tidal_plots(fig_path)
         
 # EXTRA PLOTTING
