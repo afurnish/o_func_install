@@ -23,8 +23,10 @@ import math
 from datetime import datetime
 import os
 from o_func import opsys; start_path = Path(opsys())
+elements_path = Path(opsys('Elements'))
 from sklearn.neighbors import BallTree
 from scipy.signal import find_peaks
+import sys
 
 nst = time.time()
 
@@ -51,29 +53,125 @@ writemaps = 'n'
 side = 'east'
 include_tidal = True
 
+mask_file_path = start_path / Path('modelling_DATA/EBM_PRIMEA/EBM_python/mask.npy') 
+# This is for determining whats inflow and whats outflow. 
+
 plotting = 'n'
+""" Possible Simulations to run. 
 
+20_year_run - Uses amm7 data to run 20 years of EBM data. 
+
+"""
+run = '20_year_run_fake_river'
+
+if run == '20_year_run_fake_river':
+    artificial_river = 'n' # implement real or not real data
+    artificial_tide = 'y'
+    time_generating_step = 60       # timesteps to generate the resultant output data. set at one minute for a balance of speed etc. 
+    artificial_salinities = 'n'  
+    AMM7_20_year_run = 'y'
+    simp_tide = 'y'
+    calibrate_ck = 'no'
+    Ck_values = ['multivariate_regression']
+    C_k_import_values_from_CSV = 'y'
+    delft_salinities = 'n'
+if run == '20_year_run_real_river':
+    artificial_river = 'y' # implement real or not real data
+    artificial_tide = 'y'
+    time_generating_step = 60       # timesteps to generate the resultant output data. set at one minute for a balance of speed etc. 
+    artificial_salinities = 'n'  
+    AMM7_20_year_run = 'y'
+    simp_tide = 'y'
+    calibrate_ck = 'no'
+    Ck_values = ['multivariate_regression']
+    C_k_import_values_from_CSV = 'y'
+    delft_salinities = 'n'
+elif run == 'arti_tidefes_fake_river':
+    artificial_river = 'y' # implement real or not real data
+    artificial_tide = 'y'
+    time_generating_step = 60       # timesteps to generate the resultant output data. set at one minute for a balance of speed etc. 
+    artificial_salinities = 'n'  
+    AMM7_20_year_run = 'n'
+    simp_tide = 'n'
+    calibrate_ck = 'no'
+    Ck_values = ['multivariate_regression']
+    C_k_import_values_from_CSV = 'n'
+    delft_salinities = 'n'
+elif run == 'C_k_calibration':
+    artificial_river = 'y' # implement real or not real data
+    artificial_tide = 'y'
+    time_generating_step = 60       # timesteps to generate the resultant output data. set at one minute for a balance of speed etc. 
+    artificial_salinities = 'n'  
+    AMM7_20_year_run = 'n'
+    simp_tide = 'n'
+    calibrate_ck = 'yes'
+    Ck_values = np.logspace(np.log10(0.0001), np.log10(500), 300)
+    Ck_values[0] = 0
+    C_k_import_values_from_CSV = 'n' 
+    delft_salinities = 'n'
+elif run == 'delft_run_in_out':
+    artificial_river = 'y' # implement real or not real data
+    artificial_tide = 'n'
+    delft_run = 'y'
+    time_generating_step = 60       # timesteps to generate the resultant output data. set at one minute for a balance of speed etc. 
+    artificial_salinities = 'n'  
+    AMM7_20_year_run = 'n'
+    simp_tide = 'n'
+    calibrate_ck = 'yes'
+    Ck_values = np.logspace(np.log10(0.0001), np.log10(500), 300)
+    Ck_values[0] = 0
+    C_k_import_values_from_CSV = 'n' 
+    delft_salinities = 'n'
+elif run == 'C_k_calibration_Delft_run_Thom_35ppt_M2':
+    
+    artificial_river = 'y' # implement real or not real data
+    artificial_tide = 'n'
+    time_generating_step = 60       # make sure its 60 if the data is hourly. 
+    artificial_salinities = 'n'  
+    delft_salinities = 'y'
+    AMM7_20_year_run = 'n'
+    delft_run = 'y'
+    delft_path = elements_path / Path('Original_Data/INVEST/35ppt_10Q_run_M2')
+    simp_tide = 'n'
+    calibrate_ck = 'yes'
+    # Need many many more values of C_k 
+    Ck_values = np.logspace(np.log10(0.0001), np.log10(2500), 300)
+    Ck_values = np.arange(0, 3000.2, 1)
+    C_k_import_values_from_CSV = 'n' 
+    # Ck_values[0] = 0
 '''
 ------------------------ Key parameters to change as either y/n ----------------------------------
 '''
-artificial_river = 'n' # implement real or not real data
-artificial_tide = 'n'
-time_generating_step = 60       # timesteps to generate the resultant output data. set at one minute for a balance of speed etc. 
-artificial_salinities = 'n'  
-AMM7_20_year_run = 'y'
+# artificial_river = 'y' # implement real or not real data
+# artificial_tide = 'y'
+# time_generating_step = 60       # timesteps to generate the resultant output data. set at one minute for a balance of speed etc. 
+# artificial_salinities = 'n'  
+# AMM7_20_year_run = 'n'
+# simp_tide = 'n'
 '''
 ------------------------ Key parameters to change as either y/n ----------------------------------
 '''
 
-discharge_list = [1,2,5,10,20,30,40,50]
+# discharge_list = [1,2,5,10,20,30,40,50]
+discharge_list = [10]
 
 if artificial_tide == 'y': 
     
     art_sal = 30                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         
     start_time = time64('2013-11-01 00:00')   # '2013-11-01 00:00'
     stop_time  = time64('2013-11-30 23:00')  # '2013-11-30 23:00'
+    
+    # Check that stop_time is greater than start_time and that both are valid datetime64 objects
+    if not isinstance(start_time, np.datetime64) or not isinstance(stop_time, np.datetime64):
+        sys.exit("Error: Start and stop times must be valid datetime64 objects.")
+        
+    if stop_time <= start_time:
+        sys.exit("Error: Invalid start and stop time. Stop time must be later than start time.")
+    
+    # Continue with script if checks pass
+    print("Time checks passed.")
     file_list = ['M2  ','S2  ']
-    simple_tide = 'y' # if yes just uses random values for all places. If no uses actual values from FES2014
+    simple_tide = simp_tide # if yes just uses random values for all places. If no uses actual values from FES2014
     tide_freqs = [0.0805114, 0.08333333]#, ]  # this is M2 and S2 where M2 is 805.    
     
     if simple_tide == 'n':
@@ -88,6 +186,8 @@ else:
     time_generating_step = 60
     if AMM7_20_year_run == 'y':
         tnameprime = '_AMM7_tide'
+    if delft_run == 'y':
+        tnameprime = '_delft35ppt'
      # Has to be 60 as if artificial tides are generated. Then river steps need to be the same.
 # If not real data, what do you want to implement for all estuaries.
 
@@ -174,11 +274,13 @@ estuary_data = {
     }
 }
 
+estvolumes = []
 for estuary_name, coords in correct_coords.items():
     if estuary_name in estuary_data:
         lon, lat = coords
         estuary_data[estuary_name]['latlon'] = {'lat': lat, 'lon': lon}
-        
+        estuary_data[estuary_name]['volume'] = estuary_data[estuary_name]['length'] * estuary_data[estuary_name]['width_at_mouth'] * estuary_data[estuary_name]['height_at_mouth']
+        estvolumes.append(estuary_data[estuary_name]['volume'])
 if AMM7_20_year_run == 'y':
 
     estuary_data = estuary_data['Ribble']
@@ -251,7 +353,7 @@ power_law_equations = {
 #%% EBM 
 def ensure_first_dim_is_one(array):
     if array.shape[0] != 1:
-        return array.T if array.shape[1] == 1 else array[np.newaxis, :]
+        return array.T if array.shape[1] == 1 else array[np.neS_ocwaxis, :]
     return array
 
 # def calculate_segment_means(salinity_series, discharge_series, time_series):
@@ -282,6 +384,30 @@ def ensure_first_dim_is_one(array):
 #         start_idx = end_idx + 1
 
 #     return segment_salinity_means, segment_discharge_means, segment_end_times
+
+def calculate_discharge(y_velocity, x_velocity, estuary_data):
+  
+    # Calculate the angle theta and convert to degrees
+    theta = np.arctan2(y_velocity, x_velocity)
+    theta_degrees = np.degrees(theta)
+    # Retrieve the estuary angles from the estuary_data
+    angles = [estuary_data[i]['angle'] for i in estuary_data]
+    # Calculate the relative angle and normalize it between -180 and 180 degrees
+    relative_angle = theta_degrees - angles
+    relative_angle = (relative_angle + 180) % 360 - 180
+    # Calculate the average weighted velocity
+    avg_velocity = np.sqrt(y_velocity**2 + x_velocity**2)
+    # Determine the signed magnitude for inflow and outflow
+    signed_magnitude = np.where(
+        (relative_angle >= -90) & (relative_angle <= 90),
+        avg_velocity,  # Positive for inflow
+        -avg_velocity  # Negative for outflow
+    )
+    # Calculate the total discharge Q_l
+    Q_l = signed_magnitude
+
+    return Q_l
+
 
 def calculate_segment_means(salinity_series, discharge_series, time_series):
     segment_salinity_means = []
@@ -336,7 +462,12 @@ def generate_spring_neap_mask(Q_l_timeseries):
         
         # Ensure start and end are within the valid range of data
         start = max(0, start)
-        end = min(len(Q_l_timeseries), end)
+        end = min(len(Q_l_timeseries), end)# implement real or not real data
+        artificial_tide = 'y'
+        time_generating_step = 60       # timesteps to generate the resultant output data. set at one minute for a balance of speed etc. 
+        artificial_salinities = 'n'  
+        AMM7_20_year_run = 'n'
+        simp_tide = 'n'
         
         # Find the neap trough (closest to 0) in the range
         if start < end:
@@ -411,7 +542,7 @@ def generate_spring_neap_mask(Q_l_timeseries):
                 spring_neap_mask[box_points[i+1]:box_points[i+2]] = nv
         else:
             if ( j // 2 ) % 2 == 0:
-                spring_neap_mask[box_points[i+1]:box_points[i+2]] = nv
+                spring_neap_mask[box_points[i+1]:box_points[i+2]] = Q_r
             else:
                 spring_neap_mask[box_points[i+1]:box_points[i+2]] = sv
     
@@ -614,7 +745,7 @@ def ebm(W_m, h, Q_r, Q_m, S_l, Q_l, S_oc, length, time_array, Ck_calibration):
     # # Mask Q_l where S_ebb is NaN to create Q_outflow
     # Q_outflow = np.where(~np.isnan(S_ebb), np.abs(Q_l), np.nan)
     # # Convert arrays to Pandas Series fo'neap'r easier handling of segments
-    # S_ebb_series = pd.Series(S_ebb)
+    # S_ebb_series = pd.Series(S_ebb)',
     # S_u_series = pd.Series(S_u)
     # Q_outflow_series = pd.Series(Q_outflow)
     # Q_inflow_series = pd.Series(np.where(Q_l > 0, Q_l, np.nan))  # For inflow (flood tide)
@@ -638,7 +769,7 @@ def ebm(W_m, h, Q_r, Q_m, S_l, Q_l, S_oc, length, time_array, Ck_calibration):
   
     # # fig, ax1 = plt.subplots(figsize=(10, 6))
     
-    # # # Plot Flushing Time on the primary y-axis
+    # # # Plot Flushing Time on the prirelative_anglemary y-axis
     # # ax1.scatter(cleaned_flushing_time_phase, Flushing_Time, marker='o', color='b', label='Flushing Time')
     # # ax1.set_xlabel('Time (End of Ebb Tide)')
     # # ax1.set_ylabel('Flushing Time (hours)', color='b')
@@ -710,7 +841,7 @@ def ebm(W_m, h, Q_r, Q_m, S_l, Q_l, S_oc, length, time_array, Ck_calibration):
     C_k = np.zeros_like(Q_r)
     
     #%%
-    ''' ----------------------------------------------------------------------------
+    ''' ----------------------------------------mask------------------------------------
     C_k handling, Lets iterate over several versions to see what happens to C_k. 
         In the original formula. This can be handled with a for loop plotting function 
         to access the impact of different C_k values. 
@@ -751,11 +882,25 @@ def ebm(W_m, h, Q_r, Q_m, S_l, Q_l, S_oc, length, time_array, Ck_calibration):
                 # # Apply the C_k equation for the given estuary at time step i
                 # C_k[i][j] = coeffs[0] + (coeffs[1] * np.log(vel_tide[i][j] / ur[i][j])) + (coeffs[2] * Eta[i][j]) + ((Ro_s[i][j] / 1000) ** 20)
                 
+                
+                #C_k borkery
+    
+                
     # label = 'C_k_' + str(100)
     # C_k = C_k*0+100
     # plt.plot(C_k, label = label)
     
-    
+    #Test C_k idea. 
+    if C_k_import_values_from_CSV == 'y':
+        cal_dataframe = pd.read_csv(start_path / Path('GitHub/o_func_install/o_func/INVEST/salinity_calibration_best_ck_values.csv'))
+        constant_C_k_values = dict(zip(cal_dataframe['estuary'], cal_dataframe['C_k_value']))
+        for est_num, est in enumerate(estuary_data.keys()):
+            estuary_data[est]['C_k'] = constant_C_k_values[est]
+            C_k_value = estuary_data[est]['C_k']
+            othermask = ~np.isnan(C_k[:, est_num])
+            C_k[othermask, est_num] = C_k_value
+        
+        
     k_x = W_m * vel_tide * C_k / 1000# m^2/s , scale of flux. 
     
     Q_u = Q_r + Q_l # Q_l volume 
@@ -763,7 +908,7 @@ def ebm(W_m, h, Q_r, Q_m, S_l, Q_l, S_oc, length, time_array, Ck_calibration):
     Q_l_positive = np.where(Q_l > 0, Q_l, 0)
 
     Lx = h * 0.019 * (Fr ** -0.673) * ((Ro_s / 1000) ** 108.92) * ((Q_l / Q_r) ** -0.0098)
-    # Lx = Lx * 0 +  1000
+    # Lx = Lx * 0 +  1000mask
     
     '''
     Height *  froude number * (density of sea / freshwater) * (sea inflowing volume flux / river volumne flux)
@@ -819,10 +964,14 @@ def ebm(W_m, h, Q_r, Q_m, S_l, Q_l, S_oc, length, time_array, Ck_calibration):
                                  k_x[i, mask_used] * W_m[:, mask_used].flatten() * h[:, mask_used].flatten() * 
                                  (S_oc[i, mask_used] / (Lx[i, mask_used] * 1000))) / (Q_r[i, mask_used] + Q_l[i, mask_used])
 
+            Attempt 4
+            S_u[i, mask_used] = (S_oc[i, mask_used] * (Q_l[i, mask_used] + Q_r[i, mask_used]) + 
+                 k_x[i, mask_used] * h[:, mask_used].flatten() * W_m[:, mask_used].flatten() * 
+                 (S_oc[i, mask_used] / (Lx[i, mask_used] * 1000))) / (Q_r[i, mask_used] + Q_l[i, mask_used])
             '''
             
         #2
-        S_u[i, mask_used] = (S_oc[i, mask_used] * (Q_l[i, mask_used] + Q_r[i, mask_used]) + 
+        S_u[i, mask_used] = (S_oc[i, mask_used] * (Q_l[i, mask_used] ) + 
              k_x[i, mask_used] * h[:, mask_used].flatten() * W_m[:, mask_used].flatten() * 
              (S_oc[i, mask_used] / (Lx[i, mask_used] * 1000))) / (Q_r[i, mask_used] + Q_l[i, mask_used])
         
@@ -848,7 +997,8 @@ def ebm(W_m, h, Q_r, Q_m, S_l, Q_l, S_oc, length, time_array, Ck_calibration):
         # print(previous_S_u.shape)
     # Mask Q_l where S_ebb is NaN to create Q_outflow # WAS S_ebb, now is going to be S_u 
     Q_outflow = np.where(~np.isnan(S_flood), np.abs(Q_l), np.nan) # Outflow is calculated on the ebb tide. (but its S_flood for the moment.)
- 
+
+    np.save(mask_file_path, S_u)
     # Initialize lists to store the results for each estuary
     flushing_time_list = []
     cleaned_flushing_time_phase_list = []
@@ -887,7 +1037,8 @@ def ebm(W_m, h, Q_r, Q_m, S_l, Q_l, S_oc, length, time_array, Ck_calibration):
     eta_nans = run_nans(Eta, S_u)
     ur_nans = run_nans(ur, S_u)
     ros_nans = run_nans(Ro_s, S_u)
-    C_k_nans =  run_nans(C_k, S_u)
+    if calibrate_ck != 'yes':
+        C_k_nans =  run_nans(C_k, S_u)
     
     
     
@@ -912,7 +1063,8 @@ def ebm(W_m, h, Q_r, Q_m, S_l, Q_l, S_oc, length, time_array, Ck_calibration):
             eta_series = pd.Series(eta_nans[:, loc]) 
             ur_series = pd.Series(ur_nans[:, loc]) 
             ros_series = pd.Series(ros_nans[:, loc]) 
-            Ck_series = pd.Series(C_k_nans[:, loc])
+            if calibrate_ck != 'yes':
+                Ck_series = pd.Series(C_k_nans[:, loc])
             
             # Calculate segment means for inflow and outflow
             '''
@@ -973,8 +1125,8 @@ def ebm(W_m, h, Q_r, Q_m, S_l, Q_l, S_oc, length, time_array, Ck_calibration):
                      all_eta = eta_series,
                      all_vel_tide = vel_tide_series,
                      all_ur = ur_series,
-                     all_ros = ros_series,
-                     all_Ck = Ck_series)
+                     all_ros = ros_series)
+                    # all_Ck = Ck_series) # cant save ck series atm 
             
     Fi = (Q_l / (area / 2)) / (Q_r / (area / 2))  # Compute the Fisher flow number element-wise
     filename = f"ALL_ESTUARIES_discharge_{dis}_{tnameprime}_Ck_value-{Ck_calibration}.npz"
@@ -1040,7 +1192,7 @@ def load_tidal_data():
     T_variables = ['vosaline', 'sossheig']
     U_variables = ['vozocrtx']
     V_variables = ['vomecrty']
-    
+    #relative_angle
     # Extract only the variables of interest
     Tdata_subset = Tdata[T_variables]
     Udata_subset = Udata[U_variables]
@@ -1536,6 +1688,65 @@ def load_AMM7_20_year_data():
     S_l    = SBSselectedyears.reshape(-1, 1)
     
     return start_time, stop_time, Q_l, S_col, S_l, ham, wam, datetime_array   
+
+#!!!
+def load_delft_datasets(delft_path, estuary_data):
+    
+    # Bad data to cut off the front, in out case it will be 60 days
+    days_to_cut = 10
+
+    # Extract height and width at the mouth for Ribble
+    ham = []
+    wam = []
+    for estuary in estuary_data.keys():
+        ham.append(estuary_data[estuary]['height_at_mouth'])
+        wam.append(estuary_data[estuary]['width_at_mouth'])
+
+    ham = np.array(ham)
+    wam = np.array(wam)       
+    # Collect all filenames from each data folder
+    discharge = [i for i in (delft_path / Path('Dis')).glob('*.csv')]
+    salinity = [i for i in (delft_path / Path('Sal')).glob('*.csv')]
+    velx = [i for i in (delft_path / Path('VelX')).glob('*.csv')]
+    vely = [i for i in (delft_path / Path('VelY')).glob('*.csv')]
+    # Function to load CSV files into dataframes
+    def load_dataframes(file_list):
+        # Read all files into dataframes and align them by time
+        dataframes = [pd.read_csv(file, parse_dates=['time']) for file in file_list]
+        combined_df = pd.concat([df.set_index('time')['wl'].rename(file.stem.split('_')[0].lower()) 
+                                 for df, file in zip(dataframes, file_list)], axis=1)
+        combined_df = combined_df[combined_df.index >= (combined_df.index.min() + pd.Timedelta(days=days_to_cut))]
+        return combined_df
+
+
+
+    def sort_files_by_keys(files):
+        keys = [key.lower() for key in estuary_data.keys()]
+        return [
+            file for key in keys
+            for file in files if file.name.split('_')[0].lower() == key
+        ]
+    # Sort the files to ensure they match the order of estuary keys
+    discharge = sort_files_by_keys(discharge)
+    salinity = sort_files_by_keys(salinity)
+    velx = sort_files_by_keys(velx)
+    vely = sort_files_by_keys(vely)
+    # Load data into dataframes
+    discharge_dataframes = load_dataframes(discharge)
+    salinity_dataframes = load_dataframes(salinity)
+    velx_dataframes = load_dataframes(velx)
+    vely_dataframes = load_dataframes(vely)
+    
+    S_col = salinity_dataframes.values
+    start_time = salinity_dataframes.index.min()
+    stop_time = salinity_dataframes.index.max()
+
+    Q_vel  = calculate_discharge(vely_dataframes.values, velx_dataframes.values, estuary_data)
+    cross_sectional_area = ham*wam
+    Q_l = Q_vel * cross_sectional_area
+    return start_time, stop_time, Q_l, S_col, ham, wam, Q_vel, cross_sectional_area
+
+     # start_time, stop_time, Q_l, S_col, ham, wam = load_delft_datasets(delft_path, estuary_data)
 #%% Load river
 # Could be sped up but for the minute is sufficient. 
 def load_river_data(start_time, stop_time, river_path, estuary_data):
@@ -1670,7 +1881,12 @@ def twenty_year_river(estuary_data):
 if AMM7_20_year_run == 'n':
     if artificial_tide == 'n':
         print('Using read in tidal data')
-        start_time, stop_time, Q_l, S_col, S_l, ham, wam  = load_tidal_data()
+        if delft_run == 'y':
+            
+            start_time, stop_time, Q_l, S_col, ham, wam, Q_vel, cross_sectional_area = load_delft_datasets(delft_path, estuary_data) # Load the delft data. 
+            print('Running Delft Simulation Data')
+        else:
+            start_time, stop_time, Q_l, S_col, S_l, ham, wam  = load_tidal_data()
         
     elif artificial_tide == 'y':
         #start_time, stop_time these are generated at the surface
@@ -1678,12 +1894,17 @@ if AMM7_20_year_run == 'n':
         Q_l, S_col, S_l, ham, wam = generate_tide()
         
         if artificial_salinities == 'n':
-            print('Using real salinities. ')
+
             # We need to redo S_l and S_col with real data as can be seen here. 
             _, _, _, S_col, S_l, _, _  = load_tidal_data()
+            print('Using AMM15 model salinities')
             
 else:
     start_time, stop_time, Q_l, S_col, S_l, ham, wam, datetime_array   = load_AMM7_20_year_data ()
+
+if delft_salinities == 'y':
+    S_l = S_col # since we dont have multilayer data make these the same. 
+    print('Using delft salinities')
 
 if AMM7_20_year_run == 'n':
     if artificial_river == 'y':
@@ -1703,11 +1924,10 @@ def shapely(a):
     if a.shape == ():
         a = a.reshape( 1)
     return a
-#!!!! set max to 2, now setting max 10
-Ck_values = np.logspace(np.log10(0.0001), np.log10(100), 50)
-Ck_values[0] = 0
 
-Ck_values = ['multivariate_regression']
+
+#!!!! set max to 2, now setting max 10
+
 
 if AMM7_20_year_run == 'y':
     C_k_values = ['20_year_run']
@@ -1761,7 +1981,7 @@ for Ck_calibration in Ck_values:
         Q_r = (Q_l * 0) + 50
         Q_m = 50
         
-        #%
+        #!!!
         Q_u, Lx, S_u, Fi, Flushing_Time, cleaned_flushing_time_phase, S_flood= ebm(W_m, h, Q_r, Q_m, S_l_copy, Q_l_copy, S_oc, length_copy, time_array, Ck_calibration)
         #% EBM extra Functions and plotting
         def plot_flushing_time_and_discharge(cleaned_flushing_time_phase_list, flushing_time_list, Q_u, Q_r, time_array, savep, estuary_names, attempt_label='attempt_2'):

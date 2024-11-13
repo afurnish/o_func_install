@@ -22,9 +22,11 @@ o_func.egg-info/PKG-INFO
 o_func.egg-info/SOURCES.txt
 o_func.egg-info/dependency_links.txt
 o_func.egg-info/top_level.txt
+o_func/INVEST/20_year_histogram_plots.py
 o_func/INVEST/20_year_run.py
 o_func/INVEST/EBM_calibration.py
 o_func/INVEST/EBM_calibration_salinity.py
+o_func/INVEST/EBM_calibration_salinity_part2.py
 o_func/INVEST/EBM_multivariate_regression.py
 o_func/INVEST/EBM_river_maker.py
 o_func/INVEST/analysing_grid_data_for_EBM.py
@@ -33,6 +35,8 @@ o_func/INVEST/ebm_scratch_space.py
 o_func/INVEST/estuary_EBM.py
 o_func/INVEST/estuary_EBM_MP.py
 o_func/INVEST/estuary_EBM_optimised.py
+o_func/INVEST/netcdf_to_csv_xy_points.py
+o_func/INVEST/plot_modelled_tide_vs_delft_salinity.py
 o_func/INVEST/split_nc_daily.py
 o_func/INVEST/tide_plotter_for_river.py
 o_func/INVEST/top_middle_bottom_to_depth_netcdf.py

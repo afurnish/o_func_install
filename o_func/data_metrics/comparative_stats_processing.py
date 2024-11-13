@@ -804,9 +804,17 @@ class Stats:
         lon, lat = uk_bounds()
         df = extract_salinities(start_path, lon, lat)
         df = df.dropna(subset=['Salinity'])
-        df = df.reset_index(drop=True)
-
         
+        
+        # Quick check of last month only
+        # Define the cutoff date
+        cutoff_date = pd.to_datetime('2014-01-01')
+        
+        # Filter the DataFrame for rows where 'DateTime' is after the cutoff date
+        filtered_df = df[df['DateTime'] > cutoff_date]
+        df = filtered_df
+        
+        df = df.reset_index(drop=True)
         from sklearn.neighbors import BallTree
         # Prepare coordinates from model data
         model_lats_ukc4 = ukc4sal['nav_lat'].values
@@ -869,6 +877,42 @@ class Stats:
         df['UKC4_Salinity'] = matched_ukc4_salinities
         df['PRIMEA_Salinity'] = matched_prim_salinities
     
+    
+        observed_salinities = df['Salinity']
+        ukc4_salinities = df['UKC4_Salinity']
+        primea_salinities = df['PRIMEA_Salinity']
+        #% Plotting Function
+        
+        common_limit = [0, 35]
+
+        fig, axes = plt.subplots(1, 2, figsize=(12, 6))
+
+        # Plot PRIMEA vs Observed
+        axes[0].scatter(observed_salinities, primea_salinities, color='blue', label='PRIMEA vs Observed', alpha=0.5)
+        axes[0].plot(common_limit, common_limit, color='red', linestyle='--', label='y=x')  # Reference line
+        axes[0].set_title('PRIMEA vs Observed Salinity')
+        axes[0].set_xlabel('Observed Salinity (PSU)')
+        axes[0].set_ylabel('Modelled Salinity (PRIMEA) (PSU)')
+        axes[0].set_xlim(common_limit)
+        axes[0].set_ylim(common_limit)
+        axes[0].legend()
+        
+        # Plot UKC4 vs Observed
+        axes[1].scatter(observed_salinities, ukc4_salinities, color='green', label='UKC4 vs Observed', alpha=0.5)
+        axes[1].plot(common_limit, common_limit, color='red', linestyle='--', label='y=x')  # Reference line
+        axes[1].set_title('UKC4 vs Observed Salinity')
+        axes[1].set_xlabel('Observed Salinity (PSU)')
+        axes[1].set_ylabel('Modelled Salinity (UKC4) (PSU)')
+        axes[1].set_xlim(common_limit)
+        axes[1].set_ylim(common_limit)
+        axes[1].legend()
+        
+        # Quantifying fit using RMSE
+        rmse_primea = np.sqrt(np.mean((observed_salinities - primea_salinities) ** 2))
+        rmse_ukc4 = np.sqrt(np.mean((observed_salinities - ukc4_salinities) ** 2))
+        plt.savefig(fig_path + '/initial_salinity_validation.png', dpi = 300)
+        print(f'PRIMEA RMSE: {rmse_primea:.2f}, UKC4 RMSE: {rmse_ukc4:.2f}')
+        
         return df
 
 # Example usage
@@ -897,13 +941,15 @@ def find_dir(file_path, filename='kent_regrid.nc'):
 if __name__ == '__main__':
   
     # multi_file_path = path = os.path.join(start_path,'modelling_DATA','kent_estuary_project','7.met_office','models')
-    multi_file_path = path = os.path.join(start_path,'modelling_DATA','kent_estuary_project','9.friction_calibration','models')
+    multi_file_path = path = os.path.join(start_path,'modelling_DATA','kent_estuary_project','10.river_testing','models')
 
     list_of_files = find_dir(multi_file_path)
     # list_of_files = list_of_files[-1] # only change the last one for the conference. 
     list_of_files = [  
           #'bathymetry_testing',
-         'oa_nawind_Orig_m0.035_Forcing_4_months',
+          'ao_nawind_AllRivNoDuddonClimatology_m0.035_Forcing',
+          'ao_yawind_AllRivNoDuddonClimatology_m0.035_Forcing',
+         # 'oa_nawind_Orig_m0.035_Forcing_4_months',
       #   'oa_nawind_Orig_m0.030_Forcing',
       #   'oa_nawind_Orig_m0.035_Forcing',
       #   'oa_nawind_Orig_m0.040_Forcing',
@@ -946,6 +992,7 @@ if __name__ == '__main__':
         transect = sts.transect(fig_path)
         prim, ukc4, height_diff = sts.max_compare(fig_path)
         surface_salinity = sts.salinity_validation(extract_ukc4s[1],  extract_prims[1])
+        # This needs to be set up with a dictionary, so outputs from linear regression need to be in a dictionary. 
         # tp = sts.tidal_plots(fig_path)
         
 # EXTRA PLOTTING
