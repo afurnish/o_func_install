@@ -12,7 +12,9 @@ from pyproj import Transformer
 from o_func import opsys; start_path = opsys('Elements')
 
 # File path and data loading
-path = start_path + 'Original_Data/transects/Tyne_AMM7_nodes.csv'
+path = start_path + 'Original_Data/transects/Humber_AMM7_nodes.csv'
+
+# File path and data loading
 data = pd.read_csv(path)
 lat = data.Lat
 lon = data.Lon
@@ -67,6 +69,48 @@ def plot_coords(use_bng=True):
     plt.title(title)
     plt.legend()
     plt.show()
+    
+    return x, y 
 
 # Switch between BNG and WGS84
-plot_coords(use_bng=False)  # Set to False for WGS84
+x, y = plot_coords(use_bng=True)  # Set to False for WGS84
+
+#%% 
+import datetime
+
+def create_polygon_file(x, y, output_file):
+    """
+    Creates a polygon file in the specified Deltares RGFGRID format.
+
+    Args:
+        x (pd.Series): Series of X coordinates (Easting).
+        y (pd.Series): Series of Y coordinates (Northing).
+        output_file (str): Path to the output file.
+    """
+    # Generate the header
+    header = f"""\
+* Deltares, RGFGRID Version 7.03.00.77422 (Win64), Nov 30 2022, 15:52:41
+* File creation date: {datetime.datetime.now().strftime('%Y-%m-%d, %H:%M:%S')}
+*
+* Coordinate System = Cartesian
+*
+L000001
+        {len(x)}           2"""
+
+    # Prepare the body
+    body = "\n".join(f"   {x_val:.7E}   {y_val:.7E}" for x_val, y_val in zip(x, y))
+
+    # Combine header and body
+    content = f"{header}\n{body}"
+
+    # Write to file
+    with open(output_file, 'w') as f:
+        f.write(content)
+
+# Example usage
+# Replace with your actual data
+import pandas as pd
+
+
+output_file = "polygon_file.pol"
+create_polygon_file(x, y, output_file)

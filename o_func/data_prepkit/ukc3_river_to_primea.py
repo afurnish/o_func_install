@@ -219,9 +219,180 @@ plt.tight_layout()
 plt.legend()
 plt.show()
 
+#%% 
+from bng_latlon import OSGB36toWGS84
+
+# Example easting and northing for BNG reference "SJ391983"
+easting = 391000  # SJ391983 -> easting
+northing = 983000  # SJ391983 -> northing
+
+# Convert to latitude and longitude
+latitude, longitude = OSGB36toWGS84(easting, northing)
+print(f"{longitude},{latitude}")
+
+import math
+
+def gridDistance(ref1, ref2):
+    # Convert to fully numeric references
+    p1 = gridrefNumeric(ref1)
+    p2 = gridrefNumeric(ref2)
+
+    # Get E/N distances between ref1 & ref2
+    deltaE = p2[0] - p1[0]
+    deltaN = p2[1] - p1[1]
+
+    # Use Pythagoras' theorem to calculate the distance between the points
+    dist = math.sqrt(deltaE ** 2 + deltaN ** 2)
+
+    return round(dist / 1000, 2)  # Return result in km, 2 decimals
+
+def gridBearing(ref1, ref2):
+    # Convert to fully numeric references
+    p1 = gridrefNumeric(ref1)
+    p2 = gridrefNumeric(ref2)
+
+    # Get E/N distances between ref1 & ref2
+    deltaE = p2[0] - p1[0]
+    deltaN = p2[1] - p1[1]
+
+    # Calculate bearing using arctan and convert from radians to degrees
+    deg = (90 - (math.atan2(deltaN, deltaE) * 180 / math.pi) + 360) % 360
+
+    return round(deg)  # Return result in degrees, no decimals
+
+def gridrefNumeric(gridref):
+    # Convert letter references to numeric values
+    gridref = gridref.upper()
+    letE = ord(gridref[0]) - ord('A')
+    letN = ord(gridref[1]) - ord('A')
+
+    # Adjust letters after 'I' since 'I' is not used
+    if letE > 7: letE -= 1
+    if letN > 7: letN -= 1
+
+    # Convert grid letters into 100km-square indexes from false origin (grid square SV)
+    e = ((letE + 3) % 5) * 5 + (letN % 5)
+    n = 19 - (letE // 5) * 5 - (letN // 5)
+
+    # Remove grid letters and get the numeric part of the reference
+    gridref = gridref[2:].replace(" ", "")
+    e = int(str(e) + gridref[:len(gridref)//2])
+    n = int(str(n) + gridref[len(gridref)//2:])
+
+    # Normalize to a 1m grid
+    if len(gridref) == 6:
+        e *= 100
+        n *= 100
+    elif len(gridref) == 8:
+        e *= 10
+        n *= 10
+    # 10-digit references are already in 1m resolution
+
+    return [e, n]
+
+# Example usage
+print(gridDistance("SU387148", "SU38714856"))  # Distance in km
+print(gridBearing("SU387148", "SU38714856"))  # Bearing in degrees
+
+numeric_coords = gridrefNumeric("SU387148")
+#%%
+
+riv_gauge = {
+    'Alt': {'grid': 'SJ391983', 'name': 'Kirkby', 'gauge_number': 69032},
+    'Esk': {'grid': 'SD131977', 'name': 'Cropple How', 'gauge_number': 74007},
+    'Clywd': {'grid': 'SJ069709', 'name': 'Pont-y-Cambwll', 'gauge_number': 66001},
+}
+# Function to convert BNG grid references to latitude and longitude
+
+def update_riv_gauge_with_latlon(riv_gauge):
+    for river, details in riv_gauge.items():
+        # Get the OS grid reference
+        grid_ref = details['grid']
+
+        # Convert the OS grid reference to easting and northing
+        numeric_coords = gridrefNumeric(grid_ref)
+        easting, northing = numeric_coords
+
+        # Convert easting and northing to latitude and longitude
+        latitude, longitude = OSGB36toWGS84(easting, northing)
+
+        # Add latitude and longitude to the dictionary
+        details['lat'] = latitude
+        details['lon'] = longitude
+        print(f"{river}: Longitude = {latitude}, {longitude}")
+
+# Update the river gauge dictionary
+update_riv_gauge_with_latlon(riv_gauge)
+
+# Collect the new lon, lat, and river names for plotting
+river_lons = [details['lon'] for details in riv_gauge.values()]
+river_lats = [details['lat'] for details in riv_gauge.values()]
+river_names = [key for key  in riv_gauge]
+
+extra_detail_plots = 'n'
+ffig = plt.figure(figsize=(10, 12), dpi = 150)
+ax = plt.axes(projection=ccrs.PlateCarree())
+# ax.add_feature(cfeature.COASTLINE, linewidth=1.0, edgecolor='red')
+# ax.add_feature(cfeature.BORDERS, linewidth=0.5, linestyle='dotted', edgecolor='black')
+gdf.plot(ax = ax, color = 'black', linewidth=0.5)
+ax.scatter(lons, lats, marker='o', color='blue', label='AMM15 river climatology discharge')
+ax.set_xlabel('Longitude')
+ax.set_ylabel('Latitude')
+uk_extent_lon = np.linspace(-3.65, -2.70, 6)
+uk_extent_lat = np.linspace(53.20, 54.52, 7)
+ax.set_xticks(uk_extent_lon, crs=ccrs.PlateCarree())
+ax.set_yticks(uk_extent_lat, crs=ccrs.PlateCarree())
+# Label each point with a number from 1 to n
+# Label each point with a number from 1 to n and the corresponding river name
+# Label each point with a number from 1 to n and the corresponding river name
 
 
+# for i, (lon, lat) in enumerate(zip(lons, lats), start=1):
+#     if i in riv_dict:
+#         ax.text(lon - 0.02, lat + 0.01, f'{riv_dict[i]}', ha='center', va='bottom', fontsize=10, color='blue')
+# Plotting the river discharge points and their respective indices and names
+for i, (lon, lat) in enumerate(zip(lons, lats)):
+    # Check if the index corresponds to a river in the dictionary
+    if i in riv_dict:
+        # Get the river name from the dictionary
+        river_name = riv_dict[i]
+        # Get the corresponding row and column indices
+        row_idx = row_indices[i]
+        col_idx = col_indices[i]
+        # Plot the river name and optionally the row and column indices
+        ax.text(lon - 0.02, lat + 0.01, f'{river_name}', ha='center', va='bottom', fontsize=10, color='blue')
+        if extra_detail_plots == 'y':
+            ax.text(lon - 0.02, lat - 0.02, f'({row_idx}, {col_idx})', ha='center', va='top', fontsize=8, color='red')
 
+    
+first_river_plotted = False
+for river, (lon, lat) in additional_coords.items():
+    if not first_river_plotted:
+        ax.scatter(lon, lat, marker='^', color='red', label='15-min measured river gauge data')
+        first_river_plotted = True
+    else:
+        ax.scatter(lon, lat, marker='^', color='red')
+    ax.text(lon + 0.02, lat + 0.01, river, ha='center', va='bottom', fontsize=10, color='red')
+
+#Plot the esk alt and clywd
+ax.scatter(river_lons, river_lats, marker='s', color='purple', label='Extra River Gauge Locations')
+# Label each river gauge point with its name
+for lon, lat, name in zip(river_lons, river_lats, river_names):
+    ax.text(lon + 0.02, lat + 0.01, name, ha='center', va='bottom', fontsize=10, color='purple')
+#% DO you want to add transects onto this figure ?
+transect_paths = start_path + r'modelling_DATA/kent_estuary_project/land_boundary/analysis/QGIS_shapefiles/points_along_estuary_1km_spacing.csv'
+transect_data = pd.read_csv(transect_paths)
+
+ax.scatter(transect_data.X, transect_data.Y, c = 'green', marker = '+', s = 1, label = 'Estuarine Transect')
+
+
+ax.set_extent([uk_lon_min, uk_lon_max + 0.25, uk_lat_min, uk_lat_max])
+ax.set_aspect(aspect=0.75) 
+
+plt.tight_layout()
+plt.legend()
+
+plt.savefig('estuaries_map.png', dpi = 300)
 #%% Make a dataframe of the new river climatology data 
 # Initialize a DataFrame to store river names and their time series data
 # You may want to adjust the structure based on your exact requirements
@@ -467,7 +638,7 @@ if __name__ == '__main__':
     discharge_rivers_df_year = add_river_data(bc_paths)
     
     discharge_rivers_df_year.Ribble.to_csv('river_data.csv')
-    
+    discharge_rivers_df_year.to_csv('all_rivers.csv')
     
     
 #%% Possibly usefull old junk code

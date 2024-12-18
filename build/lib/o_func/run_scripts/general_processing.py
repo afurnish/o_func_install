@@ -10,7 +10,7 @@ import os
 import xarray as xr
 import glob
 import time as t 
-
+from pathlib import Path
 from o_func import DataChoice, DirGen ,VideoPlots, opsys; start_path = opsys()
 from o_func.data_prepkit import OpenNc
 
@@ -24,7 +24,8 @@ dc = DataChoice(os.path.join(main_path,'models'))
 fn = dc.dir_select()
 #%% Lazy loading dataset
 ### Large dataset path for testing 
-lp = glob.glob(r'F:\modelling_DATA\kent_estuary_project\5.Final\1.friction\SCW_runs\kent_2.0.0_wind\*.nc')[0]
+pathtype = Path(Path(start_path)  / 'modelling_DATA/kent_estuary_project/5.Final/1.friction/SCW_runs/kent_2.0.0_wind')
+lp = [i for i in pathtype.glob('*.nc')][0]
 
 sp = t.time()
 #lp = glob.glob(os.path.join(fn[0],'*.nc'))[0]

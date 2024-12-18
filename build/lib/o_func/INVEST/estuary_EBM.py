@@ -13,6 +13,12 @@ To calibrate the EBM sufficiently instead of using flushing time as a parameter 
 
 
 """
+import pyarrow
+
+# Manually add a __version__ attribute if missing
+if not hasattr(pyarrow, "__version__"):
+    pyarrow.__version__ = "1.0.0"
+
 import xarray as xr
 from pathlib import Path
 import numpy as np
@@ -23,7 +29,10 @@ import math
 from datetime import datetime
 import os
 from o_func import opsys; start_path = Path(opsys())
-elements_path = Path(opsys('Elements'))
+try:
+    elements_path = Path(opsys('Elements'))
+except:
+    print('Elements Drive is not connected.')
 from sklearn.neighbors import BallTree
 from scipy.signal import find_peaks
 import sys
@@ -53,6 +62,7 @@ writemaps = 'n'
 side = 'east'
 include_tidal = True
 
+# Try to save this to a regular file
 mask_file_path = start_path / Path('modelling_DATA/EBM_PRIMEA/EBM_python/mask.npy') 
 # This is for determining whats inflow and whats outflow. 
 
@@ -62,9 +72,13 @@ plotting = 'n'
 20_year_run - Uses amm7 data to run 20 years of EBM data. 
 
 """
-run = '20_year_run_fake_river'
 
+run = 'Delft_run_Thom_34ppt_M2_meanflow_cal_values'
+
+# 20 year run fake river was last to be used. 
+#C_k_calibration_Delft_run_Thom_34ppt_M2_meanflow
 if run == '20_year_run_fake_river':
+    discharge_list = [10]
     artificial_river = 'n' # implement real or not real data
     artificial_tide = 'y'
     time_generating_step = 60       # timesteps to generate the resultant output data. set at one minute for a balance of speed etc. 
@@ -75,7 +89,9 @@ if run == '20_year_run_fake_river':
     Ck_values = ['multivariate_regression']
     C_k_import_values_from_CSV = 'y'
     delft_salinities = 'n'
+    ignore_spring_neap = 'n'
 if run == '20_year_run_real_river':
+    discharge_list = [10]
     artificial_river = 'y' # implement real or not real data
     artificial_tide = 'y'
     time_generating_step = 60       # timesteps to generate the resultant output data. set at one minute for a balance of speed etc. 
@@ -86,7 +102,9 @@ if run == '20_year_run_real_river':
     Ck_values = ['multivariate_regression']
     C_k_import_values_from_CSV = 'y'
     delft_salinities = 'n'
+    ignore_spring_neap = 'n'
 elif run == 'arti_tidefes_fake_river':
+    discharge_list = [10]
     artificial_river = 'y' # implement real or not real data
     artificial_tide = 'y'
     time_generating_step = 60       # timesteps to generate the resultant output data. set at one minute for a balance of speed etc. 
@@ -97,7 +115,9 @@ elif run == 'arti_tidefes_fake_river':
     Ck_values = ['multivariate_regression']
     C_k_import_values_from_CSV = 'n'
     delft_salinities = 'n'
+    ignore_spring_neap = 'n'
 elif run == 'C_k_calibration':
+    discharge_list = [10]
     artificial_river = 'y' # implement real or not real data
     artificial_tide = 'y'
     time_generating_step = 60       # timesteps to generate the resultant output data. set at one minute for a balance of speed etc. 
@@ -109,7 +129,9 @@ elif run == 'C_k_calibration':
     Ck_values[0] = 0
     C_k_import_values_from_CSV = 'n' 
     delft_salinities = 'n'
+    ignore_spring_neap = 'n'
 elif run == 'delft_run_in_out':
+    discharge_list = [10]
     artificial_river = 'y' # implement real or not real data
     artificial_tide = 'n'
     delft_run = 'y'
@@ -122,8 +144,9 @@ elif run == 'delft_run_in_out':
     Ck_values[0] = 0
     C_k_import_values_from_CSV = 'n' 
     delft_salinities = 'n'
+    ignore_spring_neap = 'n'
 elif run == 'C_k_calibration_Delft_run_Thom_35ppt_M2':
-    
+    discharge_list = [10]
     artificial_river = 'y' # implement real or not real data
     artificial_tide = 'n'
     time_generating_step = 60       # make sure its 60 if the data is hourly. 
@@ -139,6 +162,66 @@ elif run == 'C_k_calibration_Delft_run_Thom_35ppt_M2':
     Ck_values = np.arange(0, 3000.2, 1)
     C_k_import_values_from_CSV = 'n' 
     # Ck_values[0] = 0
+    ignore_spring_neap = 'n'
+elif run == 'C_k_calibration_Delft_run_Thom_34ppt_M2':
+    discharge_list = [10]
+    artificial_river = 'y' # implement real or not real data
+    artificial_tide = 'n'
+    time_generating_step = 60       # make sure its 60 if the data is hourly. 
+    artificial_salinities = 'n'  
+    delft_salinities = 'y'
+    AMM7_20_year_run = 'n'
+    delft_run = 'y'
+    delft_path = start_path / Path('Original_Data/INVEST/34ppt_10Q_M2')
+    simp_tide = 'n'
+    calibrate_ck = 'yes'
+    # Need many many more values of C_k 
+    Ck_values = np.logspace(np.log10(0.0001), np.log10(2500), 300)
+    Ck_values = np.arange(0, 3000.2, 1)
+    C_k_import_values_from_CSV = 'n' 
+    # Ck_values[0] = 0
+    ignore_spring_neap = 'n'
+elif run == 'C_k_calibration_Delft_run_Thom_34ppt_M2_meanflow':
+    discharge_list = [31.98, 36.75, 36.66, 6.83, 38.05, 9.93, 14.89, 5.4]
+    artificial_river = 'y' # implement real or not real data
+    artificial_tide = 'n'
+    time_generating_step = 60       # make sure its 60 if the data is hourly. 
+    artificial_salinities = 'n'  
+    delft_salinities = 'y'
+    AMM7_20_year_run = 'n'
+    delft_run = 'y'
+    delft_path = start_path / Path('Original_Data/INVEST/34ppt_MEANFLOW_M2')
+    simp_tide = 'n'
+    calibrate_ck = 'yes'
+    # Need many many more values of C_k 
+    Ck_values = np.logspace(np.log10(0.0001), np.log10(2500), 300)
+    Ck_values = np.arange(0, 3000.2, 1)
+    C_k_import_values_from_CSV = 'n' 
+    # Ck_values[0] = 0
+    ignore_spring_neap = 'n'
+elif run == 'Delft_run_Thom_34ppt_M2_meanflow_cal_values':
+    '''
+    Use this run to add data to the table of flushing times. 
+    '''
+    discharge_list = [1, 2, 5, 10, 20, 30, 40, 50, 75, 100, 150, 200]
+    artificial_river = 'y' # implement real or not real data
+    artificial_tide = 'n'
+    time_generating_step = 60       # make sure its 60 if the data is hourly. 
+    artificial_salinities = 'n'  
+    delft_salinities = 'y'
+    AMM7_20_year_run = 'n'
+    delft_run = 'y'
+    delft_path = start_path / Path('Original_Data/INVEST/34ppt_MEANFLOW_M2')
+    # delft_path = Path('D://Original_Data/INVEST/35ppt_10Q_run_M2S2')
+    
+    simp_tide = 'n'
+    calibrate_ck = 'n'
+    # Need many many more values of C_k 
+    #Ck_values = np.logspace(np.log10(0.0001), np.log10(2500), 300)
+    C_k_import_values_from_CSV = 'y' 
+    Ck_values = ['multivariate_regression']
+    ignore_spring_neap = 'y'
+    # Ck_values[0] = 0
 '''
 ------------------------ Key parameters to change as either y/n ----------------------------------
 '''
@@ -153,7 +236,6 @@ elif run == 'C_k_calibration_Delft_run_Thom_35ppt_M2':
 '''
 
 # discharge_list = [1,2,5,10,20,30,40,50]
-discharge_list = [10]
 
 if artificial_tide == 'y': 
     
@@ -855,35 +937,36 @@ def ebm(W_m, h, Q_r, Q_m, S_l, Q_l, S_oc, length, time_array, Ck_calibration):
         C_k = Ck_calibration
     else:
         C_k = np.full_like(Q_l, np.nan)
-        spring_neap_mask = generate_spring_neap_mask_for_all_estuaries(Q_l)
-        # Iterate over time steps (i) and estuaries (j)
-        for i in range(len(Q_l)):  # Time steps
-            for j, estuary_name in enumerate(est_names):  # Estuaries by index
-            
-                vt_ur = vel_tide[i][j] / ur[i][j]  # Calculate vt_ur for this time step and estuary
-                eta = Eta[i][j]
-                ros = Ro_s[i][j]
-
-                # Select the power-law equation based on estuary and tide phase
-                if spring_neap_mask[i][j] == 1:
-                    # Spring tide
-                    power_law_eq = power_law_equations[f'{estuary_name}_spring']
-                elif spring_neap_mask[i][j] == -1:
-                    # Neap tide
-                    power_law_eq = power_law_equations[f'{estuary_name}_neap']
-
-                # Apply the equation to calculate C_k for this estuary and time step
-                C_k[i][j] = power_law_eq(vt_ur, eta, ros)
-                # if spring_neap_mask[i][j] == 1:
-                #     coeffs = spring_coeffs[estuary_name]
-                # elif spring_neap_mask[i][j] == -1:
-                #     coeffs = neap_coeffs[estuary_name]
+        if ignore_spring_neap != 'y':
+            spring_neap_mask = generate_spring_neap_mask_for_all_estuaries(Q_l)
+            # Iterate over time steps (i) and estuaries (j)
+            for i in range(len(Q_l)):  # Time steps
+                for j, estuary_name in enumerate(est_names):  # Estuaries by index
                 
-                # # Apply the C_k equation for the given estuary at time step i
-                # C_k[i][j] = coeffs[0] + (coeffs[1] * np.log(vel_tide[i][j] / ur[i][j])) + (coeffs[2] * Eta[i][j]) + ((Ro_s[i][j] / 1000) ** 20)
-                
-                
-                #C_k borkery
+                    vt_ur = vel_tide[i][j] / ur[i][j]  # Calculate vt_ur for this time step and estuary
+                    eta = Eta[i][j]
+                    ros = Ro_s[i][j]
+    
+                    # Select the power-law equation based on estuary and tide phase
+                    if spring_neap_mask[i][j] == 1:
+                        # Spring tide
+                        power_law_eq = power_law_equations[f'{estuary_name}_spring']
+                    elif spring_neap_mask[i][j] == -1:
+                        # Neap tide
+                        power_law_eq = power_law_equations[f'{estuary_name}_neap']
+    
+                    # Apply the equation to calculate C_k for this estuary and time step
+                    C_k[i][j] = power_law_eq(vt_ur, eta, ros)
+                    # if spring_neap_mask[i][j] == 1:
+                    #     coeffs = spring_coeffs[estuary_name]
+                    # elif spring_neap_mask[i][j] == -1:
+                    #     coeffs = neap_coeffs[estuary_name]
+                    
+                    # # Apply the C_k equation for the given estuary at time step i
+                    # C_k[i][j] = coeffs[0] + (coeffs[1] * np.log(vel_tide[i][j] / ur[i][j])) + (coeffs[2] * Eta[i][j]) + ((Ro_s[i][j] / 1000) ** 20)
+                    
+                    
+                    #C_k borkery
     
                 
     # label = 'C_k_' + str(100)
@@ -895,9 +978,10 @@ def ebm(W_m, h, Q_r, Q_m, S_l, Q_l, S_oc, length, time_array, Ck_calibration):
         cal_dataframe = pd.read_csv(start_path / Path('GitHub/o_func_install/o_func/INVEST/salinity_calibration_best_ck_values.csv'))
         constant_C_k_values = dict(zip(cal_dataframe['estuary'], cal_dataframe['C_k_value']))
         for est_num, est in enumerate(estuary_data.keys()):
+            print(est_num)
             estuary_data[est]['C_k'] = constant_C_k_values[est]
             C_k_value = estuary_data[est]['C_k']
-            othermask = ~np.isnan(C_k[:, est_num])
+            othermask = ~np.isnan(Q_l[:, est_num])
             C_k[othermask, est_num] = C_k_value
         
         
@@ -1931,9 +2015,9 @@ def shapely(a):
 
 if AMM7_20_year_run == 'y':
     C_k_values = ['20_year_run']
-for Ck_calibration in Ck_values:
+for Ck_cal in Ck_values:
     
-    print('Running:', Ck_calibration)
+    print('Running:', Ck_cal)
     for discharge_examples in runs_to_complete:
     
         # Use the function as needed
@@ -1977,12 +2061,17 @@ for Ck_calibration in Ck_values:
             Q_r = Q_r.T  # Transpose to get shape (720, 8)
         if Q_r.shape[0] == 1:
             Q_r = Q_r.T
-            
-        Q_r = (Q_l * 0) + 50
-        Q_m = 50
+        
+        somecondition_not_sure_what = 'n'
+        if somecondition_not_sure_what == 'y':   
+            Q_r = (Q_l * 0) + 50
+            Q_m = 50
         
         #!!!
-        Q_u, Lx, S_u, Fi, Flushing_Time, cleaned_flushing_time_phase, S_flood= ebm(W_m, h, Q_r, Q_m, S_l_copy, Q_l_copy, S_oc, length_copy, time_array, Ck_calibration)
+        Q_u, Lx, S_u, Fi, Flushing_Time, cleaned_flushing_time_phase, S_flood= ebm(W_m, h, Q_r, Q_m, S_l_copy, Q_l_copy, S_oc, length_copy, time_array, Ck_cal
+                                                                                   
+                                                                                   
+                                                                                  )
         #% EBM extra Functions and plotting
         def plot_flushing_time_and_discharge(cleaned_flushing_time_phase_list, flushing_time_list, Q_u, Q_r, time_array, savep, estuary_names, attempt_label='attempt_2'):
             

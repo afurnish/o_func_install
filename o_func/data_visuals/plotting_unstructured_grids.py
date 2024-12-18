@@ -19,10 +19,15 @@ def path(path):
 
 # Load the original dataset
 file_path_original = path("modelling_DATA/kent_estuary_project/grid/netcdf_delft_grids/original_model_grid.nc")  # Replace with the path to the original NetCDF file
+
+
 ds_original = xr.open_dataset(file_path_original)
+
 
 # Load the new dataset
 file_path_new = path("modelling_DATA/kent_estuary_project/grid/netcdf_delft_grids/extended_rivers_to_combat_saline_intrusion.nc") # Replace with the path to the new NetCDF file
+file_path_new = Path("C:/Users/aafur/Downloads/Thames/Thames/thames_domain_full_net.nc")
+
 ds_new = xr.open_dataset(file_path_new)
 
 # Extract node coordinates from the original dataset

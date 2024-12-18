@@ -15,16 +15,27 @@ from o_func import opsyst
 #%% Initial Conditions
 
 # Paths
-start_path = Path(opsyst('PN'))                 # Generate PN startpath
-start_pathINVEST = Path(opsyst('Elements'))     # Generate INVEST startpath
-observed_data_path = start_pathINVEST / Path('Original_Data/INVEST/35ppt_10Q_run_M2/Sal')
+start_path = Path(opsyst('PN'))        
+try:         # Generate PN startpath
+    start_pathINVEST = Path(opsyst('Elements'))   
+    # Generate INVEST startpath
+except:
+    print('Drive Elements not found') 
+# observed_data_path = start_pathINVEST / Path('Original_Data/INVEST/35ppt_10Q_run_M2/Sal')
+observed_data_path = start_path / Path('Original_Data/INVEST/34ppt_10Q_M2/Sal')
+
 mask_file_path = start_path / Path('modelling_DATA/EBM_PRIMEA/EBM_python/mask.npy')
 # Mask file is generated every time the EBM is run, so this file should always be run after EBM running
 
+set_time_file_path = [i for i in observed_data_path.glob('*.csv')][0]
+set_time_file = pd.read_csv(set_time_file_path, parse_dates = ['time'])
 # Define estuaries and date range
 estuary_list = ['Dee', 'Leven', 'Ribble', 'Lune', 'Mersey', 'Wyre', 'Kent', 'Duddon']
+# start_time = np.datetime64('2013-11-10 02:00')
+# stop_time = np.datetime64('2013-12-07 18:00')
+start_time = np.datetime64(set_time_file['time'].iloc[0])
+stop_time = np.datetime64(set_time_file['time'].iloc[-1])
 start_time = np.datetime64('2013-11-10 02:00')
-stop_time = np.datetime64('2013-12-07 18:00')
 interval_in_hours = int((stop_time - start_time) / np.timedelta64(1, 'h')) + 1
 # Load mask and check shape
 mask = np.load(mask_file_path)
@@ -57,28 +68,29 @@ observed_cycle_averages = {}
 observed_cycle = {}
 observed_in = {}
 for file in Path(observed_data_path).glob("*.csv"):
-    print(file)
-    estuary_name = file.stem.split('_')[0].capitalize()
-    df = pd.read_csv(file)
-    df['time'] = pd.to_datetime(df['time'])
+    if not file.name.startswith('.'):
+        print(file)
+        estuary_name = file.stem.split('_')[0].capitalize()
+        df = pd.read_csv(file)
+        df['time'] = pd.to_datetime(df['time'])
+        
+        # Filter data by date range
+        df = df[(df['time'] >= start_time) & (df['time'] <= stop_time)]
+        observed_salinity = df['wl'].values  # Get salinity values in date range
     
-    # Filter data by date range
-    df = df[(df['time'] >= start_time) & (df['time'] <= stop_time)]
-    observed_salinity = df['wl'].values  # Get salinity values in date range
-
-    # Ensure length consistency with mask
-    if len(observed_salinity) != mask.shape[0]:
-        raise ValueError(f"Length mismatch for observed salinity in {estuary_name} and mask file.")
-
-    # Calculate tidal cycle averages using the appropriate mask column
-    estuary_index = estuary_list.index(estuary_name)
-    inverted_mask = np.where(np.isnan(mask), 0, np.nan) # flip the mask to take observed salinities on the output
-    tidal_cycle_means = calculate_tidal_cycle_means(observed_salinity, inverted_mask[:, estuary_index])
-    tidal_cycle_in_means = calculate_tidal_cycle_means(observed_salinity, mask[:, estuary_index])
+        # Ensure length consistency with mask
+        if len(observed_salinity) != mask.shape[0]:
+            raise ValueError(f"Length mismatch for observed salinity in {estuary_name} and mask file.")
     
-    observed_cycle_averages[estuary_name] = tidal_cycle_means
-    observed_cycle[estuary_name] = observed_salinity
-    observed_in[estuary_name] = tidal_cycle_in_means
+        # Calculate tidal cycle averages using the appropriate mask column
+        estuary_index = estuary_list.index(estuary_name)
+        inverted_mask = np.where(np.isnan(mask), 0, np.nan) # flip the mask to take observed salinities on the output
+        tidal_cycle_means = calculate_tidal_cycle_means(observed_salinity, inverted_mask[:, estuary_index])
+        tidal_cycle_in_means = calculate_tidal_cycle_means(observed_salinity, mask[:, estuary_index])
+        
+        observed_cycle_averages[estuary_name] = tidal_cycle_means
+        observed_cycle[estuary_name] = observed_salinity
+        observed_in[estuary_name] = tidal_cycle_in_means
 
 # The observed_cycle_averages dictionary now contains tidal cycle averaged salinity for each estuary.
 # This data is ready for use in the calibration loop.

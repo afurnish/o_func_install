@@ -37,7 +37,7 @@ var_dict = {
 'surface_temp'     : {'TUV':'T',  'UKC4':'votemper_top',   'PRIMEA':'na',            'UNITS':'\u00B0C'},
 'middle_temp'      : {'TUV':'T',  'UKC4':'votemper_mid',   'PRIMEA':'na',            'UNITS':'\u00B0C'},
 'bottom_temp'      : {'TUV':'T',  'UKC4':'votemper_bot',   'PRIMEA':'na',            'UNITS':'\u00B0C'},
-'surface_Uvelocity': {'TUV':'U',  'UKC4':'vozocrtx_top',   'PRIMEA':'mesh2d_ucx',    'UNITS':'$m\,s^{-1}$'}, # the one with the major issues
+    'surface_Uvelocity': {'TUV':'U',  'UKC4':'vozocrtx_top',   'PRIMEA':'mesh2d_ucx',    'UNITS':'$m\,s^{-1}$'}, # the one with the major issues
 'middle_Uvelocity' : {'TUV':'U',  'UKC4':'vozocrtx_mid',   'PRIMEA':'na',            'UNITS':'$m\,s^{-1}$'},
 'bottom_Uvelocity' : {'TUV':'U',  'UKC4':'vozocrtx_bot',   'PRIMEA':'na',            'UNITS':'$m\,s^{-1}$'},
 'surface_Vvelocity': {'TUV':'V',  'UKC4':'vomecrty_top',   'PRIMEA':'mesh2d_ucy',    'UNITS':'$m\,s^{-1}$'},
@@ -808,10 +808,12 @@ class Stats:
         
         # Quick check of last month only
         # Define the cutoff date
-        cutoff_date = pd.to_datetime('2014-01-01')
-        
+        # cutoff_date = pd.to_datetime('2014-02-01')
+        end_cutoff = pd.to_datetime('2014-02-28')
+        start_cutoff = pd.to_datetime('2013-02-01')
         # Filter the DataFrame for rows where 'DateTime' is after the cutoff date
-        filtered_df = df[df['DateTime'] > cutoff_date]
+        filtered_df = df[(df['DateTime'] > start_cutoff) & (df['DateTime'] < end_cutoff)]
+
         df = filtered_df
         
         df = df.reset_index(drop=True)
@@ -941,7 +943,7 @@ def find_dir(file_path, filename='kent_regrid.nc'):
 if __name__ == '__main__':
   
     # multi_file_path = path = os.path.join(start_path,'modelling_DATA','kent_estuary_project','7.met_office','models')
-    multi_file_path = path = os.path.join(start_path,'modelling_DATA','kent_estuary_project','10.river_testing','models')
+    multi_file_path = path = os.path.join(start_path,'modelling_DATA','kent_estuary_project','12.salinity_calibration_laststeps','models')
 
     list_of_files = find_dir(multi_file_path)
     # list_of_files = list_of_files[-1] # only change the last one for the conference. 
@@ -949,6 +951,7 @@ if __name__ == '__main__':
           #'bathymetry_testing',
           'ao_nawind_AllRivNoDuddonClimatology_m0.035_Forcing',
           'ao_yawind_AllRivNoDuddonClimatology_m0.035_Forcing',
+          'ao_yawind_AllRivNoDuddonClimatology_m0.035_Forcing_95_Discouv',
          # 'oa_nawind_Orig_m0.035_Forcing_4_months',
       #   'oa_nawind_Orig_m0.030_Forcing',
       #   'oa_nawind_Orig_m0.035_Forcing',
@@ -991,7 +994,7 @@ if __name__ == '__main__':
         tide_gauge, ind = sts.load_tide_gauge()
         transect = sts.transect(fig_path)
         prim, ukc4, height_diff = sts.max_compare(fig_path)
-        surface_salinity = sts.salinity_validation(extract_ukc4s[1],  extract_prims[1])
+        surface_salinity = sts.salinity_validation(extract_ukc4s[3],  extract_prims[3])
         # This needs to be set up with a dictionary, so outputs from linear regression need to be in a dictionary. 
         # tp = sts.tidal_plots(fig_path)
         

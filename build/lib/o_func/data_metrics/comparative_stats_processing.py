@@ -992,6 +992,7 @@ if __name__ == '__main__':
         transect = sts.transect(fig_path)
         prim, ukc4, height_diff = sts.max_compare(fig_path)
         surface_salinity = sts.salinity_validation(extract_ukc4s[1],  extract_prims[1])
+        # This needs to be set up with a dictionary, so outputs from linear regression need to be in a dictionary. 
         # tp = sts.tidal_plots(fig_path)
         
 # EXTRA PLOTTING

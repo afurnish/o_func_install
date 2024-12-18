@@ -173,9 +173,9 @@ if __name__ == '__main__':
     
     #from o_func.data_prepkit import DirGen
     # main_path = os.path.join(start_path, r'modelling_DATA','kent_estuary_project',r'6.Final2')
-    main_path = os.path.join(start_path, r'modelling_DATA','kent_estuary_project',r'11.3d_testing')
+    main_path = os.path.join(start_path, r'modelling_DATA','kent_estuary_project',r'12.salinity_calibration_laststeps')
     make_paths = DirGen(main_path)
-    sub_path, fig_path, data_stats_path = make_paths.dir_outputs('3d_test_1_month_nov_2013_merseanemoonly')
+    sub_path, fig_path, data_stats_path = make_paths.dir_outputs('ao_yawind_AllRivNoDuddonClimatology_m0.035_Forcing_95_Discouv')
     
     # for model_input in ['oa', 'og', 'owa', 'ow']:
     #     for wind in ['yawind', 'nawind']:

@@ -796,4 +796,4 @@ if __name__ == '__main__':
     
     delete_csv_files(user_dict['csv_path'])
 
-locationFile=3d_005_delft_ocean_boundary_UKC3_b76t163_length-87_points.pli
+# locationFile=3d_005_delft_ocean_boundary_UKC3_b76t163_length-87_points.pli
