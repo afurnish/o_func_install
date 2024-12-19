@@ -175,7 +175,7 @@ if __name__ == '__main__':
     # main_path = os.path.join(start_path, r'modelling_DATA','kent_estuary_project',r'6.Final2')
     main_path = os.path.join(start_path, r'modelling_DATA','kent_estuary_project',r'12.salinity_calibration_laststeps')
     make_paths = DirGen(main_path)
-    sub_path, fig_path, data_stats_path = make_paths.dir_outputs('ao_yawind_AllRivNoDuddonClimatology_m0.035_Forcing_95_Discouv')
+    sub_path, fig_path, data_stats_path = make_paths.dir_outputs('ao_yawind_AllRivNoDuddonClimatology_m0.035_Forcing_95_Discouv_9.5_Viscouv')
     
     # for model_input in ['oa', 'og', 'owa', 'ow']:
     #     for wind in ['yawind', 'nawind']:

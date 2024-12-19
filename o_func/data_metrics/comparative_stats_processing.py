@@ -949,9 +949,13 @@ if __name__ == '__main__':
     # list_of_files = list_of_files[-1] # only change the last one for the conference. 
     list_of_files = [  
           #'bathymetry_testing',
-          'ao_nawind_AllRivNoDuddonClimatology_m0.035_Forcing',
-          'ao_yawind_AllRivNoDuddonClimatology_m0.035_Forcing',
-          'ao_yawind_AllRivNoDuddonClimatology_m0.035_Forcing_95_Discouv',
+          # 'ao_nawind_AllRivNoDuddonClimatology_m0.035_Forcing',
+          # 'ao_yawind_AllRivNoDuddonClimatology_m0.035_Forcing',
+          # 'ao_yawind_AllRivNoDuddonClimatology_m0.035_Forcing_95_Discouv',
+          'ao_yawind_AllRivNoDuddonClimatology_m0.035_Forcing_95_Discouv_9.5_Viscouv',
+          'ao_yawind_AllRivNoDuddonClimatology_m0.035_Forcing_95_Discouv_0.15_smor',
+          'ao_yawind_8_rivs_real_flows_m0.035_Forcing',
+          
          # 'oa_nawind_Orig_m0.035_Forcing_4_months',
       #   'oa_nawind_Orig_m0.030_Forcing',
       #   'oa_nawind_Orig_m0.035_Forcing',

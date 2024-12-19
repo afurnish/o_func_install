@@ -117,6 +117,7 @@ o_func/utilities/distance.py
 o_func/utilities/finder.py
 o_func/utilities/gauges.py
 o_func/utilities/general.py
+o_func/utilities/generate_package_dictionary.py
 o_func/utilities/grid_to_xyz.py
 o_func/utilities/grids.py
 o_func/utilities/io.py
@@ -131,5 +132,6 @@ o_func/utilities/shapefile_to_poly.py
 o_func/utilities/start.py
 o_func/utilities/tidal_constants.py
 o_func/utilities/time_to_seconds.py
+o_func/utilities/transect_to_one_point.py
 o_func/utilities/transforms.py
 o_func/utilities/x_regrid.py

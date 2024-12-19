@@ -9,10 +9,11 @@ import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 import pandas as pd
 from pyproj import Transformer
-from o_func import opsys; start_path = opsys('Elements')
+from o_func import opsys
+start_path = opsys('Elements')
 
 # File path and data loading
-path = start_path + 'Original_Data/transects/Humber_AMM7_nodes.csv'
+path = 'D:/Original_Data/transects/Humber_AMM7_nodes.csv'
 
 # File path and data loading
 data = pd.read_csv(path)
