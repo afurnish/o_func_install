@@ -14,6 +14,7 @@ import sys
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import cmocean
+from pathlib import Path
 from matplotlib.colors import ListedColormap
 
 
@@ -72,7 +73,7 @@ class Stats:
         Returns:
             pd.DataFrame: DataFrame with hourly means and timestamps at the middle of each hour.
         """
-        hourly_means = df.resample('H').mean()
+        hourly_means = df.resample('h').mean()
         hourly_means.index = hourly_means.index + pd.Timedelta(minutes=30)
 
         return hourly_means
@@ -118,7 +119,7 @@ class Stats:
             
             if ukc4_datasets: # doesnt matter which one it is
                 for (primkey, primvalue), (ukc4key, ukc4value) in zip(prim_datasets.items(), ukc4_datasets.items()):
-                    prim_datasets[primkey] = primvalue.resample(time_primea='1H').mean(skipna = True)
+                    prim_datasets[primkey] = primvalue.resample(time_primea='1h').mean(skipna = True)
                     prim_datasets[primkey]['time_primea'] = prim_datasets[primkey].time_primea + pd.to_timedelta('30min')
                     ukc4_datasets[ukc4key] = ukc4_datasets[ukc4key].sel(time_counter=prim_datasets[primkey].time_primea)
                     self.lon = prim_datasets[primkey]['nav_lon']
@@ -162,7 +163,7 @@ class Stats:
         for i in self.tide_gauge_data:
             dataset = pd.read_csv(i, index_col=0, parse_dates=True)
             name = os.path.split(i)[-1][5:-4].capitalize()
-            tide_dict[name] = dataset.resample('H').mean()
+            tide_dict[name] = dataset.resample('h').mean()
             tide_dict[name].index = tide_dict[name].index + pd.Timedelta(minutes=30)
             tide_dict[name] = tide_dict[name].loc[(tide_dict[name].index >= self.time[0].data) & (tide_dict[name].index <= self.time[-1].data)]
         self.tide_data_dict = tide_dict
@@ -357,7 +358,13 @@ class Stats:
 
                         ax.plot(tt,surface_height_plot, label = mod_key_new[kil], linewidth = lw[kil], linestyle = linetypes[kil], color = col[kil]) 
                         high_tide_num = 174 + 13 + 12
-                        ax.scatter(tt[high_tide_num], surface_height_plot[high_tide_num], s = 4)
+                        # ax.scatter(tt[high_tide_num], surface_height_plot[high_tide_num], s = 4)
+                        ax.scatter(
+                            pd.Timestamp(tt[high_tide_num].item()).to_pydatetime(),  # Convert to Python datetime
+                            surface_height_plot.iloc[high_tide_num] if hasattr(surface_height_plot, 'iloc') else surface_height_plot[high_tide_num],  # Dynamic indexing
+                            s=4
+                        )
+
                         # plot what time of tide the transect comes from
                         # import pdb; pdb.set_trace()    
                     spring_neap = 24*14
@@ -395,14 +402,14 @@ class Stats:
             data = pd.DataFrame({'Timestamp': self.time_sliced, 'Shifted_Time': self.time_sliced + pd.Timedelta(minutes=shifted_time_val)})
             for kio, item in enumerate(self.primx):
                 # data['Values'] = item['PRIMEA Model']
-                # full_time_range = pd.date_range(start=data['Timestamp'].min(), end=data['Shifted_Time'].max(), freq='30T')
-                # shifted_time_range = pd.date_range(start=data['Shifted_Time'].min(), end=data['Shifted_Time'].max(), freq='30T')
+                # full_time_range = pd.date_range(start=data['Timestamp'].min(), end=data['Shifted_Time'].max(), freq='30min')
+                # shifted_time_range = pd.date_range(start=data['Shifted_Time'].min(), end=data['Shifted_Time'].max(), freq='30min')
                 # combined_times = full_time_range.union(shifted_time_range).sort_values()
                 # combined_numeric = combined_times.view(int) / 10**9
                 # # import pdb;pdb.set_trace()
                 # interpolate_func = interp1d(combined_numeric, np.interp(combined_numeric, data['Shifted_Time'].view(int) / 10**9, data['Values']), bounds_error=False, fill_value="extrapolate")
                 # # Now interpolate back to the original half-hour marks
-                # original_half_hour_marks = pd.date_range(start=data['Timestamp'].min(), end=data['Timestamp'].max(), freq='30T')
+                # original_half_hour_marks = pd.date_range(start=data['Timestamp'].min(), end=data['Timestamp'].max(), freq='30min')
                 # original_half_hour_numeric = original_half_hour_marks.view(int) / 10**9
                 # interpolated_values = interpolate_func(original_half_hour_numeric)
                 # result_data = pd.DataFrame({'Timestamp': original_half_hour_marks, 'Interpolated_Value': interpolated_values})
@@ -412,8 +419,8 @@ class Stats:
                 data['Values'] = item['PRIMEA Model']
 
                 # Create the full and shifted time ranges
-                full_time_range = pd.date_range(start=data['Timestamp'].min(), end=data['Shifted_Time'].max(), freq='30T')
-                shifted_time_range = pd.date_range(start=data['Shifted_Time'].min(), end=data['Shifted_Time'].max(), freq='30T')
+                full_time_range = pd.date_range(start=data['Timestamp'].min(), end=data['Shifted_Time'].max(), freq='30min')
+                shifted_time_range = pd.date_range(start=data['Shifted_Time'].min(), end=data['Shifted_Time'].max(), freq='30min')
                 
                 # Combine the time ranges and sort them
                 combined_times = full_time_range.union(shifted_time_range).sort_values()
@@ -433,7 +440,7 @@ class Stats:
                 )
                 
                 # Interpolate back to the original half-hour marks
-                original_half_hour_marks = pd.date_range(start=data['Timestamp'].min(), end=data['Timestamp'].max(), freq='30T')
+                original_half_hour_marks = pd.date_range(start=data['Timestamp'].min(), end=data['Timestamp'].max(), freq='30min')
                 original_half_hour_numeric = original_half_hour_marks.astype(np.int64) // 10**9
                 
                 # Get the interpolated values
@@ -450,14 +457,14 @@ class Stats:
             for kio, item in enumerate(self.ukc4y):
                 # # import pdb;pdb.set_trace()
                 # data['Values'] = item['UKC4 Model']
-                # full_time_range = pd.date_range(start=data['Timestamp'].min(), end=data['Shifted_Time'].max(), freq='30T')
-                # shifted_time_range = pd.date_range(start=data['Shifted_Time'].min(), end=data['Shifted_Time'].max(), freq='30T')
+                # full_time_range = pd.date_range(start=data['Timestamp'].min(), end=data['Shifted_Time'].max(), freq='30min')
+                # shifted_time_range = pd.date_range(start=data['Shifted_Time'].min(), end=data['Shifted_Time'].max(), freq='30min')
                 # combined_times = full_time_range.union(shifted_time_range).sort_values()
                 # combined_numeric = combined_times.view(int) / 10**9
                 # # 
                 # interpolate_func = interp1d(combined_numeric, np.interp(combined_numeric, data['Shifted_Time'].view(int) / 10**9, data['Values']), bounds_error=False, fill_value="extrapolate")
                 # # Now interpolate back to the original half-hour marks
-                # original_half_hour_marks = pd.date_range(start=data['Timestamp'].min(), end=data['Timestamp'].max(), freq='30T')
+                # original_half_hour_marks = pd.date_range(start=data['Timestamp'].min(), end=data['Timestamp'].max(), freq='30min')
                 # original_half_hour_numeric = original_half_hour_marks.view(int) / 10**9
                 # interpolated_values = interpolate_func(original_half_hour_numeric)
                 # result_data = pd.DataFrame({'Timestamp': original_half_hour_marks, 'Interpolated_Value': interpolated_values})
@@ -468,8 +475,8 @@ class Stats:
                 data['Values'] = item['UKC4 Model']
                 
                 # Create the full and shifted time ranges
-                full_time_range = pd.date_range(start=data['Timestamp'].min(), end=data['Shifted_Time'].max(), freq='30T')
-                shifted_time_range = pd.date_range(start=data['Shifted_Time'].min(), end=data['Shifted_Time'].max(), freq='30T')
+                full_time_range = pd.date_range(start=data['Timestamp'].min(), end=data['Shifted_Time'].max(), freq='30min')
+                shifted_time_range = pd.date_range(start=data['Shifted_Time'].min(), end=data['Shifted_Time'].max(), freq='30min')
                 
                 # Combine the time ranges and sort them
                 combined_times = full_time_range.union(shifted_time_range).sort_values()
@@ -489,7 +496,7 @@ class Stats:
                 )
                 
                 # Interpolate back to the original half-hour marks
-                original_half_hour_marks = pd.date_range(start=data['Timestamp'].min(), end=data['Timestamp'].max(), freq='30T')
+                original_half_hour_marks = pd.date_range(start=data['Timestamp'].min(), end=data['Timestamp'].max(), freq='30min')
                 original_half_hour_numeric = original_half_hour_marks.astype(np.int64) // 10**9
                 
                 # Get the interpolated values
@@ -851,7 +858,7 @@ class Stats:
     
         # Loop through each observation
         for i, obs in df.iterrows():
-            print(i)
+            # print(i)
             # Get the observation time
             obs_time = obs['DateTime']
     
@@ -913,7 +920,22 @@ class Stats:
         rmse_primea = np.sqrt(np.mean((observed_salinities - primea_salinities) ** 2))
         rmse_ukc4 = np.sqrt(np.mean((observed_salinities - ukc4_salinities) ** 2))
         plt.savefig(fig_path + '/initial_salinity_validation.png', dpi = 300)
+        
+        
         print(f'PRIMEA RMSE: {rmse_primea:.2f}, UKC4 RMSE: {rmse_ukc4:.2f}')
+        RMSE_path = Path(data_stats_path)/Path('RMSE_stats.txt')
+        # Format the appended data
+        new_data = (
+            "\n"
+            "--------------------------------------------------------------------------------\n"
+            "Salinity Validation to Observed Points:\n"
+            f"    PRIMEA RMSE: {rmse_primea:.2f}\n"
+            f"    UKC4 RMSE: {rmse_ukc4:.2f}\n"
+        )
+        
+        # Append the new data to the file
+        with RMSE_path.open('a') as file:
+            file.write(new_data)
         
         return df
 
@@ -949,12 +971,14 @@ if __name__ == '__main__':
     # list_of_files = list_of_files[-1] # only change the last one for the conference. 
     list_of_files = [  
           #'bathymetry_testing',
+          
+          
           # 'ao_nawind_AllRivNoDuddonClimatology_m0.035_Forcing',
           # 'ao_yawind_AllRivNoDuddonClimatology_m0.035_Forcing',
-          # 'ao_yawind_AllRivNoDuddonClimatology_m0.035_Forcing_95_Discouv',
-          'ao_yawind_AllRivNoDuddonClimatology_m0.035_Forcing_95_Discouv_9.5_Viscouv',
-          'ao_yawind_AllRivNoDuddonClimatology_m0.035_Forcing_95_Discouv_0.15_smor',
-          'ao_yawind_8_rivs_real_flows_m0.035_Forcing',
+          # 'ao_yawind_AllRivNoDuddonClimatology_m0.035_Forcing_95_Discouv', # best one so far
+          # 'ao_yawind_AllRivNoDuddonClimatology_m0.035_Forcing_95_Discouv_9.5_Viscouv',
+          # 'ao_yawind_AllRivNoDuddonClimatology_m0.035_Forcing_95_Discouv_0.15_smor',
+          # 'ao_yawind_8_rivs_real_flows_m0.035_Forcing',
           
          # 'oa_nawind_Orig_m0.035_Forcing_4_months',
       #   'oa_nawind_Orig_m0.030_Forcing',
@@ -998,7 +1022,12 @@ if __name__ == '__main__':
         tide_gauge, ind = sts.load_tide_gauge()
         transect = sts.transect(fig_path)
         prim, ukc4, height_diff = sts.max_compare(fig_path)
-        surface_salinity = sts.salinity_validation(extract_ukc4s[3],  extract_prims[3])
+        #create a simple dictionary to avoid conflicts later
+        ukc4_dict = {dataarray.name: dataarray for dataarray in extract_ukc4s}
+        prim_dict = {dataarray.name: dataarray for dataarray in extract_prims}
+        #Plot salinity
+        
+        surface_salinity = sts.salinity_validation(ukc4_dict['ukc4_surface_salinity'],  prim_dict['prim_surface_salinity'])
         # This needs to be set up with a dictionary, so outputs from linear regression need to be in a dictionary. 
         # tp = sts.tidal_plots(fig_path)
         

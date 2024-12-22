@@ -582,7 +582,7 @@ if __name__ == '__main__':
 
     # Variables for the transect data
     variables = ['DIS', 'SAL', 'TIDE', 'DEPTH', 'velX', 'velY']
-    flowrate = '50m'
+    flowrate = '10m'
     # Read the transect data for model resolution '10m'
     discharge = read_csv_transects(path, flowrate, 'DIS')
     salinity      = read_csv_transects(path, flowrate, 'SAL')
@@ -605,6 +605,7 @@ if __name__ == '__main__':
     # plot_tidal_cycle_averages(sal_weighted_discharge['dee'], sal_weighted_mean['dee'])
 
     plot_tidal_cycle_averages_multi(sal_weighted_discharge, sal_weighted_mean)
+    
     # plot_real_discharges(sal_weighted_discharge)
 
     # plot_discharge_and_salinity(sal_weighted_discharge, sal_weighted_mean)
