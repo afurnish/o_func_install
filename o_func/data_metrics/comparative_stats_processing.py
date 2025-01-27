@@ -14,6 +14,7 @@ import sys
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import cmocean
+import cmasher as cmr
 from pathlib import Path
 from matplotlib.colors import ListedColormap
 
@@ -141,16 +142,47 @@ class Stats:
         return self.raw_data, data_dict, matching_times
     ####            0                1          2
     
-    def load_tide_gauge(self):   
+    def load_tide_gauge(self): 
+        # Original datasets
+        #'Heysham'  :{'x':-2.9594670, 'y':54.0328370},
+        #'Liverpool':{'x':-3.0741720, 'y':53.4634140}
         self.tide_loc_dict = {
-                                'Heysham'  :{'x':-2.9594670, 'y':54.0328370},
+                                # 'Heysham'  :{'x':-2.9594670, 'y':54.0328370},
                                 # 'Heysham'  :{'x':-2.9574780, 'y':54.0333366},
                                 # 'Liverpool':{'x':-3.1554490, 'y':53.4930250}, # Looks good but too deep on liverpool 
                                 # 'Liverpool':{'x':-3.1391550, 'y':53.4622030}, 
                                 # 'Liverpool':{'x':-3.1988680, 'y':53.4797420}, 
-                                  'Liverpool':{'x':-3.0741720, 'y':53.4634140},
-                                    # 'Ribble':{'x': -3.0565639, 'y': 53.715130},
+                                # 'Liverpool':{'x':-3.0741720, 'y':53.4634140},
+                                # 'Ribble':{'x': -3.0565639, 'y': 53.715130},
+                                # 'Liverpool'  :{'x':-2.9594670, 'y':54.0328370},
+                                # test case north west of docks by 2km
+                                # 'Heysham'    :{'x':-2.932401, 'y':54.042532},
+                                #test case inside the harbour
+                                # 'Heysham'    :{'x':-2.922459, 'y':54.032553},
+                                
+                                # So far this is the best test case, now for liverpool. 
+                                # test case south east by 2km 
+                                # 'Heysham'    :{'x':-2.935248, 'y':54.020656},
+                                
+                                #Liverpool test case original
+                                # 'Liverpool':{'x':-3.0741720, 'y':53.4634140}
+                                #best case study so far. 
+                                #test case up the stream by the docks
+                                # 'Liverpool':{'x':-3.020363, 'y':53.438447},
+                                
+                                #best liverpool case for salinity
+                                'Liverpool'    :{'x':-3.058533, 'y':53.4588182},
+                                
+                                # liverpool further offshore 
+                                # 'Liverpool'    :{'x':-3.076068, 'y':53.462082},
+                                
+                                # 'Liverpool':{'x':-3.0741720, 'y':53.4634140},
+                                #new heysham test case on the ferry line. 
+                                'Heysham'    :{'x':-2.946128, 'y':54.022946},
                               }
+        
+        
+        
         
         # self.tide_loc_dict = tide_gauge_loc()
         
@@ -368,17 +400,21 @@ class Stats:
                         # plot what time of tide the transect comes from
                         # import pdb; pdb.set_trace()    
                     spring_neap = 24*14
+                    two_months = 24 * 28
                     start_at = 48 + 48 + 36 + 36#spring_neap*3
+                    start_at_two_months = 24 * 30 * 2
                     day = 24
                     fourday = 24*4
                     week = 24 * 7
                     
                     if len(self.time_sliced) < 242:
+                        the_starting_point = start_at
                         time_indexed= start_at + 42
                     else:
-                        time_indexed= start_at + spring_neap
+                        the_starting_point = start_at_two_months
+                        time_indexed= start_at_two_months + spring_neap
                         
-                    ax.set_xlim([self.time_sliced[start_at], self.time_sliced[time_indexed]])
+                    ax.set_xlim([self.time_sliced[the_starting_point], self.time_sliced[time_indexed]])
                     tide_gauge_name = [j for j in self.tide_loc_dict.keys()][i]
                     # import pdb; pdb.set_trace()
                     ax.legend(loc = 'upper left', frameon=False)
@@ -735,11 +771,7 @@ class Stats:
                 fig, ax = plt.subplots()
                 fig.set_figheight(7)
                 fig.set_figwidth(5)
-                cmap = cmocean.cm.balance
-                # pcm = ax.pcolor(self.lon, self.lat, exp_scale(height_difference, 10), cmap=adjusted_cmap, shading='auto')  # Ensure shading='auto' for better color interpolation
-
-                pcm = ax.pcolor(self.lon, self.lat, height_difference, cmap = cmap)
-                
+                ax.set_facecolor('grey')
                 def sanity_plot(var, saveas):
                     fig3, ax3 = plt.subplots() # this is the figure for correlation plots
                     fig3.set_figheight(7) # plotting up tidal signal. 
@@ -750,18 +782,26 @@ class Stats:
                     # plt.title(self.dataset_name)
                     plt.savefig(fig_path + '/SanityCheck/' + saveas + '_' + j + '_' + i + '.png', dpi = 300)
                     plt.close()
-                    
                 
-                    
-                    
-                pcm.set_array(height_difference)
+                # pcm = ax.pcolor(self.lon, self.lat, exp_scale(height_difference, 10), cmap=adjusted_cmap, shading='auto')  # Ensure shading='auto' for better color interpolation
+                
+                
+                
+                
                 if i == 'surface_height':
+                    # cmap = cmocean.cm.balance
+                    cmap = cmr.fusion_r
+                    pcm = ax.pcolor(self.lon, self.lat, height_difference, cmap = cmap)
+                    pcm.set_array(height_difference)
                     if j == 'max':
-                        pcm.set_clim(-2, 2)
+                        pcm.set_clim(-1, 1)
                     else:
-                        pcm.set_clim(-7, 7)
+                        pcm.set_clim(-2, 2)
                         
                 if i == 'surface_salinity':
+                    cmap = cmr.waterlily
+                    pcm = ax.pcolor(self.lon, self.lat, height_difference, cmap = cmap)
+                    pcm.set_array(height_difference)
                     pcm.set_clim(-20, 20)
                 #pcm.set_clim(-1, 1)
                 cbar = plt.colorbar(pcm)
@@ -817,7 +857,7 @@ class Stats:
         # Define the cutoff date
         # cutoff_date = pd.to_datetime('2014-02-01')
         end_cutoff = pd.to_datetime('2014-02-28')
-        start_cutoff = pd.to_datetime('2013-02-01')
+        start_cutoff = pd.to_datetime('2013-01-01')
         # Filter the DataFrame for rows where 'DateTime' is after the cutoff date
         filtered_df = df[(df['DateTime'] > start_cutoff) & (df['DateTime'] < end_cutoff)]
 
@@ -979,6 +1019,18 @@ if __name__ == '__main__':
           # 'ao_yawind_AllRivNoDuddonClimatology_m0.035_Forcing_95_Discouv_9.5_Viscouv',
           # 'ao_yawind_AllRivNoDuddonClimatology_m0.035_Forcing_95_Discouv_0.15_smor',
           # 'ao_yawind_8_rivs_real_flows_m0.035_Forcing',
+          # 'ao_yawind_AllRivNoDuddonClimatology_m0.035_Forcing_115_Discouv',
+          # 'ao_yawind_AllRivNoDuddonClimatology_m0.035_Forcing_125_Discouv',
+          # 'ao_yawind_AllRivNoDuddonClimatology_m0.035_Forcing_135_Discouv',
+          # 'ao_yawind_AllRivNoDuddonClimatology_m0.035_Forcing_135_Discouv_2_Viscouv',
+          # 'ao_yawind_AllRivNoDuddonClimatology_m0.035_Forcing_160_Discouv',
+          # 'ao_yawind_AllRivNoDuddonClimatology_m0.035_Forcing_200_Discouv',
+          # 'ao_yawind_AllRivNoDuddonClimatology_m0.035_Forcing_240_Discouv',
+          # 'ao_yawind_AllRivNoDuddonClimatology_m0.035_Forcing_260_Discouv',
+          # 'ao_yawind_AllRivNoDuddonClimatology_m0.035_Forcing_280_Discouv',
+          'ao_yawind_AllRivNoDuddonClimatology_m0.035_Forcing_300_Discouv',
+          'ao_yawind_orig8RealRiver_m0.035_Forcing_300_Discouv',
+          
           
          # 'oa_nawind_Orig_m0.035_Forcing_4_months',
       #   'oa_nawind_Orig_m0.030_Forcing',

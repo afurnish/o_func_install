@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Wed Apr 12 16:51:06 2023
+""" This plots UGRID Style maps for figures. 
 
+
+Created on Wed Apr 12 16:51:06 2023
 @author: aafur
 """
 from o_func.utilities.start import opsys;start_path = opsys()
@@ -77,11 +78,11 @@ def PRIMEA_loc_grid():
 
 
     fig, ax = plt.subplots()
-    fig.set_figheight(90)
-    fig.set_figwidth(70)
+    fig.set_figheight(9)
+    fig.set_figwidth(7)
     
     # Plot the triangles using the vertex coordinates and faces
-    ax.triplot(vertices[0], vertices[1], faces.data[index_rows,0:3], linewidth=1.0, color='black')
+    ax.triplot(vertices[0], vertices[1], faces.data[index_rows,0:3], linewidth=0.05, color='black')
     
     # Set the plot title and labels
     ax.set_title('UGRID Grid Plot')
