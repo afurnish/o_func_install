@@ -553,6 +553,160 @@ class Stats:
             # timeseries_plot([self.tidex, self.primx, self.ukc4y]) # Will make a plot of all together per location. 
             mylist = [tidx, prix, ukcy]
             timeseries_plot(mylist)
+            
+            def print_dict_tree(d, indent=0):
+                """Recursively print dictionary keys as a tree structure."""
+                for key, value in d.items():
+                    print('  ' * indent + str(key))
+                    if isinstance(value, dict):
+                        print_dict_tree(value, indent + 1)
+                        
+            def tidal_analysis(mylist):
+                import ttide as tt
+                data = mylist
+                
+                tide_storage = {}
+                
+                ## Tide data in order of tide gauge, primea, ukc4
+                for i, tide_gauge in enumerate(self.tide_save):
+                    # This loop should set the tide gauges. 
+                    tide_gauge_name = [j for j in self.tide_loc_dict.keys()][i]
+                    tide_storage[tide_gauge_name] = {}
+                    print(tide_gauge)
+                    # fig, ax = plt.subplots() # this is the figure for correlation plots
+                    # fig.set_figheight(4) # plotting up tidal signal. 
+                    # fig.set_figwidth(7)
+                    # key list
+                    model_keys = [] # length of 3 
+                    linetypes = ['-', '--', '--']
+                    
+                       
+                    mod_key_new = ['Tide Gauge', r'PRIMEA', r'UKC4']
+                    col = ['grey', 'blue', 'red']
+                    for kil, model in enumerate(data):
+                        # This loop should flick through tide guage, primea and ukc4. 
+                        mod_key = mod_key_new[kil]
+                        print(mod_key)
+                        tide_storage[tide_gauge_name][mod_key] = {}
+                        
+                        tt_time= self.time_sliced
+                        
+                        # This is the 
+                        mk = [j for j in model[i].keys()][0]# model is the dataset itself for both heysham and liberpool. 
+                        model_keys.append(mk) # should be like PRIMEA Model key etc., 
+                        surface_height_plot = model[i][mk]
+                        tide_storage[tide_gauge_name][mod_key]['Surface Height'] = surface_height_plot
+                        
+                        from ttide.t_getconsts import t_getconsts
+                        ctime = np.array([])  # Empty array to skip time-based filtering
+                        const, sat, shallow = t_getconsts(ctime)
+                        all_constituents = const['name']
+
+                        # Set dt to 1 to be 1 hour. That seems to work. 
+                        tide_analysis = tt.t_tide(
+                            np.array(surface_height_plot), 
+                            dt=1, 
+                        )
+                        print(tide_analysis)
+                        amplitude = tide_analysis['tidecon'][:, 0]
+                        tide_storage[tide_gauge_name][mod_key]['amp'] = amplitude
+                        phase = tide_analysis['tidecon'][:, 2]
+                        tide_storage[tide_gauge_name][mod_key]['pha'] = phase
+                        names = tide_analysis['nameu'].astype(str)
+                        tide_storage[tide_gauge_name][mod_key]['con_names'] = names
+
+                
+                def plot_tidal_analysis(tide_storage):
+                    def wrap_phase_linear(observed, model):
+                        """Wrap model phase to ensure values are close to observed phase while keeping them in [0, 360)."""
+                        wrapped_model = []
+                        for o, m in zip(observed, model):
+                            diff = m - o
+                            if diff > 180:
+                                m -= 360
+                            elif diff < -180:
+                                m += 360
+                            wrapped_model.append(m)
+                        return np.array(wrapped_model)
+                    for gauge in ['Liverpool', 'Heysham']:
+                        for model in ['PRIMEA', 'UKC4']:
+                            # Extract data for each gauge and model
+                            observed_amp = tide_storage[gauge]['Tide Gauge']['amp']
+                            observed_pha = tide_storage[gauge]['Tide Gauge']['pha']
+                            model_amp = tide_storage[gauge][model]['amp']
+                            model_pha = tide_storage[gauge][model]['pha']
+                            constituents = tide_storage[gauge]['Tide Gauge']['con_names']
+                            
+                            # Convert to radians
+                            obs_rad = np.deg2rad(observed_pha)
+                            mod_rad = np.deg2rad(model_pha)
+                            
+                            x_obs = np.sin(obs_rad)
+                            x_mod = np.sin(mod_rad)
+
+
+
+                            # wrapped_model_pha = wrap_phase_linear(observed_pha, model_pha)
+                            x = np.arange(len(constituents))  # x-axis positions
+                
+                            # # Create side-by-side plots
+                            # fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
+                
+                            # # Plot amplitude
+                            # ax1.bar(x - 0.2, observed_amp, 0.4, label='Observed')
+                            # ax1.bar(x + 0.2, model_amp, 0.4, label=model)
+                            # ax1.set_xlabel('Tidal Constituents')
+                            # ax1.set_ylabel('Amplitude (m)')
+                            # ax1.set_title(f'{gauge} - {model} vs Observed (Amplitude)')
+                            # ax1.set_xticks(x)
+                            # ax1.set_xticklabels(constituents, rotation=45)
+                            # ax1.legend()
+                
+                            # # Plot phase
+                            # ax2.bar(x - 0.2, observed_pha, 0.4, label='Observed')
+                            # ax2.bar(x + 0.2, model_pha, 0.4, label=model)
+                            # ax2.set_xlabel('Tidal Constituents')
+                            # ax2.set_ylabel('Phase (degrees)')
+                            # ax2.set_title(f'{gauge} - {model} vs Observed (Phase)')
+                            # ax2.set_xticks(x)
+                            # ax2.set_xticklabels(constituents, rotation=45)
+                            # ax2.legend()
+                
+                            # plt.tight_layout()
+                            # plt.show()
+                            # Create side-by-side plots
+                            
+                            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
+                
+                            # Amplitude scatter plot with y=x line
+                            ax1.scatter(observed_amp, model_amp, label=f'{model} vs Observed')
+                            ax1.plot([min(observed_amp), max(observed_amp)], [min(observed_amp), max(observed_amp)], color='gray', linestyle='--', label='y = x')
+                            for i, name in enumerate(constituents):
+                                ax1.text(observed_amp[i], model_amp[i], name, fontsize=8, ha='right')
+                            ax1.set_xlabel('Observed Amplitude (m)')
+                            ax1.set_ylabel(f'{model} Amplitude (m)')
+                            ax1.set_title(f'{gauge} - Amplitude Comparison')
+                            ax1.legend()
+                
+                            # Phase scatter plot with y=x line
+                            
+                            ax2.scatter(observed_pha, model_pha, label=f'{model} vs Observed')
+                            ax2.plot([min(observed_pha), max(observed_pha)], [min(observed_pha), max(observed_pha)], color='gray', linestyle='--', label='y = x')
+                            for i, name in enumerate(constituents):
+                                ax2.text(observed_pha[i], model_pha[i], name, fontsize=8, ha='right')
+                            ax2.set_xlabel('Observed Phase (degrees)')
+                            ax2.set_ylabel(f'{model} Phase (degrees)')
+                            ax2.set_title(f'{gauge} - Phase Comparison')
+                            ax2.legend()
+                
+                            plt.tight_layout()
+                
+                            fig.savefig(os.path.join(fig_path,'tidal_const_analysis_'+ gauge+ '_' + model +'_vs_observed.png'), dpi = 300)
+                            plt.close()
+                plot_tidal_analysis(tide_storage)
+                
+            # I think this is the correct place for this to be. 
+                         
             # print(self.ukc4y)
             tide_gauge_name = [j for j in self.tide_loc_dict.keys()]
             for i, tide_gauge in enumerate(tide_gauge_name):
@@ -572,8 +726,9 @@ class Stats:
                     table_to_return =  (variable_name, tide_gauge_name[i], 'prim', 'ukc4', prim_ukc3_rmse)
                     f.write("{:<20} {:<10} {:<20} {:<15} {:<20}".format(*table_to_return))
                     f.write('\n')
-                
-            
+                                
+            if variable_name == 'surface_height':
+                tidal_analysis(mylist)
         return extract_prims, extract_ukc4s
     
     # def tidal_plots(self, fig_path):
@@ -931,13 +1086,33 @@ class Stats:
         ukc4_salinities = df['UKC4_Salinity']
         primea_salinities = df['PRIMEA_Salinity']
         #% Plotting Function
+        def remove_outliers_iqr(observed, modelled):
+            q1, q3 = np.percentile(observed, [25, 75])
+            iqr = q3 - q1
+            lower_bound = q1 - 1.5 * iqr
+            upper_bound = q3 + 1.5 * iqr
         
-        common_limit = [0, 35]
+            mask = (observed >= lower_bound) & (observed <= upper_bound)
+            return observed[mask], modelled[mask]
+        def remove_nans(observed, modelled):
+            observed = np.array(observed, dtype=float)
+            modelled = np.array(modelled, dtype=float)
+            # Identify non-NaN values in the modelled array
+            mask = ~np.isnan(modelled)
+            # Apply mask to both arrays
+            return observed[mask], modelled[mask]
+                
+        obs_ukc4, mod_ukc4 = remove_nans(observed_salinities, ukc4_salinities)
+        obs_ukc4, mod_ukc4 = remove_outliers_iqr(obs_ukc4, mod_ukc4)
+        
+        obs_prim, mod_prim = remove_nans(observed_salinities, primea_salinities)
+        obs_prim, mod_prim = remove_outliers_iqr(obs_prim, mod_prim)
 
+        common_limit = [0, 35]
         fig, axes = plt.subplots(1, 2, figsize=(12, 6))
 
         # Plot PRIMEA vs Observed
-        axes[0].scatter(observed_salinities, primea_salinities, color='blue', label='PRIMEA vs Observed', alpha=0.5)
+        axes[0].scatter(obs_prim, mod_prim, color='blue', label='PRIMEA vs Observed', alpha=0.5)
         axes[0].plot(common_limit, common_limit, color='red', linestyle='--', label='y=x')  # Reference line
         axes[0].set_title('PRIMEA vs Observed Salinity')
         axes[0].set_xlabel('Observed Salinity (PSU)')
@@ -947,7 +1122,7 @@ class Stats:
         axes[0].legend()
         
         # Plot UKC4 vs Observed
-        axes[1].scatter(observed_salinities, ukc4_salinities, color='green', label='UKC4 vs Observed', alpha=0.5)
+        axes[1].scatter(obs_ukc4, mod_ukc4, color='green', label='UKC4 vs Observed', alpha=0.5)
         axes[1].plot(common_limit, common_limit, color='red', linestyle='--', label='y=x')  # Reference line
         axes[1].set_title('UKC4 vs Observed Salinity')
         axes[1].set_xlabel('Observed Salinity (PSU)')
@@ -957,8 +1132,8 @@ class Stats:
         axes[1].legend()
         
         # Quantifying fit using RMSE
-        rmse_primea = np.sqrt(np.mean((observed_salinities - primea_salinities) ** 2))
-        rmse_ukc4 = np.sqrt(np.mean((observed_salinities - ukc4_salinities) ** 2))
+        rmse_primea = np.sqrt(np.mean((obs_prim - mod_prim) ** 2))
+        rmse_ukc4 = np.sqrt(np.mean((obs_ukc4 - mod_ukc4) ** 2))
         plt.savefig(fig_path + '/initial_salinity_validation.png', dpi = 300)
         
         
@@ -1028,9 +1203,10 @@ if __name__ == '__main__':
           # 'ao_yawind_AllRivNoDuddonClimatology_m0.035_Forcing_240_Discouv',
           # 'ao_yawind_AllRivNoDuddonClimatology_m0.035_Forcing_260_Discouv',
           # 'ao_yawind_AllRivNoDuddonClimatology_m0.035_Forcing_280_Discouv',
-          'ao_yawind_AllRivNoDuddonClimatology_m0.035_Forcing_300_Discouv',
-          'ao_yawind_orig8RealRiver_m0.035_Forcing_300_Discouv',
-          
+          # 'ao_yawind_AllRivNoDuddonClimatology_m0.035_Forcing_300_Discouv',
+          # 'ao_yawind_orig8RealRiver_m0.035_Forcing_300_Discouv',
+          'ao_yawind_AllRivNoDuddonClimatology_m0.035_Forcing_85_Discouv',
+          # 'ao_yawind_orig8RealRiver_m0.035_Forcing_85_Discouv',
           
          # 'oa_nawind_Orig_m0.035_Forcing_4_months',
       #   'oa_nawind_Orig_m0.030_Forcing',

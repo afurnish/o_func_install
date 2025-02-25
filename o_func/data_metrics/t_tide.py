@@ -528,8 +528,8 @@ if __name__ == '__main__':
     unit3 = "deg"
     
     # Tidal constituent, amplitude, and phase (you can make these variables if they need to change)
-    constituents  = ["  M2"]#, "  S2"]
-    base_name = "m2_ocean_"
+    constituents  = ["  M2", "  S2"]
+    base_name = "m2s2_ocean_"
 
     with open(output_path, 'a') as file:
         file.write('')

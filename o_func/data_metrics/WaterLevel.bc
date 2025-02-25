@@ -1,5 +1,5 @@
 [forcing]
-Name                            = m2_ocean_0001
+Name                            = m2s2_ocean_0001
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -8,9 +8,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.735  -47.615
+S2  0.896  -5.397
 
 [forcing]
-Name                            = m2_ocean_0002
+Name                            = m2s2_ocean_0002
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -19,9 +20,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.735  -47.615
+S2  0.896  -5.397
 
 [forcing]
-Name                            = m2_ocean_0003
+Name                            = m2s2_ocean_0003
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -30,9 +32,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.735  -47.615
+S2  0.896  -5.397
 
 [forcing]
-Name                            = m2_ocean_0004
+Name                            = m2s2_ocean_0004
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -41,9 +44,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.729  -47.119
+S2  0.895  -4.898
 
 [forcing]
-Name                            = m2_ocean_0005
+Name                            = m2s2_ocean_0005
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -52,9 +56,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.729  -47.119
+S2  0.895  -4.898
 
 [forcing]
-Name                            = m2_ocean_0006
+Name                            = m2s2_ocean_0006
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -63,9 +68,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.729  -47.119
+S2  0.895  -4.898
 
 [forcing]
-Name                            = m2_ocean_0007
+Name                            = m2s2_ocean_0007
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -74,9 +80,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.729  -47.119
+S2  0.895  -4.898
 
 [forcing]
-Name                            = m2_ocean_0008
+Name                            = m2s2_ocean_0008
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -85,9 +92,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.719  -46.480
+S2  0.891  -4.347
 
 [forcing]
-Name                            = m2_ocean_0009
+Name                            = m2s2_ocean_0009
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -96,9 +104,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.719  -46.480
+S2  0.891  -4.347
 
 [forcing]
-Name                            = m2_ocean_0010
+Name                            = m2s2_ocean_0010
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -107,9 +116,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.719  -46.480
+S2  0.891  -4.347
 
 [forcing]
-Name                            = m2_ocean_0011
+Name                            = m2s2_ocean_0011
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -118,9 +128,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.719  -46.480
+S2  0.891  -4.347
 
 [forcing]
-Name                            = m2_ocean_0012
+Name                            = m2s2_ocean_0012
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -129,9 +140,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.719  -46.480
+S2  0.891  -4.347
 
 [forcing]
-Name                            = m2_ocean_0013
+Name                            = m2s2_ocean_0013
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -140,9 +152,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.709  -45.677
+S2  0.887  -3.559
 
 [forcing]
-Name                            = m2_ocean_0014
+Name                            = m2s2_ocean_0014
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -151,9 +164,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.709  -45.677
+S2  0.887  -3.559
 
 [forcing]
-Name                            = m2_ocean_0015
+Name                            = m2s2_ocean_0015
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -162,9 +176,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.709  -45.677
+S2  0.887  -3.559
 
 [forcing]
-Name                            = m2_ocean_0016
+Name                            = m2s2_ocean_0016
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -173,9 +188,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.709  -45.677
+S2  0.887  -3.559
 
 [forcing]
-Name                            = m2_ocean_0017
+Name                            = m2s2_ocean_0017
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -184,9 +200,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.709  -45.677
+S2  0.887  -3.559
 
 [forcing]
-Name                            = m2_ocean_0018
+Name                            = m2s2_ocean_0018
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -195,9 +212,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.701  -44.813
+S2  0.883  -2.691
 
 [forcing]
-Name                            = m2_ocean_0019
+Name                            = m2s2_ocean_0019
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -206,9 +224,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.701  -44.813
+S2  0.883  -2.691
 
 [forcing]
-Name                            = m2_ocean_0020
+Name                            = m2s2_ocean_0020
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -217,9 +236,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.701  -44.813
+S2  0.883  -2.691
 
 [forcing]
-Name                            = m2_ocean_0021
+Name                            = m2s2_ocean_0021
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -228,9 +248,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.701  -44.813
+S2  0.883  -2.691
 
 [forcing]
-Name                            = m2_ocean_0022
+Name                            = m2s2_ocean_0022
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -239,9 +260,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.698  -43.920
+S2  0.880  -1.782
 
 [forcing]
-Name                            = m2_ocean_0023
+Name                            = m2s2_ocean_0023
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -250,9 +272,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.698  -43.920
+S2  0.880  -1.782
 
 [forcing]
-Name                            = m2_ocean_0024
+Name                            = m2s2_ocean_0024
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -261,9 +284,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.698  -43.920
+S2  0.880  -1.782
 
 [forcing]
-Name                            = m2_ocean_0025
+Name                            = m2s2_ocean_0025
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -272,9 +296,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.698  -43.920
+S2  0.880  -1.782
 
 [forcing]
-Name                            = m2_ocean_0026
+Name                            = m2s2_ocean_0026
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -283,9 +308,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.698  -43.920
+S2  0.880  -1.782
 
 [forcing]
-Name                            = m2_ocean_0027
+Name                            = m2s2_ocean_0027
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -294,9 +320,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.699  -42.992
+S2  0.878  -0.795
 
 [forcing]
-Name                            = m2_ocean_0028
+Name                            = m2s2_ocean_0028
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -305,9 +332,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.699  -42.992
+S2  0.878  -0.795
 
 [forcing]
-Name                            = m2_ocean_0029
+Name                            = m2s2_ocean_0029
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -316,9 +344,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.699  -42.992
+S2  0.878  -0.795
 
 [forcing]
-Name                            = m2_ocean_0030
+Name                            = m2s2_ocean_0030
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -327,9 +356,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.699  -42.992
+S2  0.878  -0.795
 
 [forcing]
-Name                            = m2_ocean_0031
+Name                            = m2s2_ocean_0031
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -338,9 +368,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.704  -42.040
+S2  0.877  0.222
 
 [forcing]
-Name                            = m2_ocean_0032
+Name                            = m2s2_ocean_0032
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -349,9 +380,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.704  -42.040
+S2  0.877  0.222
 
 [forcing]
-Name                            = m2_ocean_0033
+Name                            = m2s2_ocean_0033
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -360,9 +392,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.704  -42.040
+S2  0.877  0.222
 
 [forcing]
-Name                            = m2_ocean_0034
+Name                            = m2s2_ocean_0034
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -371,9 +404,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.704  -42.040
+S2  0.877  0.222
 
 [forcing]
-Name                            = m2_ocean_0035
+Name                            = m2s2_ocean_0035
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -382,9 +416,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.704  -42.040
+S2  0.877  0.222
 
 [forcing]
-Name                            = m2_ocean_0036
+Name                            = m2s2_ocean_0036
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -393,9 +428,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.708  -41.039
+S2  0.877  1.306
 
 [forcing]
-Name                            = m2_ocean_0037
+Name                            = m2s2_ocean_0037
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -404,9 +440,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.708  -41.039
+S2  0.877  1.306
 
 [forcing]
-Name                            = m2_ocean_0038
+Name                            = m2s2_ocean_0038
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -415,9 +452,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.708  -41.039
+S2  0.877  1.306
 
 [forcing]
-Name                            = m2_ocean_0039
+Name                            = m2s2_ocean_0039
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -426,9 +464,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.708  -41.039
+S2  0.877  1.306
 
 [forcing]
-Name                            = m2_ocean_0040
+Name                            = m2s2_ocean_0040
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -437,9 +476,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.708  -41.039
+S2  0.877  1.306
 
 [forcing]
-Name                            = m2_ocean_0041
+Name                            = m2s2_ocean_0041
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -448,9 +488,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.713  -40.000
+S2  0.876  2.450
 
 [forcing]
-Name                            = m2_ocean_0042
+Name                            = m2s2_ocean_0042
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -459,9 +500,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.713  -40.000
+S2  0.876  2.450
 
 [forcing]
-Name                            = m2_ocean_0043
+Name                            = m2s2_ocean_0043
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -470,9 +512,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.713  -40.000
+S2  0.876  2.450
 
 [forcing]
-Name                            = m2_ocean_0044
+Name                            = m2s2_ocean_0044
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -481,9 +524,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.713  -40.000
+S2  0.876  2.450
 
 [forcing]
-Name                            = m2_ocean_0045
+Name                            = m2s2_ocean_0045
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -492,9 +536,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.719  -38.935
+S2  0.876  3.650
 
 [forcing]
-Name                            = m2_ocean_0046
+Name                            = m2s2_ocean_0046
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -503,9 +548,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.719  -38.935
+S2  0.876  3.650
 
 [forcing]
-Name                            = m2_ocean_0047
+Name                            = m2s2_ocean_0047
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -514,9 +560,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.719  -38.935
+S2  0.876  3.650
 
 [forcing]
-Name                            = m2_ocean_0048
+Name                            = m2s2_ocean_0048
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -525,9 +572,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.719  -38.935
+S2  0.876  3.650
 
 [forcing]
-Name                            = m2_ocean_0049
+Name                            = m2s2_ocean_0049
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -536,9 +584,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.719  -38.935
+S2  0.876  3.650
 
 [forcing]
-Name                            = m2_ocean_0050
+Name                            = m2s2_ocean_0050
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -547,9 +596,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.717  -37.894
+S2  0.874  4.877
 
 [forcing]
-Name                            = m2_ocean_0051
+Name                            = m2s2_ocean_0051
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -558,9 +608,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.717  -37.894
+S2  0.874  4.877
 
 [forcing]
-Name                            = m2_ocean_0052
+Name                            = m2s2_ocean_0052
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -569,9 +620,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.717  -37.894
+S2  0.874  4.877
 
 [forcing]
-Name                            = m2_ocean_0053
+Name                            = m2s2_ocean_0053
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -580,9 +632,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.717  -37.894
+S2  0.874  4.877
 
 [forcing]
-Name                            = m2_ocean_0054
+Name                            = m2s2_ocean_0054
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -591,9 +644,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.717  -37.894
+S2  0.874  4.877
 
 [forcing]
-Name                            = m2_ocean_0055
+Name                            = m2s2_ocean_0055
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -602,9 +656,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.696  -36.896
+S2  0.871  6.154
 
 [forcing]
-Name                            = m2_ocean_0056
+Name                            = m2s2_ocean_0056
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -613,9 +668,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.696  -36.896
+S2  0.871  6.154
 
 [forcing]
-Name                            = m2_ocean_0057
+Name                            = m2s2_ocean_0057
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -624,9 +680,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.696  -36.896
+S2  0.871  6.154
 
 [forcing]
-Name                            = m2_ocean_0058
+Name                            = m2s2_ocean_0058
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -635,9 +692,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.696  -36.896
+S2  0.871  6.154
 
 [forcing]
-Name                            = m2_ocean_0059
+Name                            = m2s2_ocean_0059
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -646,9 +704,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.678  -35.905
+S2  0.867  7.464
 
 [forcing]
-Name                            = m2_ocean_0060
+Name                            = m2s2_ocean_0060
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -657,9 +716,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.678  -35.905
+S2  0.867  7.464
 
 [forcing]
-Name                            = m2_ocean_0061
+Name                            = m2s2_ocean_0061
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -668,9 +728,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.678  -35.905
+S2  0.867  7.464
 
 [forcing]
-Name                            = m2_ocean_0062
+Name                            = m2s2_ocean_0062
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -679,9 +740,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.678  -35.905
+S2  0.867  7.464
 
 [forcing]
-Name                            = m2_ocean_0063
+Name                            = m2s2_ocean_0063
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -690,9 +752,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.678  -35.905
+S2  0.867  7.464
 
 [forcing]
-Name                            = m2_ocean_0064
+Name                            = m2s2_ocean_0064
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -701,9 +764,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.667  -34.937
+S2  0.862  8.724
 
 [forcing]
-Name                            = m2_ocean_0065
+Name                            = m2s2_ocean_0065
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -712,9 +776,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.667  -34.937
+S2  0.862  8.724
 
 [forcing]
-Name                            = m2_ocean_0066
+Name                            = m2s2_ocean_0066
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -723,9 +788,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.667  -34.937
+S2  0.862  8.724
 
 [forcing]
-Name                            = m2_ocean_0067
+Name                            = m2s2_ocean_0067
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -734,9 +800,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.667  -34.937
+S2  0.862  8.724
 
 [forcing]
-Name                            = m2_ocean_0068
+Name                            = m2s2_ocean_0068
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -745,9 +812,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.659  -34.015
+S2  0.858  9.884
 
 [forcing]
-Name                            = m2_ocean_0069
+Name                            = m2s2_ocean_0069
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -756,9 +824,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.659  -34.015
+S2  0.858  9.884
 
 [forcing]
-Name                            = m2_ocean_0070
+Name                            = m2s2_ocean_0070
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -767,9 +836,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.659  -34.015
+S2  0.858  9.884
 
 [forcing]
-Name                            = m2_ocean_0071
+Name                            = m2s2_ocean_0071
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -778,9 +848,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.659  -34.015
+S2  0.858  9.884
 
 [forcing]
-Name                            = m2_ocean_0072
+Name                            = m2s2_ocean_0072
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -789,9 +860,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.659  -34.015
+S2  0.858  9.884
 
 [forcing]
-Name                            = m2_ocean_0073
+Name                            = m2s2_ocean_0073
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -800,9 +872,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.652  -33.153
+S2  0.853  11.008
 
 [forcing]
-Name                            = m2_ocean_0074
+Name                            = m2s2_ocean_0074
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -811,9 +884,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.652  -33.153
+S2  0.853  11.008
 
 [forcing]
-Name                            = m2_ocean_0075
+Name                            = m2s2_ocean_0075
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -822,9 +896,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.652  -33.153
+S2  0.853  11.008
 
 [forcing]
-Name                            = m2_ocean_0076
+Name                            = m2s2_ocean_0076
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -833,9 +908,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.652  -33.153
+S2  0.853  11.008
 
 [forcing]
-Name                            = m2_ocean_0077
+Name                            = m2s2_ocean_0077
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -844,9 +920,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.652  -33.153
+S2  0.853  11.008
 
 [forcing]
-Name                            = m2_ocean_0078
+Name                            = m2s2_ocean_0078
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -855,9 +932,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.649  -32.331
+S2  0.849  12.074
 
 [forcing]
-Name                            = m2_ocean_0079
+Name                            = m2s2_ocean_0079
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -866,9 +944,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.649  -32.331
+S2  0.849  12.074
 
 [forcing]
-Name                            = m2_ocean_0080
+Name                            = m2s2_ocean_0080
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -877,9 +956,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.649  -32.331
+S2  0.849  12.074
 
 [forcing]
-Name                            = m2_ocean_0081
+Name                            = m2s2_ocean_0081
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -888,9 +968,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.649  -32.331
+S2  0.849  12.074
 
 [forcing]
-Name                            = m2_ocean_0082
+Name                            = m2s2_ocean_0082
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -899,9 +980,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.649  -31.532
+S2  0.847  13.145
 
 [forcing]
-Name                            = m2_ocean_0083
+Name                            = m2s2_ocean_0083
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -910,9 +992,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.649  -31.532
+S2  0.847  13.145
 
 [forcing]
-Name                            = m2_ocean_0084
+Name                            = m2s2_ocean_0084
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -921,9 +1004,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.649  -31.532
+S2  0.847  13.145
 
 [forcing]
-Name                            = m2_ocean_0085
+Name                            = m2s2_ocean_0085
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -932,9 +1016,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.649  -31.532
+S2  0.847  13.145
 
 [forcing]
-Name                            = m2_ocean_0086
+Name                            = m2s2_ocean_0086
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -943,9 +1028,10 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.649  -31.532
+S2  0.847  13.145
 
 [forcing]
-Name                            = m2_ocean_0087
+Name                            = m2s2_ocean_0087
 Function                        = astronomic
 Quantity                        = astronomic component
 Unit                            = -
@@ -954,4 +1040,5 @@ Unit                            = m
 Quantity                        = waterlevelbnd phase
 Unit                            = deg
 M2  2.646  -30.609
+S2  0.841  14.295
 
