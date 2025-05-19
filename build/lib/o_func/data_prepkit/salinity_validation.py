@@ -147,7 +147,9 @@ if __name__ == '__main__':
 
     #%% Number point count with adjustments
     location_counts = filtered_df_within_box.groupby(['Lat', 'Lon']).size().reset_index(name='Count')
-
+    from o_func.shape import coastline
+    import geopandas as gpd
+    high_res_coastline = coastline(opsyst('PN'))
     # Create a figure and an axis with a specific projection
     fig = plt.figure(figsize=(10, 10))
     ax = plt.axes(projection=ccrs.PlateCarree())
@@ -188,12 +190,45 @@ if __name__ == '__main__':
     # Show the plot without the title (since it will be part of a figure)
     plt.show()
     
+#%%
+    coastline_shape_path = start_path / Path(r'modelling_DATA/kent_estuary_project/land_boundary/' + \
+           r'QGIS_Shapefiles/UK_WEST_KENT_EPSG_4326_clipped_med_domain.shp')
+    UKWEST_coastline = gpd.read_file(coastline_shape_path)
+
+    coastline_poly_path = start_path / Path(r'modelling_DATA/kent_estuary_project/land_boundary/QGIS_Shapefiles/UK_WEST_POLYGON_NEGATIVE.shp')
+    UKWEST_poly = gpd.read_file(coastline_poly_path)
+    # Create a figure and axis
+    fig, ax = plt.subplots(figsize=(10, 14))
+    out = UKWEST_poly.plot(ax=ax, color="grey")
+    # fig.patch.set_facecolor('lightblue')  # Background for the entire figure (optional)
+    ax.set_facecolor('lightblue')  # Ocean color
+    # Set the extent of the map (bounding box)
+    ax.set_xlim([-3.65, -2.55])
+    ax.set_ylim([53.15, 54.52])
     
+
+    # Add gridlines for better readability
+    ax.set_aspect('auto')
+    # Plot each location with its count
+    for idx, row in location_counts.iterrows():
+        ax.text(
+            row['Lon'], row['Lat'],
+            str(int(row['Count'])),
+            color='black',
+            fontsize=10,
+            ha='center',
+            va='center'
+        )
     
+    # Add axis labels
+    ax.set_xlabel('Longitude', fontsize=18)
+    ax.set_ylabel('Latitude', fontsize=18)
     
+    # Show the plot
+    plt.show()
     
+    plt.savefig('salinity_validation2.png', dpi = 400)
     
-    
-    
-    
+        
+        
     

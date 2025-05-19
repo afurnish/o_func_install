@@ -13,11 +13,11 @@ To calibrate the EBM sufficiently instead of using flushing time as a parameter 
 
 
 """
-import pyarrow
+# import pyarrow
 
-# Manually add a __version__ attribute if missing
-if not hasattr(pyarrow, "__version__"):
-    pyarrow.__version__ = "1.0.0"
+# # Manually add a __version__ attribute if missing
+# if not hasattr(pyarrow, "__version__"):
+#     pyarrow.__version__ = "1.0.0"
 
 import xarray as xr
 from pathlib import Path
@@ -50,7 +50,19 @@ def time64(time_str):
     except ValueError:
         raise ValueError(f"Invalid date format: {time_str}")
     return np.datetime64(time_str)
-
+# if run == '20_year_run_real_river_salinity_adjusted':
+#     discharge_list = [10]
+#     artificial_river = 'n' # implement real or not real data
+#     artificial_tide = 'y'
+#     time_generating_step = 60       # timesteps to generate the resultant output data. set at one minute for a balance of speed etc. 
+#     artificial_salinities = 'n'  
+#     AMM7_20_year_run = 'y'
+#     simp_tide = 'y'
+#     calibrate_ck = 'no'
+#     Ck_values = ['multivariate_regression']
+#     C_k_import_values_from_CSV = 'y'
+#     delft_salinities = 'n'
+#     ignore_spring_neap = 'n'
 path = start_path / Path('Original_Data/UKC3/og/shelftmb_combined_to_3_layers_for_tmb')
 river_path = start_path / Path('modelling_DATA/kent_estuary_project/river_boundary_conditions/original_river_data/processed')
 savepath = start_path / Path('modelling_DATA/EBM_PRIMEA/EBM_python/figures')
@@ -73,10 +85,23 @@ plotting = 'n'
 
 """
 
-run = 'Delft_run_Thom_34ppt_M2_meanflow_cal_values'
-
+# run = 'Delft_run_Thom_34ppt_M2_meanflow_cal_values'
+run = '20_year_run_real_river_salinity_adjusted'
 # 20 year run fake river was last to be used. 
 #C_k_calibration_Delft_run_Thom_34ppt_M2_meanflow
+if run == '20_year_run_real_river_salinity_adjusted':
+    discharge_list = [10]
+    artificial_river = 'n' # implement real or not real data
+    artificial_tide = 'y'
+    time_generating_step = 60       # timesteps to generate the resultant output data. set at one minute for a balance of speed etc. 
+    artificial_salinities = 'n'  
+    AMM7_20_year_run = 'y'
+    simp_tide = 'y'
+    calibrate_ck = 'no'
+    Ck_values = ['multivariate_regression']
+    C_k_import_values_from_CSV = 'y'
+    delft_salinities = 'n'
+    ignore_spring_neap = 'n'
 if run == '20_year_run_fake_river':
     discharge_list = [10]
     artificial_river = 'n' # implement real or not real data
@@ -355,6 +380,35 @@ estuary_data = {
         'angle'          : 63,
     }
 }
+
+'''
+Zonal calculated volumes
+
+wb_id	wb_name	rbd_id	rbd_name	wb_cat	st_area_sh	st_perimet	_absolutes	volume
+GB531207112400	RIBBLE	12	North West	Transitional	45276019.18	226214.974022	7863.95998667077	61130717
+GB531207212100	LUNE	12	North West	Transitional	3012531.07664	39780.990631	1126.57971793413	8757500
+GB531207212200	WYRE	12	North West	Transitional	6381040.40988	57578.5052278	1510.92294398356	11745203
+GB531207311900	LEVEN	12	North West	Transitional	29234644.517	74520.4418623	14810.4979223013	115129827
+GB531207312000	KENT	12	North West	Transitional	98114332.3535	113904.572901	31038.0987876278	241275544
+GB641211172000	Duddon Sands	12	North West	Coastal	27861366.5358	47507.3951834	10513.2280248145	81724877
+GB531206908100	MERSEY	12	North West	Transitional	79698629.2792	186023.715748	46091.889578889	358296615
+GB531207411800	DUDDON	12	North West	Transitional	12714944.5768	60121.4307706	6468.8542547524	50285823
+
+
+Dee surface area = 109275994.19569805, volume = 259866997.48130628
+
+or 
+
+wb_id,wb_name,rbd_id,rbd_name,wb_cat,st_area_sh,st_perimet,_absolutes,volume
+GB531207112400,RIBBLE,12.00000000,North West,Transitional,45276019.17999999970,226214.97402200001,7863.959986670764920,61130717
+GB531207212100,LUNE,12.00000000,North West,Transitional,3012531.07664000010,39780.99063100000,1126.579717934131622,8757500
+GB531207212200,WYRE,12.00000000,North West,Transitional,6381040.40988000017,57578.50522780000,1510.922943983561709,11745203
+GB531207311900,LEVEN,12.00000000,North West,Transitional,29234644.51700000092,74520.44186229999,14810.497922301292419,115129827
+GB531207312000,KENT,12.00000000,North West,Transitional,98114332.35349999368,113904.57290100001,31038.098787627764978,241275544
+GB641211172000,Duddon Sands,12.00000000,North West,Coastal,27861366.53579999879,47507.39518340000,10513.228024814510718,81724877
+GB531206908100,MERSEY,12.00000000,North West,Transitional,79698629.27920000255,186023.71574799999,46091.889578889007680,358296615
+GB531207411800,DUDDON,12.00000000,North West,Transitional,12714944.57679999992,60121.43077060000,6468.854254752397537,50285823
+'''
 
 estvolumes = []
 for estuary_name, coords in correct_coords.items():
@@ -935,38 +989,40 @@ def ebm(W_m, h, Q_r, Q_m, S_l, Q_l, S_oc, length, time_array, Ck_calibration):
     # C_k[~mask] =  200 * (Ro_s[~mask] / 1000)**20 * (vel_tide[~mask] / ur[~mask])**0.1 * np.exp(-2000 * Eta[~mask])
     if Ck_calibration != 'multivariate_regression':
         C_k = Ck_calibration
+        print('Not multivariate regression')
     else:
-        C_k = np.full_like(Q_l, np.nan)
-        if ignore_spring_neap != 'y':
-            spring_neap_mask = generate_spring_neap_mask_for_all_estuaries(Q_l)
-            # Iterate over time steps (i) and estuaries (j)
-            for i in range(len(Q_l)):  # Time steps
-                for j, estuary_name in enumerate(est_names):  # Estuaries by index
-                
-                    vt_ur = vel_tide[i][j] / ur[i][j]  # Calculate vt_ur for this time step and estuary
-                    eta = Eta[i][j]
-                    ros = Ro_s[i][j]
-    
-                    # Select the power-law equation based on estuary and tide phase
-                    if spring_neap_mask[i][j] == 1:
-                        # Spring tide
-                        power_law_eq = power_law_equations[f'{estuary_name}_spring']
-                    elif spring_neap_mask[i][j] == -1:
-                        # Neap tide
-                        power_law_eq = power_law_equations[f'{estuary_name}_neap']
-    
-                    # Apply the equation to calculate C_k for this estuary and time step
-                    C_k[i][j] = power_law_eq(vt_ur, eta, ros)
-                    # if spring_neap_mask[i][j] == 1:
-                    #     coeffs = spring_coeffs[estuary_name]
-                    # elif spring_neap_mask[i][j] == -1:
-                    #     coeffs = neap_coeffs[estuary_name]
+        if C_k_import_values_from_CSV != 'y':
+            C_k = np.full_like(Q_l, np.nan)
+            if ignore_spring_neap != 'y':
+                spring_neap_mask = generate_spring_neap_mask_for_all_estuaries(Q_l)
+                # Iterate over time steps (i) and estuaries (j)
+                for i in range(len(Q_l)):  # Time steps
+                    for j, estuary_name in enumerate(est_names):  # Estuaries by index
                     
-                    # # Apply the C_k equation for the given estuary at time step i
-                    # C_k[i][j] = coeffs[0] + (coeffs[1] * np.log(vel_tide[i][j] / ur[i][j])) + (coeffs[2] * Eta[i][j]) + ((Ro_s[i][j] / 1000) ** 20)
-                    
-                    
-                    #C_k borkery
+                        vt_ur = vel_tide[i][j] / ur[i][j]  # Calculate vt_ur for this time step and estuary
+                        eta = Eta[i][j]
+                        ros = Ro_s[i][j]
+        
+                        # Select the power-law equation based on estuary and tide phase
+                        if spring_neap_mask[i][j] == 1:
+                            # Spring tide
+                            power_law_eq = power_law_equations[f'{estuary_name}_spring']
+                        elif spring_neap_mask[i][j] == -1:
+                            # Neap tide
+                            power_law_eq = power_law_equations[f'{estuary_name}_neap']
+        
+                        # Apply the equation to calculate C_k for this estuary and time step
+                        C_k[i][j] = power_law_eq(vt_ur, eta, ros)
+                        # if spring_neap_mask[i][j] == 1:
+                        #     coeffs = spring_coeffs[estuary_name]
+                        # elif spring_neap_mask[i][j] == -1:
+                        #     coeffs = neap_coeffs[estuary_name]
+                        
+                        # # Apply the C_k equation for the given estuary at time step i
+                        # C_k[i][j] = coeffs[0] + (coeffs[1] * np.log(vel_tide[i][j] / ur[i][j])) + (coeffs[2] * Eta[i][j]) + ((Ro_s[i][j] / 1000) ** 20)
+                        
+                        
+                        #C_k borkery
     
                 
     # label = 'C_k_' + str(100)
@@ -1705,13 +1761,14 @@ def generate_tide():
 
     return Q_l, S_col, S_l, ham, wam
 
+#%%
 def load_AMM7_20_year_data():
     from scipy.io import loadmat
     # This is currently set up to do one estuary the Ribble. 
-    file = r'/media/af/PN/modelling_DATA/EBM_PRIMEA/EBM_python/20-year-climate-runs/velocity_data/climate_projection_Ribble_2000-2020_Scenario_00000_02.mat'
+    file = start_path / Path(r'modelling_DATA/EBM_PRIMEA/EBM_python/20-year-climate-runs/velocity_data/climate_projection_Ribble_2000-2020_Scenario_00000_02.mat')
     
-    SBSfile = "/media/af/PN/modelling_DATA/EBM_PRIMEA/EBM_python/20-year-climate-runs/salinity_data/Ribble_ens0000_SBS.csv"
-    SSSfile = "/media/af/PN/modelling_DATA/EBM_PRIMEA/EBM_python/20-year-climate-runs/salinity_data/Ribble_ens0000_SSS.csv"
+    SBSfile = start_path / Path(r"modelling_DATA/EBM_PRIMEA/EBM_python/20-year-climate-runs/salinity_data/Ribble_ens0000_SBS.csv")
+    SSSfile = start_path / Path(r"modelling_DATA/EBM_PRIMEA/EBM_python/20-year-climate-runs/salinity_data/Ribble_ens0000_SSS.csv")
     
     
     matdataset = loadmat(file)
@@ -1772,7 +1829,7 @@ def load_AMM7_20_year_data():
     S_l    = SBSselectedyears.reshape(-1, 1)
     
     return start_time, stop_time, Q_l, S_col, S_l, ham, wam, datetime_array   
-
+#%%
 #!!!
 def load_delft_datasets(delft_path, estuary_data):
     
@@ -1911,8 +1968,40 @@ def artificial_river_data(start_time, stop_time, estuary_data, discharge, time_g
     return estuary_data
 
 def twenty_year_river(estuary_data):
+    
+    from datetime import datetime, timedelta
+
+    def calculate_future_date(start_date_str, hours_to_add):
+        """
+        Calculate the future date and time after adding a number of hours to a start date.
+        Also calculates the total hours between the original and resulting dates.
+    
+        Args:
+        start_date_str (str): The start date as a string in 'YYYY-MM-DD HH:MM:SS' format.
+        hours_to_add (int): The number of hours to add.
+    
+        Returns:
+        None
+        """
+        # Convert the start date string to a datetime object
+        start_date = datetime.strptime(start_date_str, "%Y-%m-%d %H:%M:%S")
+        
+        # Add the given number of hours
+        future_date = start_date + timedelta(hours=hours_to_add)
+        
+        # Calculate the difference in hours for verification
+        hours_difference = (future_date - start_date).total_seconds() / 3600
+    
+        # Print results
+        print(f"Start Date: {start_date}")
+        print(f"Future Date after adding {hours_to_add} hours: {future_date}")
+        print(f"Total hours between dates: {hours_difference:.0f}")
+    
+    # Example usage
+    calculate_future_date("2000-01-01 00:00:00", 181440)
+
     # For the sake of being lazy we are gonna program the river discharge right in here, 
-    ribble_path = '/media/af/PN/modelling_DATA/kent_estuary_project/river_boundary_conditions/original_river_data/processed/copy_Ribble_Samlesbury_2003-2020.csv'
+    ribble_path = start_path / Path(r'modelling_DATA/kent_estuary_project/river_boundary_conditions/original_river_data/processed/copy_Ribble_Samlesbury_2003-2020.csv')
     river_data = pd.read_csv(ribble_path)
     river_data.columns = ['Datetime', 'Value']  # Rename for clarity
     river_data['Datetime'] = pd.to_datetime(river_data['Datetime'], format='%d/%m/%Y %H:%M:%S')
@@ -1921,7 +2010,7 @@ def twenty_year_river(estuary_data):
     
     start_full = '2000-01-01 00:00:00'
     end_full = '2020-12-26 23:00:00'  # Assuming 360 days for 2020
-
+    # end_full = '2020-09-12 00:00:00'
     # Step 2: Create a full hourly datetime range from 1st Jan 2000 to the end of 2020 (8640 hours per year)
     full_datetime_range = pd.date_range(start=start_full, end=end_full, freq='h')
     
@@ -1971,7 +2060,7 @@ if AMM7_20_year_run == 'n':
             print('Running Delft Simulation Data')
         else:
             start_time, stop_time, Q_l, S_col, S_l, ham, wam  = load_tidal_data()
-        
+            print('hello')
     elif artificial_tide == 'y':
         #start_time, stop_time these are generated at the surface
         print('Using artificial tide')
@@ -1997,6 +2086,7 @@ if AMM7_20_year_run == 'n':
         runs_to_complete = ['real_river']
 else:
     estuary_data = twenty_year_river(estuary_data)
+    print('Real river data being madde')
     runs_to_complete = ['real_river']
 ''' Tried their initial values between 0.035 and 500, 
 maybe go back to the paper of how they calculate it ? 
@@ -2020,11 +2110,12 @@ for Ck_cal in Ck_values:
     print('Running:', Ck_cal)
     for discharge_examples in runs_to_complete:
     
+        if AMM7_20_year_run != 'y':
         # Use the function as needed
-        if artificial_river == 'n':
-            estuary_data = load_river_data(start_time, stop_time, river_path, estuary_data)
-        elif artificial_river == 'y':
-            estuary_data = artificial_river_data(start_time, stop_time, estuary_data, discharge_examples, time_generating_step)
+            if artificial_river == 'n':
+                estuary_data = load_river_data(start_time, stop_time, river_path, estuary_data)
+            elif artificial_river == 'y':
+                estuary_data = artificial_river_data(start_time, stop_time, estuary_data, discharge_examples, time_generating_step)
             
             
         #% Run the EBM

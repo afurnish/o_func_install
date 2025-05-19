@@ -1,72 +1,89 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Dec 10 15:08:05 2024
+Created on Mon Jan 13 16:26:25 2025
 
 @author: aafur
 """
-import matplotlib.pyplot as plt
-import cartopy.crs as ccrs
-import cartopy.feature as cfeature
-import pandas as pd
-from pyproj import Transformer
-from o_func import opsys; start_path = opsys('Elements')
 
-# File path and data loading
-path = start_path + 'Original_Data/transects/Tyne_AMM7_nodes.csv'
-data = pd.read_csv(path)
-lat = data.Lat
-lon = data.Lon
+from pathlib import Path
+import xarray as xr
+import rasterio
+import numpy as np
+from scipy.interpolate import griddata
 
-# Transformer for coordinates
-to_bng = Transformer.from_crs("EPSG:4326", "EPSG:27700", always_xy=True)
+# File paths
+thames_path = Path('C:/Users/aafur/Downloads/Thames/Thames/thames_domain_full_net.nc')
+thames_tiff = Path('C:/Users/aafur/Downloads/Thames.tif')
+output_xyz = Path('C:/Users/aafur/Downloads/Thames_xyz_output.txt')
 
-# Convert WGS84 to BNG
-bng_coordinates = [to_bng.transform(lon[i], lat[i]) for i in range(len(lat))]
-bng_df = pd.DataFrame(bng_coordinates, columns=["Easting", "Northing"])
+# Load the netCDF file to get the x and y coordinates
+xarray_dataset = xr.open_dataset(thames_path)
+x = xarray_dataset.mesh2d_face_x.values
+y = xarray_dataset.mesh2d_face_y.values
 
-# Plotting function
-def plot_coords(use_bng=True):
-    """
-    Plots data points on a map, switching between BNG and WGS84 projections.
-    
-    Parameters:
-    - use_bng: Boolean, if True plots in BNG (British National Grid), else in WGS84.
-    """
-    if use_bng:
-        proj = ccrs.OSGB()  # BNG projection
-        x, y = bng_df["Easting"], bng_df["Northing"]
-        title = "Data Points in BNG (British National Grid)"
-        grid_crs = None  # No gridlines for BNG
-    else:
-        proj = ccrs.PlateCarree()  # WGS84 projection
-        x, y = lon, lat
-        title = "Data Points in WGS84 (Latitude/Longitude)"
-        grid_crs = ccrs.PlateCarree()
+# # Load the TIFF file using rasterio
+# with rasterio.open(thames_tiff) as src:
+#     raster = src.read(1)  # Read the first band of the raster
+#     raster[raster == src.nodata] = np.nan  # Replace no-data values with NaN
+#     raster_bounds = src.bounds
+#     raster_transform = src.transform
 
-    # Create map
-    plt.figure(figsize=(10, 10))
-    ax = plt.axes(projection=proj)
+#     # Create a grid of the raster coordinates
+#     rows, cols = raster.shape
+#     xs = np.linspace(raster_bounds.left, raster_bounds.right, cols)
+#     ys = np.linspace(raster_bounds.top, raster_bounds.bottom, rows)
+#     ys = ys[::-1]  # Reverse to match raster's top-to-bottom layout
+#     xx, yy = np.meshgrid(xs, ys)
 
-    # Add coastline and land features
-    ax.add_feature(cfeature.COASTLINE)
-    ax.add_feature(cfeature.LAND, edgecolor="black")
+# # Flatten the raster grid and values for interpolation
+# raster_points = np.column_stack((xx.ravel(), yy.ravel()))
+# raster_values = raster.ravel()
 
-    # Plot points
-    ax.scatter(x, y, color="red", s=50, label="Data Points", transform=grid_crs or proj)
+# Interpolate raster values onto the (x, y) points
+# z = griddata(raster_points, raster_values, (x, y), method='linear')
 
-    # Configure gridlines
-    if grid_crs:
-        gl = ax.gridlines(draw_labels=True, crs=grid_crs)
-        gl.top_labels = False
-        gl.right_labels = False
-    else:
-        # No gridlines for BNG
-        gl = ax.gridlines(draw_labels=False)
+#pyinterp method
+# import pyinterp
+# grid = pyinterp.Grid2D(raster_points, raster_values)
+# z = grid.interpolate(x, y, method='linear')
 
-    # Add title and legend
-    plt.title(title)
-    plt.legend()
-    plt.show()
+#dask_method 
+# Load the TIFF file using rasterio
+with rasterio.open(thames_tiff) as src:
+    raster = src.read(1)  # Read the first band of the raster
+    raster[raster == src.nodata] = np.nan  # Replace no-data values with NaN
+    raster_bounds = src.bounds
 
-# Switch between BNG and WGS84
-plot_coords(use_bng=False)  # Set to False for WGS84
+    # Create a grid of the raster coordinates
+    rows, cols = raster.shape
+    xs = np.linspace(raster_bounds.left, raster_bounds.right, cols)
+    ys = np.linspace(raster_bounds.top, raster_bounds.bottom, rows)
+    ys = ys[::-1]  # Reverse to match raster's top-to-bottom layout
+
+    # Create an Xarray DataArray for the raster
+    raster_da = xr.DataArray(
+        raster,
+        dims=("y", "x"),
+        coords={
+            "x": xs,
+            "y": ys
+        }
+    )
+
+# Perform interpolation using Dask and Xarray
+interpolated_da = raster_da.interp(
+    x=("points", x),  # Target x-coordinates
+    y=("points", y),  # Target y-coordinates
+    method="linear"   # Interpolation method
+)
+
+# Extract the interpolated values
+z = interpolated_da.values
+
+# Combine x, y, and z into a single array
+xyz = np.column_stack((x, y, z))
+
+# Save the results as an XYZ file
+np.savetxt(output_xyz, xyz, delimiter=',', header='x,y,z', comments='', fmt='%.6f')
+
+print(f"XYZ file has been saved to {output_xyz}")

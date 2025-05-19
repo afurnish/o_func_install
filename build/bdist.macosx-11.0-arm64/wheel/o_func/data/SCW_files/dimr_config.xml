@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<dimrConfig xmlns="http://schemas.deltares.nl/dimr" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://schemas.deltares.nl/dimr http://content.oss.deltares.nl/schemas/dimr-1.0.xsd">
+    <documentation>
+        <fileVersion>1.00</fileVersion>
+        <createdBy>Deltares, Coupling team</createdBy>
+        <creationDate>2016-01-20T07:56:32+01</creationDate>
+    </documentation>
+    
+    <control>
+        <start name="kent_31_DFlowFM"/>
+    </control>
+
+    <component name="kent_31_DFlowFM">
+        <library>dflowfm</library>
+        <process>0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39</process>
+        <mpiCommunicator>DFM_COMM_DFMWORLD</mpiCommunicator>
+        <workingDir>.</workingDir>
+        <inputFile>kent_31.mdu</inputFile>
+    </component>
+</dimrConfig>

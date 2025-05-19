@@ -17,6 +17,9 @@ import cmocean
 import cmasher as cmr
 from pathlib import Path
 from matplotlib.colors import ListedColormap
+import matplotlib.cm as cm
+import matplotlib.colors as mcolors
+import matplotlib.dates as mdates
 
 
 
@@ -39,7 +42,7 @@ var_dict = {
 'surface_temp'     : {'TUV':'T',  'UKC4':'votemper_top',   'PRIMEA':'na',            'UNITS':'\u00B0C'},
 'middle_temp'      : {'TUV':'T',  'UKC4':'votemper_mid',   'PRIMEA':'na',            'UNITS':'\u00B0C'},
 'bottom_temp'      : {'TUV':'T',  'UKC4':'votemper_bot',   'PRIMEA':'na',            'UNITS':'\u00B0C'},
-    'surface_Uvelocity': {'TUV':'U',  'UKC4':'vozocrtx_top',   'PRIMEA':'mesh2d_ucx',    'UNITS':'$m\,s^{-1}$'}, # the one with the major issues
+'surface_Uvelocity': {'TUV':'U',  'UKC4':'vozocrtx_top',   'PRIMEA':'mesh2d_ucx',    'UNITS':'$m\,s^{-1}$'}, # the one with the major issues
 'middle_Uvelocity' : {'TUV':'U',  'UKC4':'vozocrtx_mid',   'PRIMEA':'na',            'UNITS':'$m\,s^{-1}$'},
 'bottom_Uvelocity' : {'TUV':'U',  'UKC4':'vozocrtx_bot',   'PRIMEA':'na',            'UNITS':'$m\,s^{-1}$'},
 'surface_Vvelocity': {'TUV':'V',  'UKC4':'vomecrty_top',   'PRIMEA':'mesh2d_ucy',    'UNITS':'$m\,s^{-1}$'},
@@ -567,6 +570,104 @@ class Stats:
                 
                 tide_storage = {}
                 
+                def filter_tide_by_snr(tide_analysis, snr_limit):
+                    """
+                    Filter the tide_analysis output to include only constituents with SNR >= snr_limit.
+                    
+                    Notes on SNR filtering for tidal analysis:
+
+                    Signal-to-Noise Ratio (SNR)
+                    – SNR is a measure of how strong a fitted tidal constituent is compared to the uncertainty in its amplitude estimate.
+                    – In t_tide, SNR ≈ (amplitude ÷ amplitude_error)².
+                    – High SNR (≫ 1) means the constituent is well resolved; low SNR (< 1) means it is dominated by noise.
+                    
+                    Why filter by SNR?
+                    – Low-SNR constituents have poorly constrained amplitude and phase, and large confidence intervals.
+                    – Including them in RMSE or bias calculations can skew skill metrics.
+                    – Common practice: only keep constituents with SNR ≥ 4 for reconstruction and error statistics.
+                    
+                    filter_tide_by_snr function
+                    – Takes the output dict from ttide.t_tide and a threshold (snr_limit).
+                    – Returns a new dict containing only constituents whose snr ≥ snr_limit.
+                    – Copies over metadata (nobs, ngood, dt, lat, stime, nodal correction info).
+                    
+                    Usage example:
+                    filtered = filter_tide_by_snr(tide_analysis, snr_limit=4.0)
+                    # feed ‘filtered’ into ttide.recon and compute RMSE/bias using only high-SNR tides
+                    
+                    Key parameters:
+                    – dt: sampling interval in hours
+                    – stime: start time in MATLAB datenum (to align epochs)
+                    – lat: station latitude for nodal corrections
+                    
+                    Next steps after filtering:
+                    – Reconstruct the tide time series with ttide.recon(filtered)
+                    – Compare reconstructed vs observed heights to compute amplitude RMSE, phase bias, etc.
+                    – Report skill metrics using only the robust (high-SNR) constituents.
+                                    
+                    Parameters:
+                        tide_analysis (dict): The output dict from tt.tide.t_tide.
+                        snr_limit (float): Minimum SNR threshold.
+                
+                    Returns:
+                        dict: A new tide_analysis-like dict with only high-SNR constituents.
+                    """
+                    # Extract arrays
+                    snr = tide_analysis['snr']
+                    mask = snr >= snr_limit
+                
+                    # Filter constituent names, frequencies, and tidecon parameters
+                    filtered = {
+                        'nameu': tide_analysis['nameu'][mask],
+                        'fu':    tide_analysis['fu'][mask],
+                        'tidecon': tide_analysis['tidecon'][mask, :],
+                        'snr':   tide_analysis['snr'][mask],
+                        # copy metadata
+                        'nobs': tide_analysis['nobs'],
+                        'ngood': tide_analysis['ngood'],
+                        'dt': tide_analysis['dt'],
+                        'lat': tide_analysis.get('lat'),
+                        'stime': tide_analysis.get('stime'),
+                        'ltype': tide_analysis.get('ltype'),
+                        'nodcor': tide_analysis.get('nodcor')
+                    }
+                    return filtered
+            
+                def filter_tide_by_names(tide_analysis, keep_names):
+                    """
+                    Filter the tide_analysis output to include only specified tidal constituents.
+                
+                    Parameters:
+                        tide_analysis (dict): The output dict from ttide.t_tide.
+                        keep_names (list of bytes or str): Constituent names to keep, e.g. [b'N2  ', b'M2  ', ...].
+                    
+                    Returns:
+                        dict: A new tide_analysis-like dict with only the specified constituents.
+                    """
+                    # Normalize keep_names to bytes
+                    keep_bytes = [n if isinstance(n, (bytes,)) else n.encode() for n in keep_names]
+                    
+                    # Extract arrays
+                    names = tide_analysis['nameu']
+                    mask = np.array([n in keep_bytes for n in names])
+                    
+                    # Filter constituent names, frequencies, and tidecon parameters
+                    filtered = {
+                        'nameu': tide_analysis['nameu'][mask],
+                        'fu':    tide_analysis['fu'][mask],
+                        'tidecon': tide_analysis['tidecon'][mask, :],
+                        'snr':   tide_analysis['snr'][mask],
+                        # copy metadata
+                        'nobs': tide_analysis['nobs'],
+                        'ngood': tide_analysis['ngood'],
+                        'dt': tide_analysis['dt'],
+                        'lat': tide_analysis.get('lat'),
+                        'stime': tide_analysis.get('stime'),
+                        'ltype': tide_analysis.get('ltype'),
+                        'nodcor': tide_analysis.get('nodcor')
+                    }
+                    return filtered
+                
                 ## Tide data in order of tide gauge, primea, ukc4
                 for i, tide_gauge in enumerate(self.tide_save):
                     # This loop should set the tide gauges. 
@@ -590,7 +691,13 @@ class Stats:
                         tide_storage[tide_gauge_name][mod_key] = {}
                         
                         tt_time= self.time_sliced
-                        
+                        tt_time = tt_time
+                        first_ts = pd.to_datetime(tt_time.values[0]).to_pydatetime()
+                        base_dnum = first_ts.toordinal()       
+                        if mod_key == 'UKC4':
+                            t0_offsets = base_dnum 
+                        else:
+                            t0_offsets = base_dnum + (0.5/24)
                         # This is the 
                         mk = [j for j in model[i].keys()][0]# model is the dataset itself for both heysham and liberpool. 
                         model_keys.append(mk) # should be like PRIMEA Model key etc., 
@@ -605,9 +712,16 @@ class Stats:
                         # Set dt to 1 to be 1 hour. That seems to work. 
                         tide_analysis = tt.t_tide(
                             np.array(surface_height_plot), 
-                            dt=1, 
+                            dt = 1, stime = t0_offsets, lat = 53.5
                         )
-                        print(tide_analysis)
+                        
+                        # tide_analysis = filter_tide_by_snr(tide_analysis, snr_limit=20.0)
+                        # print(tide_analysis)
+                        # These have been determined from first set, SNR of 20. 
+                        keep_list = [b'N2  ', b'M2  ', b'S2  ', b'MN4 ', b'M4  ', b'MS4 ', b'2MN6',
+                                         b'M6  ', b'2MS6', b'M8  ']
+                        tide_analysis = filter_tide_by_names(tide_analysis, keep_list)
+                        
                         amplitude = tide_analysis['tidecon'][:, 0]
                         tide_storage[tide_gauge_name][mod_key]['amp'] = amplitude
                         phase = tide_analysis['tidecon'][:, 2]
@@ -617,6 +731,10 @@ class Stats:
 
                 
                 def plot_tidal_analysis(tide_storage):
+                    RMSE_path = Path(data_stats_path)/Path('RMSE_stats.txt')
+                    output_dir = RMSE_path.parent
+                    with RMSE_path.open('a') as f:
+                        f.write('\n--------------------Amp&Phase({gauge})--------------------\n')
                     def wrap_phase_linear(observed, model):
                         """Wrap model phase to ensure values are close to observed phase while keeping them in [0, 360)."""
                         wrapped_model = []
@@ -628,8 +746,17 @@ class Stats:
                                 m += 360
                             wrapped_model.append(m)
                         return np.array(wrapped_model)
+                    #%%
+                    # For the polar plots
+
+                    
                     for gauge in ['Liverpool', 'Heysham']:
-                        for model in ['PRIMEA', 'UKC4']:
+                        polar_fig, polar_ax = plt.subplots(1, 2, subplot_kw={'projection': 'polar'}, figsize=(12, 6))
+                        scatter_fig, scatter_ax = plt.subplots(2, 2, figsize=(12, 12))
+                        amp_data = {}
+                        phase_diff_data = {}
+                        observed_amp_data = {}
+                        for j, model in enumerate(['PRIMEA', 'UKC4']):
                             # Extract data for each gauge and model
                             observed_amp = tide_storage[gauge]['Tide Gauge']['amp']
                             observed_pha = tide_storage[gauge]['Tide Gauge']['pha']
@@ -649,34 +776,20 @@ class Stats:
                             # wrapped_model_pha = wrap_phase_linear(observed_pha, model_pha)
                             x = np.arange(len(constituents))  # x-axis positions
                 
-                            # # Create side-by-side plots
-                            # fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
                 
-                            # # Plot amplitude
-                            # ax1.bar(x - 0.2, observed_amp, 0.4, label='Observed')
-                            # ax1.bar(x + 0.2, model_amp, 0.4, label=model)
-                            # ax1.set_xlabel('Tidal Constituents')
-                            # ax1.set_ylabel('Amplitude (m)')
-                            # ax1.set_title(f'{gauge} - {model} vs Observed (Amplitude)')
-                            # ax1.set_xticks(x)
-                            # ax1.set_xticklabels(constituents, rotation=45)
-                            # ax1.legend()
-                
-                            # # Plot phase
-                            # ax2.bar(x - 0.2, observed_pha, 0.4, label='Observed')
-                            # ax2.bar(x + 0.2, model_pha, 0.4, label=model)
-                            # ax2.set_xlabel('Tidal Constituents')
-                            # ax2.set_ylabel('Phase (degrees)')
-                            # ax2.set_title(f'{gauge} - {model} vs Observed (Phase)')
-                            # ax2.set_xticks(x)
-                            # ax2.set_xticklabels(constituents, rotation=45)
-                            # ax2.legend()
-                
-                            # plt.tight_layout()
-                            # plt.show()
-                            # Create side-by-side plots
+                            diff = (model_pha - observed_pha + 180) % 360 - 180
+                            model_adj = (observed_pha + diff)
                             
-                            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
+                            model_mod = model_adj % 360
+
+                            mask2 = model_mod != model_adj
+                            
+                            affected = np.where(mask2)[0]
+                            obs_adjusted = observed_pha.copy()
+                            obs_adjusted[mask2] = abs(obs_adjusted[mask2] - 360)
+
+
+                            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6))
                 
                             # Amplitude scatter plot with y=x line
                             ax1.scatter(observed_amp, model_amp, label=f'{model} vs Observed')
@@ -685,7 +798,8 @@ class Stats:
                                 ax1.text(observed_amp[i], model_amp[i], name, fontsize=8, ha='right')
                             ax1.set_xlabel('Observed Amplitude (m)')
                             ax1.set_ylabel(f'{model} Amplitude (m)')
-                            ax1.set_title(f'{gauge} - Amplitude Comparison')
+                            # ax1.set_title(f'{gauge} - Amplitude Comparison')
+                            ax1.set_aspect('equal', 'box')
                             ax1.legend()
                 
                             # Phase scatter plot with y=x line
@@ -696,13 +810,299 @@ class Stats:
                                 ax2.text(observed_pha[i], model_pha[i], name, fontsize=8, ha='right')
                             ax2.set_xlabel('Observed Phase (degrees)')
                             ax2.set_ylabel(f'{model} Phase (degrees)')
-                            ax2.set_title(f'{gauge} - Phase Comparison')
+                            # ax2.set_title(f'{gauge} - Phase Comparison')
+                            # **Ensure 0–360° axes:**
+                            ax2.set_xlim(0, 400)
+                            ax2.set_ylim(0, 400)
+                                
                             ax2.legend()
+                            ax2.set_aspect('equal', 'box')
                 
                             plt.tight_layout()
                 
                             fig.savefig(os.path.join(fig_path,'tidal_const_analysis_'+ gauge+ '_' + model +'_vs_observed.png'), dpi = 300)
                             plt.close()
+                            
+                            #%
+                
+                            # Amplitude scatter plot with y=x line
+                            
+                            if model == 'UKC4':
+                                scatter_ax[0,0].scatter(observed_amp, model_amp, label=f'{model} vs Observed')
+                                scatter_ax[0,0].plot([min(observed_amp), max(observed_amp)], [min(observed_amp), max(observed_amp)], color='gray', linestyle='--', label='y = x')
+                                for i, name in enumerate(constituents):
+                                    scatter_ax[0,0].text(observed_amp[i], model_amp[i], name, fontsize=8, ha='right')
+                                scatter_ax[0,0].set_xlabel('Observed Amplitude (m)')
+                                scatter_ax[0,0].set_ylabel(f'Amplitude (m)')
+                                scatter_ax[0,0].set_title('UKC4')
+                                # ax1.set_title(f'{gauge} - Amplitude Comparison')
+                                # scatter_ax[0,0].set_aspect('equal', 'box')
+                                
+                                scatter_ax[1,0].scatter(observed_pha, model_pha, label=f'{model} vs Observed')
+                                scatter_ax[1,0].plot([min(observed_pha), max(observed_pha)], [min(observed_pha), max(observed_pha)], color='gray', linestyle='--', label='y = x')
+                                for i, name in enumerate(constituents):
+                                    scatter_ax[1,0].text(observed_pha[i], model_pha[i], name, fontsize=8, ha='right')
+                                scatter_ax[1,0].set_xlabel('Observed Phase (degrees)')
+                                scatter_ax[1,0].set_ylabel(f'Phase (degrees)')
+                                # ax2.set_title(f'{gauge} - Phase Comparison')
+                                # **Ensure 0–360° axes:**
+                                scatter_ax[1,0].set_xlim(0, 400)
+                                scatter_ax[1,0].set_ylim(0, 400)
+                
+                                # scatter_ax[1].set_aspect('equal', 'box')
+                            if model == 'PRIMEA':
+                                scatter_ax[0,1].scatter(observed_amp, model_amp, label=f'{model} vs Observed')
+                                scatter_ax[0,1].plot([min(observed_amp), max(observed_amp)], [min(observed_amp), max(observed_amp)], color='gray', linestyle='--', label='y = x')
+                                for i, name in enumerate(constituents):
+                                    scatter_ax[0,1].text(observed_amp[i], model_amp[i], name, fontsize=8, ha='right')
+                                scatter_ax[0,1].set_xlabel('Observed Amplitude (m)')
+                                # scatter_ax[0,1].set_ylabel(f'Amplitude (m)')
+                                scatter_ax[0,1].set_title('PRIMEA')
+                                # ax1.set_title(f'{gauge} - Amplitude Comparison')
+                                # scatter_ax[1,0].set_aspect('equal', 'box')
+                                
+                                scatter_ax[1,1].scatter(observed_pha, model_pha, label=f'{model} vs Observed')
+                                scatter_ax[1,1].plot([min(observed_pha), max(observed_pha)], [min(observed_pha), max(observed_pha)], color='gray', linestyle='--', label='y = x')
+                                for i, name in enumerate(constituents):
+                                   scatter_ax[1,1].text(observed_pha[i], model_pha[i], name, fontsize=8, ha='right')
+                                scatter_ax[1,1].set_xlabel('Observed Phase (degrees)')
+                                # scatter_ax[1,1].set_ylabel(f'Phase (degrees)')
+                                # ax2.set_title(f'{gauge} - Phase Comparison')
+                                # **Ensure 0–360° axes:**
+                                scatter_ax[1,1].set_xlim(0, 400)
+                                scatter_ax[1,1].set_ylim(0, 400)
+                
+                                # scatter_ax[1,1].set_aspect('equal', 'box')
+                            
+                            
+                
+                            # Phase scatter plot with y=x line
+                            
+                            
+                
+                
+                            # fig.savefig(os.path.join(fig_path,'tidal_const_analysis_'+ gauge+ '_' + model +'_vs_observed.png'), dpi = 300)
+                            # plt.close()
+                            #%% 
+                            
+                            # Convert degrees to radians for plotting
+                            observed_phase_rad = np.deg2rad(observed_pha)
+                            modelled_phase_rad = np.deg2rad(model_pha)
+                            
+                            # Calculate phase differences (in degrees)
+                            phase_diff_deg = np.rad2deg(np.angle(np.exp(1j * (observed_phase_rad - modelled_phase_rad))))
+                            
+                            # Normalize phase differences for color mapping
+                            norm = mcolors.Normalize(vmin=0, vmax=180)
+                            cmap = cm.viridis
+                            sm = cm.ScalarMappable(cmap=cmap, norm=norm)
+                            sm.set_array([])
+                            #%
+                            # Create polar plot
+                            # fig, ax = plt.subplots(subplot_kw={'projection': 'polar'}, figsize=(8, 8))
+                            polar_ax[j].set_theta_zero_location('N')  # 0° at the top
+                            polar_ax[j].set_theta_direction(-1)       # Angles increase clockwise
+                            # ax.set_rscale('log')             # Logarithmic radial scale
+                    
+                            # Assuming 'ax' is your polar axes object
+                            r_label_angle = np.deg2rad(38)  # Position at 135 degrees
+                            r_label_radius = polar_ax[j].get_rmax() + 1  # Halfway along the radial axis
+
+                            polar_ax[j].text(r_label_angle, r_label_radius, 'Amplitude (m)',
+                                             
+                            rotation=64, rotation_mode='anchor',
+                            ha='center', va='center', color='black',
+                            fontsize=12)
+                            # Plot lines between observed and modelled points
+                            for i in range(len(constituents)):
+                                theta = [observed_phase_rad[i], modelled_phase_rad[i]]
+                                r = [observed_amp[i], model_amp[i]]
+                                color = cmap(norm(abs(phase_diff_deg[i])))
+                                polar_ax[j].plot(theta, r, color='darkgreen', linewidth=1)
+                            
+                            theta_label_radius = polar_ax[j].get_rmax() * 1.1  # Slightly beyond the outermost circle
+                            
+                            
+                            polar_ax[j].set_xlabel('Phase (°)')
+                            # Plot observed points with circle markers
+                            polar_ax[j].scatter(observed_phase_rad, observed_amp, color='blue', s=25, marker='o', label='Observed')
+                            
+                            # Plot modelled points with cross markers
+                            polar_ax[j].scatter(modelled_phase_rad, model_amp, color='red', s=25, marker='x', label='Modelled')
+                            polar_ax[j].set_title(f'{model}')
+                            
+                            # Identify indices of top 5 observed amplitudes
+                            top_indices = np.argsort(observed_amp)[-4:]
+                            
+                            # Annotate the top 5 constituents
+                            for i in top_indices:
+                                angle = observed_phase_rad[i]
+                                radius = observed_amp[i]
+                                label = constituents[i]
+                                rotation = np.rad2deg(angle)
+                                polar_ax[j].annotate(label,
+                                            xy=(angle, radius),
+                                            xytext=(5, 5),
+                                            textcoords='offset points',
+                                            ha='left',
+                                            va='bottom',
+                                            # rotation=rotation,
+                                            rotation_mode='anchor',
+                                            fontsize=10,
+                                            color='darkgreen')
+
+                            
+                            # Add colorbar
+                            # cbar = plt.colorbar(sm, ax=ax, orientation='vertical', pad=0.1)
+                            # cbar.set_label('Phase Difference (degrees)')
+                            
+                            # plt.close()
+                            #%
+                            # Calculate phase differences
+                            raw_diff = observed_pha - model_pha
+                            wrapped_diff = (raw_diff + 180) % 360 - 180
+                            phase_diff_deg = np.abs(wrapped_diff)
+                            
+                            raw_amp_diff = abs(observed_amp - model_amp)
+                            # Sort constituents by observed amplitude
+                            if model == 'PRIMEA':
+                                sorted_indices = np.argsort(observed_amp)[::-1]
+                                sorted_constituents = [constituents[i] for i in sorted_indices]
+                                observed_amp_sorted = observed_amp[sorted_indices]
+                                phase_diff_sorted = phase_diff_deg[sorted_indices]
+                                
+                                
+                            amp_data[model] = model_amp[sorted_indices]
+                            phase_diff_data[model] = phase_diff_deg[sorted_indices]
+                            observed_amp_data[model] = raw_amp_diff[sorted_indices]
+                            # Plotting
+                            # fig, ax1 = plt.subplots(figsize=(10, 6))
+                            
+                            # ax2 = bar_ax[j].twinx()
+                            
+                            # x = np.arange(len(constituents_sorted))
+                            # width = 0.4
+                            
+                            # # Bar plots
+                            # bar_ax[j].bar(x - width/2, observed_amp_sorted, width=width, color='skyblue', label='Amplitude (m)')
+                            # ax2.bar(x + width/2, phase_diff_sorted, width=width, color='salmon', label='Phase Difference (°)')
+                            
+                            # # Labels and titles
+                            # bar_ax[j].set_xlabel('Tidal Constituents')
+                            # bar_ax[j].set_ylabel('Amplitude (m)', color='skyblue')
+                            # ax2.set_ylabel('Phase Difference (°)', color='salmon')
+                            # bar_ax[j].set_xticks(x)
+                            # bar_ax[j].set_xticklabels(constituents_sorted, rotation=45, ha='right')
+                            # # plt.title('Tidal Constituents: Amplitude and Phase Difference')
+                            
+                            # Legends
+                            # fig.legend(loc='upper right', bbox_to_anchor=(1,1), bbox_transform=ax1.transAxes)
+                            
+                            # plt.tight_layout()
+                            # plt.show()
+                            
+                            
+                            weighted_bias = np.sum((model_amp - observed_amp) * observed_amp) / np.sum(observed_amp)
+                            weighted_rmse = np.sqrt(np.sum(((model_amp - observed_amp) ** 2) * observed_amp) / np.sum(observed_amp))
+                            phase_diff = np.abs((observed_pha - model_pha + 180) % 360 - 180)
+                            weighted_phase_error = np.sum(phase_diff * observed_amp) / np.sum(observed_amp)
+                            
+                            # Compute amplitude bias and RMSE
+                            amp_bias = model_amp - observed_amp
+                            amp_rmse = np.sqrt((model_amp - observed_amp) ** 2)
+                            
+                            # Compute phase difference, bias, and RMSE
+                            phase_diff = np.abs((observed_pha - model_pha + 180) % 360 - 180)
+                            phase_bias = model_pha - observed_pha
+                            phase_rmse = np.sqrt((phase_bias) ** 2)
+                            
+                            # Create DataFrame for per-constituent metrics
+                            df = pd.DataFrame({
+                                'Constituent': constituents,
+                                'Observed Amplitude (m)': observed_amp,
+                                'Modelled Amplitude (m)': model_amp,
+                                'Amplitude Bias (m)': amp_bias,
+                                'Amplitude RMSE (m)': amp_rmse,
+                                'Observed Phase (°)': observed_pha,
+                                'Modelled Phase (°)': model_pha,
+                                'Phase Difference (°)': phase_diff,
+                                'Phase Bias (°)': phase_bias,
+                                'Phase RMSE (°)': phase_rmse
+                            })
+                            
+                            # Compute weights based on observed amplitude
+                            weights = observed_amp / np.sum(observed_amp)
+                            
+                            # Compute overall weighted metrics
+                            overall_amp_bias = np.sum(amp_bias * weights)
+                            overall_amp_rmse = np.sqrt(np.sum((amp_bias ** 2) * weights))
+                            overall_phase_bias = np.sum(phase_bias * weights)
+                            overall_phase_rmse = np.sqrt(np.sum((phase_bias ** 2) * weights))
+                            overall_phase_diff = np.sum(phase_diff * weights)
+                            
+                            # Save per-constituent metrics to CSV
+                            df.to_csv(f'{output_dir}/{gauge}_{model}_vs_Observed_tidal_harmonic_metrics.csv', index=False)
+                            
+                            # Append overall metrics to the CSV
+                            with RMSE_path.open('a') as f:
+                                f.write('\n')
+                                f.write(f'{model}_{gauge}_Weighted Amplitude Bias (m),{overall_amp_bias}\n')
+                                f.write(f'{model}_{gauge}_Weighted Amplitude RMSE (m),{overall_amp_rmse}\n')
+                                f.write(f'{model}_{gauge}_Weighted Phase Bias (°),{overall_phase_bias}\n')
+                                f.write(f'{model}_{gauge}_Weighted Phase RMSE (°),{overall_phase_rmse}\n')
+                                f.write(f'{model}_{gauge}_Weighted Phase Difference (°),{overall_phase_diff}\n')
+                        
+                           
+                        # polar_fig.tight_layout()
+                        handles, labels = polar_ax[0].get_legend_handles_labels()
+                        polar_fig.legend(handles, labels, loc='lower left')
+                        polar_fig.savefig(os.path.join(fig_path,'tidal_const_analysis_circle_' + gauge + 'models_vs_observed.png'), dpi = 300)
+                        scatter_fig.savefig(os.path.join(fig_path,'tidal_const_analysis_scatterdual_' + gauge + 'models_vs_observed.png'), dpi = 300)
+                        #%%
+                        x = np.arange(len(sorted_constituents))
+                        width = 0.6
+                        
+                        fig, ax1 = plt.subplots(figsize=(18, 6))
+                        ax2 = ax1.twinx()
+                        
+                        # Define x positions for amplitude and phase
+                        x_amp = x * 2     # Even positions
+                        x_phase = x * 2 + 1  # Odd positions
+                        
+                        # Plot amplitude (same x position, different colors + transparency)
+                        ax1.bar(x_amp, observed_amp_data['PRIMEA'], width=width, color='skyblue', alpha=0.6, label='PRIMEA vs Observed Amplitude')
+                        ax1.bar(x_amp, observed_amp_data['UKC4'], width=width, color='dodgerblue', alpha=0.6, label='UKC4 vs Observed Amplitude')
+                        # ax1.bar(x_amp, observed_amp_data, width=width, color='yellow', alpha=0.3, label='Observed')
+
+                        # Plot phase difference
+                        ax2.bar(x_phase, phase_diff_data['PRIMEA'], width=width, color='lightcoral', alpha=0.6, label='PRIMEA vs Observed Phase')
+                        ax2.bar(x_phase, phase_diff_data['UKC4'], width=width, color='firebrick', alpha=0.6, label='UKC4 vs Observed Phase')
+                        
+                        # X-tick labels centered between amplitude and phase
+                        xticks = (x_amp + x_phase) / 2
+                        ax1.set_xticks(xticks)
+                        ax1.set_xticklabels(sorted_constituents, rotation=45, ha='right')
+                        ax1.set_xlabel('Tidal Constituents')
+                        
+                        # Y labels
+                        ax1.set_ylabel('Amplitude (m)', color='navy')
+                        ax2.set_ylabel('Phase Difference (°)', color='darkred')
+                        
+                        # Legend
+                        h1, l1 = ax1.get_legend_handles_labels()
+                        h2, l2 = ax2.get_legend_handles_labels()
+                        fig.legend(h1 + h2, l1 + l2, loc='center', bbox_to_anchor=(0.5, 0.75))
+                        
+                        # plt.title(f'{gauge} – Overlaid Amplitude & Phase Comparison (PRIMEA vs UKC4)')
+                        plt.tight_layout()
+                        fig.savefig(os.path.join(fig_path,'tidal_const_analysis_bar_graph_'+ gauge +'_models_vs_observed.png'), dpi = 300)
+
+
+
+
+
+
+                        #%%    
                 plot_tidal_analysis(tide_storage)
                 
             # I think this is the correct place for this to be. 
@@ -1206,7 +1606,7 @@ if __name__ == '__main__':
           # 'ao_yawind_AllRivNoDuddonClimatology_m0.035_Forcing_300_Discouv',
           # 'ao_yawind_orig8RealRiver_m0.035_Forcing_300_Discouv',
           'ao_yawind_AllRivNoDuddonClimatology_m0.035_Forcing_85_Discouv',
-          # 'ao_yawind_orig8RealRiver_m0.035_Forcing_85_Discouv',
+          'ao_yawind_orig8RealRiver_m0.035_Forcing_85_Discouv',
           
          # 'oa_nawind_Orig_m0.035_Forcing_4_months',
       #   'oa_nawind_Orig_m0.030_Forcing',
