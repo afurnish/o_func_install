@@ -19,7 +19,7 @@ import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 import cartopy.mpl.ticker as cticker
 from  os.path import join 
-from o_func import opsys, DirGen; start_path = opsys()
+from o_func import opsys, DirGen; start_path = opsys('PNC')
 import pandas as pd
 import geopandas as gpd
 import o_func.utilities as util
@@ -27,11 +27,14 @@ import subprocess
 import pkg_resources
 import platform
 import glob
+from pathlib import Path
 
+fig_path = Path(start_path) / 'modelling_DATA/kent_estuary_project/river_boundary_conditions/figures'
 
 #b20_mean_discharge = means[:51]
 
 data = xr.open_dataset(join(start_path, 'Original_Data','UKC3','river_climatology','rivers','AMM15_River_Climatology.nc'))
+# data = xr.open_dataset(join(start_path, 'Original_Data','UKC3','river_climatology','rivers','AMM15_River_Climatology_v2.nc'))
 
 runoff = np.array(data.rorunoff[0,:,:])
 non_zero_mask = np.where(runoff != 0.0)
@@ -48,29 +51,57 @@ lons = [data.lon[row, col].item() for row, col in zip(row_indices, col_indices)]
 lats = [data.lat[row, col].item() for row, col in zip(row_indices, col_indices)]
 
 # Define the UK's latitude and longitude bounds for the first plot
-uk_lon_min, uk_lon_max = -10.5, 2
-uk_lat_min, uk_lat_max = 49, 61.5
-#%%
-fig = plt.figure(figsize=(10, 8), dpi = 150)
-ax = plt.axes(projection=ccrs.PlateCarree())
-ax.set_extent([uk_lon_min, uk_lon_max, uk_lat_min, uk_lat_max])
+
+#%% Self Contained cell for plotting the UK Map
+import matplotlib.ticker as mticker
+from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
+uk_lon_min, uk_lon_max = -11, 2.5
+uk_lat_min, uk_lat_max = 49, 61
+fig = plt.figure(figsize=(7, 10), dpi = 150)
+proj = ccrs.Mercator(central_longitude=-4)
+ax = plt.axes(projection=proj)
 point_indices = np.arange(0, len(lons))
-ax.add_feature(cfeature.COASTLINE, linewidth=1.0, edgecolor='red')
+ax.add_feature(cfeature.COASTLINE, linewidth=1.0, edgecolor='black')
 ax.add_feature(cfeature.BORDERS, linewidth=0.5, linestyle='dotted', edgecolor='black')
-ax.scatter(lons, lats, marker='o', color='blue', label='River Climatology Discharge')
-for lontest, lattest, indtext in zip(lons, lats, point_indices):
-    ax.text(lontest - 0.02, lattest + 0.01, f'{indtext}', ha='center', va='bottom', fontsize=10, color='blue')
+ax.scatter(lons, lats, transform=ccrs.PlateCarree(), marker='o', color='blue', label='AMM15 River Climatology\nDischarge Locations')
+# for lontest, lattest, indtext in zip(lons, lats, point_indices):
+#     ax.text(lontest - 0.02, lattest + 0.01, f'{indtext}', ha='center', va='bottom', fontsize=10, color='blue')
 
 ax.set_xlabel('Longitude')
 ax.set_ylabel('Latitude')
-uk_extent_lon = np.linspace(-10, 2, 13)
-uk_extent_lat = np.linspace(48, 62, 15)
+# uk_extent_lon = np.linspace(-10, 2, 13)
+# uk_extent_lat = np.linspace(48, 62, 15)
+uk_extent_lon = np.linspace(uk_lon_min, uk_lon_max, 16)
+uk_extent_lat = np.linspace(uk_lat_min, uk_lat_max, 20)
+ax.set_extent([uk_lon_min, uk_lon_max, uk_lat_min, uk_lat_max])
 
 # SET TO WIDE UK EXTENT
-# ax.set_xticks(uk_extent_lon, crs=ccrs.PlateCarree())
-# ax.set_yticks(uk_extent_lat, crs=ccrs.PlateCarree())
+# Define whole-number tick positions
+xticks = np.arange(np.ceil(uk_lon_min), np.floor(uk_lon_max) + 1, 1)
+yticks = np.arange(np.ceil(uk_lat_min), np.floor(uk_lat_max) + 1, 1)
 
-plt.legend()
+# Apply ticks in geographic coords
+ax.set_xticks(xticks, crs=ccrs.PlateCarree())
+ax.set_yticks(yticks, crs=ccrs.PlateCarree())
+
+# Format tick labels as plain numbers (no degree/E/W/N/S)
+ax.xaxis.set_major_formatter(LongitudeFormatter(number_format='.0f',
+                                                degree_symbol='',
+                                                direction_label=False))
+ax.yaxis.set_major_formatter(LatitudeFormatter(number_format='.0f',
+                                               degree_symbol='',
+                                               direction_label=False))
+
+# Make tick marks small and neat
+ax.tick_params(axis='both', which='major', length=4, width=0.8, direction='out')
+
+# Axis labels
+ax.set_xlabel("Longitude")
+ax.set_ylabel("Latitude")
+plt.legend(loc='upper left')
+plt.tight_layout()
+
+plt.savefig(fig_path / 'river_discharge_map_uk.png', dpi = 300)
 
 #%%
 # Define the UK's latitude and longitude bounds for the second plot
@@ -157,7 +188,7 @@ river_index_df = pd.DataFrame({
     'Col Index': cols
 })
 #%% 
-
+save_dict = {}
 shapefile_path = start_path + "modelling_DATA/kent_estuary_project/land_boundary/QGIS_Shapefiles/UK_WEST_KENT_EPSG_4326_clipped_med_domain.shp"
 gdf = gpd.read_file(shapefile_path)
 
@@ -167,6 +198,13 @@ ax = plt.axes(projection=ccrs.PlateCarree())
 # ax.add_feature(cfeature.BORDERS, linewidth=0.5, linestyle='dotted', edgecolor='black')
 gdf.plot(ax = ax, color = 'black', linewidth=0.5)
 ax.scatter(lons, lats, marker='o', color='blue', label='AMM15 river climatology discharge')
+
+save_dict['lons'] = lons
+save_dict['lats'] = lats
+save_dict['row_indicies'] = row_indices
+save_dict['col_indices'] = col_indices
+
+
 ax.set_xlabel('Longitude')
 ax.set_ylabel('Latitude')
 uk_extent_lon = np.linspace(-3.65, -2.70, 6)
@@ -177,7 +215,7 @@ ax.set_yticks(uk_extent_lat, crs=ccrs.PlateCarree())
 # Label each point with a number from 1 to n and the corresponding river name
 # Label each point with a number from 1 to n and the corresponding river name
 
-
+save_dict['Rivers']  = {}
 # for i, (lon, lat) in enumerate(zip(lons, lats), start=1):
 #     if i in riv_dict:
 #         ax.text(lon - 0.02, lat + 0.01, f'{riv_dict[i]}', ha='center', va='bottom', fontsize=10, color='blue')
@@ -192,10 +230,18 @@ for i, (lon, lat) in enumerate(zip(lons, lats)):
         col_idx = col_indices[i]
         # Plot the river name and optionally the row and column indices
         ax.text(lon - 0.02, lat + 0.01, f'{river_name}', ha='center', va='bottom', fontsize=10, color='blue')
+        
+        save_dict['Rivers'][river_name] = {}
+        save_dict['Rivers'][river_name]['lon'] = lon - 0.02
+        save_dict['Rivers'][river_name]['lat'] = lat + 0.01
+    
+        
         if extra_detail_plots == 'y':
             ax.text(lon - 0.02, lat - 0.02, f'({row_idx}, {col_idx})', ha='center', va='top', fontsize=8, color='red')
 
-    
+import pickle
+with open('river_gauges_save_data2.pkl', 'wb') as f:
+    pickle.dump(save_dict, f)
 first_river_plotted = False
 for river, (lon, lat) in additional_coords.items():
     if not first_river_plotted:
@@ -329,6 +375,7 @@ river_lons = [details['lon'] for details in riv_gauge.values()]
 river_lats = [details['lat'] for details in riv_gauge.values()]
 river_names = [key for key  in riv_gauge]
 
+#%%
 extra_detail_plots = 'n'
 ffig = plt.figure(figsize=(10, 12), dpi = 150)
 ax = plt.axes(projection=ccrs.PlateCarree())
@@ -383,7 +430,7 @@ for lon, lat, name in zip(river_lons, river_lats, river_names):
 transect_paths = start_path + r'modelling_DATA/kent_estuary_project/land_boundary/analysis/QGIS_shapefiles/points_along_estuary_1km_spacing.csv'
 transect_data = pd.read_csv(transect_paths)
 
-ax.scatter(transect_data.X, transect_data.Y, c = 'green', marker = '+', s = 1, label = 'Estuarine Transect')
+ax.scatter(transect_data.X, transect_data.Y, c = 'green', marker = '+', s = 1, label = 'Estuarine 1km\nspaced Transects')
 
 
 ax.set_extent([uk_lon_min, uk_lon_max + 0.25, uk_lat_min, uk_lat_max])
@@ -393,6 +440,105 @@ plt.tight_layout()
 plt.legend()
 
 plt.savefig('estuaries_map.png', dpi = 300)
+
+
+#%% Set up a nice mercator version 
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.ticker as mticker
+import cartopy.crs as ccrs
+
+# Inset bounds (lon/lat)
+lon_min, lon_max = -3.61, -2.57
+lat_min, lat_max = 53.17, 54.52
+
+# --- Make the panel less skinny: pad the lon range and use a wider figure ---
+pad_lon = 0   # add ~0.2° on each side
+pad_lat = 0
+extent = [lon_min, lon_max, lat_min, lat_max]
+
+proj_map  = ccrs.Mercator(central_longitude=-3)
+proj_data = ccrs.PlateCarree()
+
+fig, ax = plt.subplots(figsize=(5, 7), dpi=300,
+                       subplot_kw={'projection': proj_map},
+                       constrained_layout=True)
+
+# --- Ensure coastline GeoDataFrame is in lon/lat or supply transform ---
+# If your gdf is NOT EPSG:4326, reproject it first:
+try:
+    if gdf.crs is None or gdf.crs.to_epsg() != 4326:
+        gdf_ll = gdf.to_crs(4326)
+    else:
+        gdf_ll = gdf
+except Exception:
+    gdf_ll = gdf  # fallback if CRS unknown; assume lon/lat
+
+# Plot coastline (edge only), **with transform** so Cartopy knows coordinates are lon/lat
+gdf_ll.plot(ax=ax, edgecolor='black', facecolor='none', linewidth=0.6,
+            transform=proj_data, zorder=2)
+
+# Plot points (also declare data CRS)
+ax.scatter(lons, lats, transform=proj_data, s=22, color='blue',
+           label='AMM15 river climatology\nforcing locations', zorder=3)
+
+for i, (lon, lat) in enumerate(zip(lons, lats)):
+    # Check if the index corresponds to a river in the dictionary
+    if i in riv_dict:
+        # Get the river name from the dictionary
+        river_name = riv_dict[i]
+        # Get the corresponding row and column indices
+        row_idx = row_indices[i]
+        col_idx = col_indices[i]
+        # Plot the river name and optionally the row and column indices
+        ax.text(lon - 0.02, lat + 0.01, f'{river_name}', ha='center', va='bottom', fontsize=8, color='blue', transform=proj_data)
+
+
+# 15 min  Measured Guage Data
+first_river_plotted = False
+for river, (lon, lat) in additional_coords.items():
+    if not first_river_plotted:
+        ax.scatter(lon, lat, transform=proj_data,  marker='^', color='red', label='NRFA 15-min river gauge\nforcing locations')
+        first_river_plotted = True
+    else:
+        ax.scatter(lon, lat, transform=proj_data, marker='^', color='red')
+    ax.text(lon + 0.02, lat + 0.01, river, ha='center', va='bottom', fontsize=8, color='red', transform=proj_data)
+
+
+# Handle the extra river gauges
+ax.scatter(river_lons, river_lats, transform=proj_data, marker='s', color='purple', label='Unused River Gauges')
+# Label each river gauge point with its name
+for lon, lat, name in zip(river_lons, river_lats, river_names):
+    ax.text(lon + 0.02, lat + 0.01, name, ha='center', va='bottom', fontsize=8, color='purple', transform=proj_data)
+
+# Handle the transect data
+ax.scatter(transect_data.X, transect_data.Y, transform=proj_data, c = 'green', marker = '+', s = 1, label = 'Estuarine Transects\n(1 km spaced)')
+
+# Geographic extent (tell Cartopy this is lon/lat)
+
+# Quarter-degree ticks
+xticks = np.arange(np.floor(extent[0]*4)/4, np.ceil(extent[1]*4)/4 + 0.25, 0.25)
+yticks = np.arange(np.floor(extent[2]*4)/4, np.ceil(extent[3]*4)/4 + 0.25, 0.25)
+
+ax.set_xticks(xticks, crs=proj_data)
+ax.set_yticks(yticks, crs=proj_data)
+
+# Plain numeric labels (no °, no E/W/N/S)
+ax.xaxis.set_major_formatter(LongitudeFormatter(number_format='.2f',
+                                                degree_symbol='', direction_label=False))
+ax.yaxis.set_major_formatter(LatitudeFormatter(number_format='.2f',
+                                               degree_symbol='', direction_label=False))
+ax.tick_params(axis='both', which='major', length=4, width=0.9, direction='out')
+
+ax.set_xlabel("Longitude")
+ax.set_ylabel("Latitude")
+
+ax.set_aspect('auto')
+ax.legend(loc='center left', fontsize = 8)
+ax.set_extent(extent, crs=proj_data)
+
+plt.savefig(fig_path / 'estuaries_map.png', dpi=300, bbox_inches='tight')
+
 #%% Make a dataframe of the new river climatology data 
 # Initialize a DataFrame to store river names and their time series data
 # You may want to adjust the structure based on your exact requirements
@@ -443,6 +589,7 @@ time_series_df.index = formatted_dates
 time_series_df.index.name = 'month_day'
 
 time_series_df.to_csv(join(output_river_path, 'River_Climatology_Time_Series.csv'), index=True)
+# time_series_df.to_csv(join(output_river_path, 'River_Climatology_Time_Series_v2.csv'), index=True)
 
 # Now 'time_series_df' is structured with rivers as columns, and the index is numerical from 0 to 365
 
@@ -463,7 +610,7 @@ for river_name in time_series_df.columns:
     
     # Define the filename using the river name and the .bc extension
     filename = f"{river_name}.bc"
-    
+    # filename = f"{river_name}_v2.bc"
     # Save the river data to a file
     # Assuming you want to save it as a CSV for example. Adjust the path as needed.
     river_data.to_csv(join(path_to_bc_file, filename), header=False)
@@ -539,6 +686,7 @@ def generate_bc_files(dataframe, start_date, path):
         for each_side in ['0001', '0002']:
             
             discharge_file = os.path.join(path , f"{column}_Discharge.bc")
+            # discharge_file = os.path.join(path , f"{column}_Discharge_v2.bc")
             salinity_file = os.path.join(path ,f"{column}_{each_side}_Salinity.bc")
     
             
@@ -605,6 +753,9 @@ def file_stitcher(input_file_path, output_file_path):
 
 def add_river_data(bc_paths):
     discharge_rivers_df = time_series_df.apply(convert_clim_to_discharge_units)
+    discharge_rivers_df.to_csv(join(output_river_path, 'River_Climatology_Discharge_Time_Series.csv'), index=True)
+    # discharge_rivers_df.to_csv(join(output_river_path, 'River_Climatology_Discharge_Time_Series_v2.csv'), index=True)
+
     discharge_rivers_df_year = adjust_dates_around_cutoff(discharge_rivers_df, '06-06', 2013)
     exclude= ['Esk', 'Alt', 'Clywd']
     prim_dataframe = discharge_rivers_df_year.drop(columns=exclude, errors='ignore')
@@ -626,6 +777,59 @@ def add_river_data(bc_paths):
         file_stitcher(riv_dump_csv, riv_in_primea_path)
         
     return discharge_rivers_df_year
+
+# === SAVE A CATALOG OF CLIMATOLOGY FORCING CELLS FOR OUR ESTUARIES ===
+from pathlib import Path
+
+def save_climatology_estuary_catalog(
+    out_csv: Path,
+    riv_dict: dict,
+    lons: list,
+    lats: list,
+    row_indices: np.ndarray,
+    col_indices: np.ndarray,
+    subset: list = None,
+):
+    """
+    Write a CSV with one row per estuary:
+      estuary, clim_row, clim_col, clim_lon, clim_lat
+    riv_dict keys are integer indices into lons/lats/row_indices/col_indices (0-based).
+    """
+    rows = []
+    for idx, name in riv_dict.items():
+        if subset and name not in subset:
+            continue
+        # guard against any out-of-range/NaN
+        if not (0 <= idx < len(lons)):
+            print(f"[WARN] {name}: index {idx} out of range for climatology arrays")
+            continue
+        r = int(row_indices[idx]); c = int(col_indices[idx])
+        lon = float(lons[idx]);    lat = float(lats[idx])
+        rows.append({
+            "estuary": name,
+            "clim_row": r,
+            "clim_col": c,
+            "clim_lon": lon,
+            "clim_lat": lat,
+        })
+
+    df = pd.DataFrame(rows).sort_values("estuary")
+    out_csv.parent.mkdir(parents=True, exist_ok=True)
+    df.to_csv(out_csv, index=False)
+    print(f"[INFO] Wrote climatology estuary catalog -> {out_csv}")
+
+# Choose where to write it
+catalog_out = Path(start_path) / "GitHub/EBM_WORKSHOP/output_data/climatology_estuary_cells.csv"
+
+# If you only want your 8 estuaries:
+subset_names = ["Dee","Duddon","Kent","Leven","Lune","Mersey","Ribble","Wyre"]
+
+# IMPORTANT: fix a tiny loop bug above (if present) — use `for idx, river_name in riv_dict.items():`
+# Call the writer:
+save_climatology_estuary_catalog(
+    catalog_out, riv_dict, lons, lats, row_indices, col_indices, subset=subset_names
+)
+
 if __name__ == '__main__':
     pass
     import glob
@@ -639,6 +843,8 @@ if __name__ == '__main__':
     
     discharge_rivers_df_year.Ribble.to_csv('river_data.csv')
     discharge_rivers_df_year.to_csv('all_rivers.csv')
+    # discharge_rivers_df_year.Ribble.to_csv('river_data_v2.csv')
+    # discharge_rivers_df_year.to_csv('all_rivers_v2.csv')
     
     
 #%% Possibly usefull old junk code

@@ -1,0 +1,329 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Sep  9 22:27:51 2025
+
+@author: af
+"""
+
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+STEP 1b — PRIMEA transect-point time series with haversine BallTree,
+10-day cutoff, hourly means @ :30, and NetCDF caching.
+
+Outputs (in figures/):
+- mouth_timeseries_<EXTREME>_HAVERSINE_CUTOFF_HOURLY.png
+- mouth_peak_times_<EXTREME>_haversine_cutoff_hourly.csv
+- transect_timeseries_cache.nc           (cache; used on subsequent runs)
+- mouth_points_map.png                   (quick map of mouth points)
+"""
+
+from pathlib import Path
+import numpy as np
+import pandas as pd
+import xarray as xr
+import matplotlib.pyplot as plt
+from sklearn.neighbors import BallTree  # haversine
+
+# ===================== CONFIG =====================
+base = Path('/media/af/PNB_extra/scw_10_layer_climatology')
+
+# Inputs
+regrid_path   = base / 'kent_regrid.nc'          # UKC4+PRIMEA regrid (2D lon/lat grid)
+unstr_path    = base / 'kent_31_merged_map.nc'   # PRIMEA unstructured (faces)
+transect_csv  = Path('/media/af/PNC/modelling_DATA/kent_estuary_project/land_boundary/analysis/QGIS_shapefiles/points_along_estuary_1km_spacing.csv')
+bathy_file    = Path('/media/af/PNB_extra/Original_Data/interpolated_bathymetry_kent_31.nc')  # bed_face(mesh2d_nFaces)
+
+# Outputs
+out_dir       = base / 'figures'
+out_dir.mkdir(parents=True, exist_ok=True)
+CACHE_NC      = out_dir / "transect_timeseries_cache.nc"
+
+# Controls
+EXTREME       = 'max'     # 'max' (extreme high tide) | 'min' (extreme low tide)
+CUTOFF_DAYS   = 10        # remove first N days (unstructured)
+overwrite_data = False    # set True to force recomputation even if cache exists
+
+FIGSIZE_TS    = (10, 12)
+DPI           = 300
+# ==================================================
+
+
+# ---------- helpers ----------
+def pick_first_existing(ds, names):
+    for n in names:
+        if n in ds.variables:
+            return n
+    raise KeyError(f"None of {names} found in variables.")
+
+def pick_first_coord(ds, names):
+    for n in names:
+        if n in ds.coords:
+            return n
+    raise KeyError(f"None of {names} found in coords.")
+
+def ensure_time_first(var, time_coord):
+    if var.dims[0] != time_coord:
+        return var.transpose(time_coord, ...)
+    return var
+
+def deg2rad_xy(lon_deg, lat_deg):
+    lon_r = np.radians(np.asarray(lon_deg).reshape(-1))
+    lat_r = np.radians(np.asarray(lat_deg).reshape(-1))
+    return np.column_stack((lat_r, lon_r))  # BallTree expects [lat, lon] in radians
+
+def build_balltree_grid(lon2d, lat2d):
+    pts_rad = deg2rad_xy(lon2d, lat2d)  # flattens
+    return BallTree(pts_rad, metric='haversine'), lon2d.shape
+
+def build_balltree_points(lon1d, lat1d):
+    return BallTree(deg2rad_xy(lon1d, lat1d), metric='haversine')
+
+def int_to_letter(n):
+    return chr(ord('A') + int(n))
+
+def find_face_dim(var, time_dim):
+    other = [d for d in var.dims if d != time_dim]
+    if not other:
+        raise ValueError(f"Cannot infer face dim in {var.dims}")
+    for d in other:
+        if 'face' in d.lower():
+            return d
+    if len(other) == 1:
+        return other[0]
+    sizes = {d: var.sizes[d] for d in other}
+    return max(sizes, key=sizes.get)
+
+
+# ---------- load transect CSV (always needed) ----------
+tran = pd.read_csv(transect_csv).rename(columns={'X': 'x', 'Y': 'y'})
+tran = tran.sort_values(by='est_name', kind='stable').reset_index(drop=True)  # keep mouth->river order
+tran['group_id'] = pd.factorize(tran['est_name'], sort=True)[0]
+estuaries = tran['group_id'].unique()
+est_names = tran.groupby('group_id')['est_name'].first()
+
+# ---------- try cache ----------
+if CACHE_NC.exists() and not overwrite_data:
+    print(f"Loading cached transect time series from {CACHE_NC}")
+    cache = xr.load_dataset(CACHE_NC)
+
+    # Rehydrate objects from cache
+    timeseries_all_20min = cache["ts_20min"]                     # dims: time_20min, point
+    ts_hourly            = cache["ts_hourly"]                    # dims: time, point  (half-hour stamped)
+    time_vals_20min      = pd.to_datetime(cache["time_20min"].values)
+    time_vals_hourly     = pd.to_datetime(cache["time"].values)
+    nearest_face_idx     = cache["nearest_face_idx"].values
+    bathy_at_points      = cache["bathy_at_points"].values
+    tran_x               = cache["tran_x"].values
+    tran_y               = cache["tran_y"].values
+    # sanity: ensure lengths match
+    assert len(tran_x) == len(tran), "Cached point count differs from current transect CSV."
+
+else:
+    print("Extracting and resampling transect time series from raw datasets...")
+
+    # --- Open datasets (heavy ones only when recomputing) ---
+    regrid = xr.open_dataset(regrid_path)    # only for UKC4 BallTree prep (later steps)
+    unstr  = xr.open_dataset(unstr_path)     # PRIMEA (unstructured)
+    bathy_ds = xr.open_dataset(bathy_file)   # bed_face(mesh2d_nFaces)
+
+    # --- Cut off first N days in unstructured ---
+    time_coord = pick_first_coord(unstr, ['time'])
+    time_vals_full = pd.to_datetime(unstr[time_coord].values)
+    cutoff_time = time_vals_full[0] + pd.Timedelta(days=CUTOFF_DAYS)
+    unstr = unstr.sel({time_coord: slice(cutoff_time, None)})
+    time_vals_20min = pd.to_datetime(unstr[time_coord].values)
+    print(f"Cut off first {CUTOFF_DAYS} days: starting at {cutoff_time}")
+
+    # --- UKC4 regrid BallTree (prep for later — not used in this step) ---
+    try:
+        lon_name = pick_first_coord(regrid, ['nav_lon', 'lon', 'LONGITUDE'])
+        lat_name = pick_first_coord(regrid, ['nav_lat', 'lat', 'LATITUDE'])
+        lon2d = regrid[lon_name].values
+        lat2d = regrid[lat_name].values
+        _ukc4_tree, _ = build_balltree_grid(lon2d, lat2d)
+    except Exception:
+        pass  # not required for step 1b
+
+    # --- Unstructured faces BallTree ---
+    face_x_name = pick_first_existing(unstr, ['mesh2d_face_x'])
+    face_y_name = pick_first_existing(unstr, ['mesh2d_face_y'])
+    face_lon = unstr[face_x_name].values
+    face_lat = unstr[face_y_name].values
+    faces_tree = build_balltree_points(face_lon, face_lat)
+
+    # --- PRIMEA unstructured surface height ---
+    prim_var_name = pick_first_existing(unstr, ['mesh2d_s1', 's1', 'surface_height', 'waterlevel', 'waterlevel_z', 'zeta'])
+    prim_unstr    = ensure_time_first(unstr[prim_var_name], time_coord)
+    face_dim      = find_face_dim(prim_unstr, time_coord)
+
+    # --- nearest FACE for every transect point (haversine) ---
+    tran_x = tran['x'].values
+    tran_y = tran['y'].values
+    tran_pts_rad = deg2rad_xy(tran_x, tran_y)
+    _, idx = faces_tree.query(tran_pts_rad, k=1)
+    nearest_face_idx = idx[:, 0].astype(int)
+
+    # --- full PRIMEA timeseries at all transect points ---
+    timeseries_all_20min = prim_unstr.isel({face_dim: xr.DataArray(nearest_face_idx, dims=("point",))})
+    # dims: (time_20min, point)  — we'll rename the time dim explicitly
+    timeseries_all_20min = timeseries_all_20min.rename({timeseries_all_20min.dims[0]: "time_20min"})
+
+    # --- RESAMPLE to hourly means & stamp at :30 ---
+    ts_hourly = timeseries_all_20min.resample({"time_20min": '60min'}).mean()
+    # after resample, dim is still "time_20min"; create a new coordinate "time" (half-hour)
+    time_vals_hourly = pd.to_datetime(ts_hourly["time_20min"].values) + pd.Timedelta(minutes=30)
+    ts_hourly = ts_hourly.assign_coords(time=("time_20min", time_vals_hourly)).swap_dims({"time_20min": "time"}).drop_vars("time_20min")
+
+    # --- bathymetry at transect points (same faces) ---
+    bathy_var = pick_first_existing(bathy_ds, ['bed_face'])
+    bathy_at_points = bathy_ds[bathy_var].isel(mesh2d_nFaces=xr.DataArray(nearest_face_idx, dims=("point",))).values
+
+    # --- write cache ---
+    cache = xr.Dataset(
+        data_vars={
+            "ts_20min":            (("time_20min", "point"), timeseries_all_20min.values),
+            "ts_hourly":           (("time", "point"),        ts_hourly.values),
+            "nearest_face_idx":    (("point",),               nearest_face_idx),
+            "bathy_at_points":     (("point",),               bathy_at_points),
+            "tran_x":              (("point",),               tran_x),
+            "tran_y":              (("point",),               tran_y),
+        },
+        coords={
+            "time_20min": time_vals_20min.astype("datetime64[ns]"),
+            "time":       time_vals_hourly.astype("datetime64[ns]"),
+            "point":      np.arange(len(nearest_face_idx)),
+        },
+        attrs={
+            "note": "PRIMEA transect-point time series cache (20-min + hourly@30min), with face indices and bathy."
+        }
+    )
+    cache.to_netcdf(CACHE_NC)
+    print(f"Saved transect time series cache to {CACHE_NC}")
+
+# ---------- plotting: per-estuary mouth HOURLY time series & peak detection ----------
+n_est = len(estuaries)
+fig, axes = plt.subplots(n_est, 1, figsize=FIGSIZE_TS, constrained_layout=True, sharex=True)
+if n_est == 1:
+    axes = [axes]
+
+peak_rows = []
+time_vals_hourly = pd.to_datetime(ts_hourly["time"].values)  # ensure present when loaded from cache
+
+for row_i, gid in enumerate(sorted(estuaries)):
+    est_name = est_names.loc[gid]
+    letter = int_to_letter(row_i)
+
+    # indices of this estuary's points in the global 'point' axis
+    est_mask = (tran['group_id'].values == gid)
+    est_points_idx = np.where(est_mask)[0]
+    mouth_point_idx = est_points_idx[0]  # first point = mouth
+
+    # mouth hourly time series (time,)
+    mouth_ts_hourly = ts_hourly.isel(point=mouth_point_idx).values
+
+    # extreme on the hourly/half-hour-stamped series
+    if EXTREME == 'max':
+        k = int(np.nanargmax(mouth_ts_hourly))
+    else:
+        k = int(np.nanargmin(mouth_ts_hourly))
+
+    peak_time = pd.to_datetime(time_vals_hourly[k])
+    peak_val  = float(mouth_ts_hourly[k])
+
+    # plot
+    ax = axes[row_i]
+    ax.plot(time_vals_hourly, mouth_ts_hourly, lw=1.2, label=f"{est_name.capitalize()} mouth (hourly mean @ :30)")
+    ax.axvline(peak_time, ls='--', lw=1.0, label=f"peak {EXTREME}: {peak_time:%Y-%m-%d %H:%M}")
+    ax.set_ylabel("Surface height [m]")
+    ax.set_title(f"{letter} — {est_name.capitalize()} • mouth series (PRIMEA unstr., hourly @ :30)")
+
+    peak_rows.append({
+        "group_id": int(gid),
+        "estuary": est_name,
+        "mouth_face_index": int(nearest_face_idx[mouth_point_idx]),
+        "mouth_lon": float(tran.loc[mouth_point_idx, 'x']),
+        "mouth_lat": float(tran.loc[mouth_point_idx, 'y']),
+        "peak_type": EXTREME,
+        "peak_time_unstr_hourly_half": peak_time.isoformat(),
+        "peak_value_hourly": peak_val
+    })
+
+axes[-1].set_xlabel("Time (UTC)")
+axes[0].legend(loc='upper right', ncol=1, fontsize=8)
+
+out_png = out_dir / f"mouth_timeseries_{EXTREME.upper()}_HAVERSINE_CUTOFF_HOURLY.png"
+fig.savefig(out_png, dpi=DPI, bbox_inches='tight')
+plt.close(fig)
+print(f"Saved figure: {out_png}")
+
+# save peak times CSV (hourly/half-hour convention)
+peak_df = pd.DataFrame(peak_rows)
+peak_csv = out_dir / f"mouth_peak_times_{EXTREME}_haversine_cutoff_hourly.csv"
+peak_df.to_csv(peak_csv, index=False)
+print(f"Saved peak-times CSV: {peak_csv}")
+
+# ================== QUICK MAP OF MOUTH POINTS ==================
+map_png = out_dir / "mouth_points_map.png"
+
+try:
+    import cartopy.crs as ccrs
+    import cartopy.feature as cfeature
+
+    fig = plt.figure(figsize=(8, 8))
+    ax = plt.axes(projection=ccrs.PlateCarree())
+    ax.set_title("Mouth Points for Phase Alignment", fontsize=12)
+
+    ax.add_feature(cfeature.LAND.with_scale('10m'), facecolor='lightgray', edgecolor='black', zorder=0)
+    ax.add_feature(cfeature.COASTLINE.with_scale('10m'))
+    ax.add_feature(cfeature.BORDERS.with_scale('10m'), linestyle=':', edgecolor='gray')
+
+    # all transect points
+    ax.scatter(tran['x'], tran['y'], c='lightblue', s=10, transform=ccrs.PlateCarree(), label='All Transect Points')
+
+    # mouth points
+    mouth_points = []
+    for gid in estuaries:
+        est_mask = tran['group_id'].values == gid
+        est_points_idx = np.where(est_mask)[0]
+        mouth_points.append(est_points_idx[0])
+    mouth_df = tran.iloc[mouth_points]
+    ax.scatter(mouth_df['x'], mouth_df['y'], c='red', s=30, transform=ccrs.PlateCarree(), label='Mouth Points')
+
+    # labels
+    for _, row in mouth_df.iterrows():
+        ax.text(row['x'] + 0.02, row['y'] + 0.02, row['est_name'].capitalize(),
+                transform=ccrs.PlateCarree(), fontsize=8, ha='left', va='bottom')
+
+    # extent buffer
+    lon_min, lon_max = tran['x'].min() - 0.2, tran['x'].max() + 0.2
+    lat_min, lat_max = tran['y'].min() - 0.2, tran['y'].max() + 0.2
+    ax.set_extent([lon_min, lon_max, lat_min, lat_max], crs=ccrs.PlateCarree())
+
+    ax.legend(loc='lower left')
+    fig.savefig(map_png, dpi=DPI, bbox_inches='tight')
+    plt.close(fig)
+    print(f"Saved mouth-points map (Cartopy): {map_png}")
+
+except Exception as e:
+    print(f"Cartopy map fallback due to: {e}")
+    fig, ax = plt.subplots(figsize=(8, 8))
+    ax.set_title("Mouth Points for Phase Alignment (no coastlines)")
+    ax.scatter(tran['x'], tran['y'], c='lightblue', s=10, label='All Transect Points')
+    mouth_points = []
+    for gid in estuaries:
+        est_mask = tran['group_id'].values == gid
+        est_points_idx = np.where(est_mask)[0]
+        mouth_points.append(est_points_idx[0])
+    mouth_df = tran.iloc[mouth_points]
+    ax.scatter(mouth_df['x'], mouth_df['y'], c='red', s=30, label='Mouth Points')
+    for _, row in mouth_df.iterrows():
+        ax.text(row['x'] + 0.02, row['y'] + 0.02, row['est_name'].capitalize(), fontsize=8, ha='left', va='bottom')
+    ax.set_xlabel("Longitude")
+    ax.set_ylabel("Latitude")
+    ax.set_aspect('equal', adjustable='datalim')
+    ax.grid(True, alpha=0.3)
+    fig.savefig(map_png, dpi=DPI, bbox_inches='tight')
+    plt.close(fig)
+    print(f"Saved mouth-points map (fallback): {map_png}")
